@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Aprobar/Rechazar Solicitud{% endblock %}
+
+{% block content %}
+<h2>Aprobar/Rechazar Solicitud</h2>
+<form method="post">
+    {% csrf_token %}
+    <div class="mb-3">
+        <p><strong>Usuario:</strong> {{ object.usuario.get_full_name }}</p>
+        <p><strong>Tipo:</strong> {{ object.get_tipo_display }}</p>
+        <p><strong>Fecha Inicio:</strong> {{ object.fecha_inicio }}</p>
+        <p><strong>Fecha Fin:</strong> {{ object.fecha_fin }}</p>
+        <p><strong>Horas:</strong> {{ object.horas }}</p>
+    </div>
+    <div class="mb-3">
+        <label for="id_estado" class="form-label">Estado:</label>
+        {{ form.estado }}
+    </div>
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <a href="{% url 'lista_solicitudes' %}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Historial de Solicitudes{% endblock %}
+
+{% block content %}
+<h2>Historial de Solicitudes</h2>
+
+<!-- Formulario para filtrar solicitudes por estado -->
+<form method="get" class="mb-3">
+    <label for="estado" class="form-label">Filtrar por estado:</label>
+    <select name="estado" id="estado" class="form-select">
+        <option value="">Todos</option>
+        <option value="P" {% if request.GET.estado == "P" %}selected{% endif %}>Pendiente</option>
+        <option value="A" {% if request.GET.estado == "A" %}selected{% endif %}>Aprobado</option>
+        <option value="R" {% if request.GET.estado == "R" %}selected{% endif %}>Rechazado</option>
+    </select>
+    <button type="submit" class="btn btn-primary mt-2">Filtrar</button>
+</form>
+
+<!-- Tabla para mostrar el historial de solicitudes -->
+<table class="table">
+    <thead>
+        <tr>
+            <th>Usuario</th>
+            <th>Tipo</th>
+            <th>Fecha Inicio</th>
+            <th>Fecha Fin</th>
+            <th>Horas</th>
+            <th>Estado</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for solicitud in solicitudes %}
+        <tr>
+            <td>{{ solicitud.usuario.get_full_name }}</td>
+            <td>{{ solicitud.get_tipo_display }}</td>
+            <td>{{ solicitud.fecha_inicio }}</td>
+            <td>{{ solicitud.fecha_fin }}</td>
+            <td>{{ solicitud.horas }}</td>
+            <td>{{ solicitud.get_estado_display }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6">No hay solicitudes en el historial.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
