@@ -1,6 +1,5 @@
 # Ignorar archivos específicos de PyTorch que son demasiado grandes
-venvia/Lib/site-packages/torch/lib/torch_cpu.dll
-venvia/Lib/site-packages/torch/lib/dnnl.lib
+
 
 # Ignorar archivos del sistema operativo
 .DS_Store
@@ -13,3 +12,8 @@ __pycache__/
 # Ignorar archivos de configuración local
 .env
 
+# Ignorar todos los archivos en cualquier carpeta migrations
+**/migrations/*
+
+# Pero mantener los archivos __init__.py
+!**/migrations/__init__.py

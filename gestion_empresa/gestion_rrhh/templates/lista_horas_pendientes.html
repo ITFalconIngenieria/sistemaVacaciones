@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Horas Pendientes de Aprobación{% endblock %}
+
+{% block content %}
+<h2>Horas Pendientes de Aprobación</h2>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Usuario</th>
+            <th>Tipo de Horas</th>
+            <th>Fecha de Inicio</th>
+            <th>Fecha de Fin</th>
+            <th>Horas</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for registro in registros_horas %}
+        <tr>
+            <td>{{ registro.usuario.get_full_name }}</td>
+            <td>{{ registro.get_tipo_horas_display }}</td>
+            <td>{{ registro.fecha_inicio }}</td>
+            <td>{{ registro.fecha_fin }}</td>
+            <td>{{ registro.horas }}</td>
+            <td>
+                <!-- Si el jefe está viendo su propia solicitud, desactivar el botón -->
+                {% if registro.usuario == user %}
+                    <button class="btn btn-sm btn-secondary" disabled>No puedes aprobar/rechazar tu propia solicitud</button>
+                {% else %}
+                    <a href="{% url 'aprobar_rechazar_horas' registro.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6">No hay horas pendientes de aprobación.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+
+
+{% endblock %}

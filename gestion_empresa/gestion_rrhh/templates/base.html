@@ -16,7 +16,11 @@
                     <a class="nav-item nav-link" href="{% url 'crear_solicitud' %}">Crear Solicitud</a>
                     <a class="nav-item nav-link" href="{% url 'lista_solicitudes' %}">Solicitudes</a>
                     <a  class="nav-item nav-link" href="{% url 'historial_solicitudes' %}" >Ver Historial de Solicitudes</a>
-
+                    <a class="nav-link" href="{% url 'registrar_horas' %}">Registrar Horas</a>
+                    {% if user.rol in 'GG,JI,JD' %}
+                    <a class="nav-link" href="{% url 'lista_horas_pendientes' %}">Horas Pendientes de Aprobación</a>
+                    {% endif %}
+                    <a class="nav-link" href="{% url 'mis_registros_horas' %}">Historial Registros de Horas</a>
                     {% if user.rol in 'GG,JI,JD' %}
                         <a class="nav-item nav-link" href="{% url 'crear_usuario' %}">Crear Usuario</a>
                     {% endif %}

@@ -4,7 +4,9 @@
 
 {% block content %}
 <h2>Dashboard</h2>
-<p>Bienvenido, {{ user.get_full_name }}!</p>
+<p>Bienvenido, {{ user.username}}!</p>
 <p>Rol: {{ user.get_rol_display }}</p>
 <p>Departamento: {{ user.departamento }}</p>
+<p>Días de vacaciones disponibles: {{ user.dias_vacaciones }}</p>
+
 {% endblock %}

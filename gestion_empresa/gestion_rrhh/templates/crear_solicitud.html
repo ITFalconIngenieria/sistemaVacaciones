@@ -4,9 +4,23 @@
 
 {% block content %}
 <h2>Crear Solicitud</h2>
+
+<!-- Información relevante del usuario -->
+<p><strong>Días de vacaciones disponibles:</strong> {{ usuario.dias_vacaciones }}</p>
+<p><strong>Horas extra acumuladas:</strong> {{ usuario.horas_extra_acumuladas }}</p>
+<p><strong>Horas compensatorias disponibles:</strong> {{ usuario.horas_compensatorias_disponibles }}</p>
+
+<!-- Formulario para crear la solicitud -->
 <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
     <button type="submit" class="btn btn-primary">Crear Solicitud</button>
 </form>
+
+<!-- Mostrar errores de validación si los hay -->
+{% if form.non_field_errors %}
+    <div class="alert alert-danger">
+        {{ form.non_field_errors }}
+    </div>
+{% endif %}
 {% endblock %}
