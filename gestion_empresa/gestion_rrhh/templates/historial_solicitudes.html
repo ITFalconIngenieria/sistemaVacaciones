@@ -5,16 +5,49 @@
 {% block content %}
 <h2>Historial de Solicitudes</h2>
 
-<!-- Formulario para filtrar solicitudes por estado -->
+<!-- Formulario para filtrar solicitudes por estado, usuario y tipo -->
 <form method="get" class="mb-3">
-    <label for="estado" class="form-label">Filtrar por estado:</label>
-    <select name="estado" id="estado" class="form-select">
-        <option value="">Todos</option>
-        <option value="P" {% if request.GET.estado == "P" %}selected{% endif %}>Pendiente</option>
-        <option value="A" {% if request.GET.estado == "A" %}selected{% endif %}>Aprobado</option>
-        <option value="R" {% if request.GET.estado == "R" %}selected{% endif %}>Rechazado</option>
-    </select>
-    <button type="submit" class="btn btn-primary mt-2">Filtrar</button>
+    <div class="row">
+        <!-- Filtro por estado -->
+        <div class="col-md-3">
+            <label for="estado" class="form-label">Filtrar por estado:</label>
+            <select name="estado" id="estado" class="form-select">
+                <option value="">Todos</option>
+                <option value="P" {% if request.GET.estado == "P" %}selected{% endif %}>Pendiente</option>
+                <option value="A" {% if request.GET.estado == "A" %}selected{% endif %}>Aprobado</option>
+                <option value="R" {% if request.GET.estado == "R" %}selected{% endif %}>Rechazado</option>
+            </select>
+        </div>
+
+        <!-- Filtro por tipo de solicitud -->
+        <div class="col-md-3">
+            <label for="tipo" class="form-label">Filtrar por tipo:</label>
+            <select name="tipo" id="tipo" class="form-select">
+                <option value="">Todos</option>
+                <option value="V" {% if request.GET.tipo == "V" %}selected{% endif %}>Vacaciones</option>
+                <option value="HE" {% if request.GET.tipo == "HE" %}selected{% endif %}>Horas Extra</option>
+                <option value="HC" {% if request.GET.tipo == "HC" %}selected{% endif %}>Horas Compensatorias</option>
+            </select>
+        </div>
+
+        <!-- Filtro por usuario (solo si es jefe) -->
+        {% if user.rol in 'GG,JI,JD' %}
+        <div class="col-md-3">
+            <label for="usuario" class="form-label">Filtrar por usuario:</label>
+            <select name="usuario" id="usuario" class="form-select">
+                <option value="">Todos</option>
+                <option value="{{ user.id }}" {% if request.GET.usuario == user.id|stringformat:"s" %}selected{% endif %}>Yo mismo</option>
+                {% for subordinado in subordinados %}
+                <option value="{{ subordinado.id }}" {% if request.GET.usuario == subordinado.id|stringformat:"s" %}selected{% endif %}>
+                    {{ subordinado.get_full_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-3">Filtrar</button>
 </form>
 
 <!-- Tabla para mostrar el historial de solicitudes -->

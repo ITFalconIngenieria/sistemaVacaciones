@@ -35,11 +35,8 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         # Asignar el usuario y establecer el estado de la solicitud
         form.instance.usuario = self.request.user
         form.instance.estado = 'P'
-
-        # Obtener el tipo de solicitud (Vacaciones, Horas Extra, Horas Compensatorias)
         tipo_solicitud = form.cleaned_data.get('tipo')
-
-        # Validaciones según el tipo de solicitud
+        
         if tipo_solicitud == 'V':  # Solicitud de Vacaciones
             dias_vacaciones_disponibles = self.request.user.dias_vacaciones
             dias_solicitados = (form.cleaned_data.get('fecha_fin') - form.cleaned_data.get('fecha_inicio')).days + 1
@@ -61,8 +58,6 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context['usuario'] = self.request.user  # Pasar el usuario autenticado
         return context
-
-
 
 
 class ListaSolicitudesView(LoginRequiredMixin, ListView):
@@ -126,23 +121,48 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
         return super().form_valid(form)
 
 
-class HistorialSolicitudesView(LoginRequiredMixin, ListView):
+
+class HistorialSolicitudesView(ListView):
     model = Solicitud
     template_name = 'historial_solicitudes.html'
     context_object_name = 'solicitudes'
 
     def get_queryset(self):
-        estado = self.request.GET.get('estado')  # Obtén el filtro del parámetro 'estado'
-        
-        # Jefes pueden ver todas las solicitudes
-        if self.request.user.is_superuser or self.request.user.rol in ['GG', 'JI', 'JD']:
-            queryset = Solicitud.objects.all()
-        else:
-            queryset = Solicitud.objects.filter(usuario=self.request.user)
+        user = self.request.user
+        queryset = Solicitud.objects.all()
 
+        # Obtener los valores de los filtros desde el formulario
+        estado = self.request.GET.get('estado')
+        tipo = self.request.GET.get('tipo')
+        usuario_id = self.request.GET.get('usuario')
+
+        # Si es jefe, filtrar sus propias solicitudes y las de sus subordinados
+        if user.rol in ['GG', 'JI', 'JD']:
+            queryset = queryset.filter(usuario__in=[user] + list(user.subordinados.all()))
+        else:
+            # Si no es jefe, solo ver sus propias solicitudes
+            queryset = queryset.filter(usuario=user)
+
+        # Filtrar por estado si se seleccionó
         if estado:
-            queryset = queryset.filter(estado=estado)  # Filtra por estado si se proporciona
-        return queryset.order_by('-fecha_inicio')
+            queryset = queryset.filter(estado=estado)
+
+        # Filtrar por tipo de solicitud si se seleccionó
+        if tipo:
+            queryset = queryset.filter(tipo=tipo)
+
+        # Filtrar por usuario si es jefe y se seleccionó un usuario
+        if usuario_id:
+            queryset = queryset.filter(usuario_id=usuario_id)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Pasar la lista de subordinados al contexto si el usuario es jefe
+        if self.request.user.rol in ['GG', 'JI', 'JD']:
+            context['subordinados'] = Usuario.objects.filter(jefe=self.request.user)
+        return context
 
 
 

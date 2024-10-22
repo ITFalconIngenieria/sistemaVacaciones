@@ -112,8 +112,6 @@ class Solicitud(models.Model):
                     horas_restantes = 0
                 solicitud_he.save()
 
-
-
 class RegistroHoras(models.Model):
     TIPOS_HORAS = (
         ('HE', 'Horas Extra'),
