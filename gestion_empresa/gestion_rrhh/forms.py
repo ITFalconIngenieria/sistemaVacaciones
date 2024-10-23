@@ -4,13 +4,14 @@ from .models import Usuario, Solicitud
 from django import forms
 from django.forms.widgets import DateInput
 from .models import RegistroHoras, Usuario
+
+
 class UsuarioCreationForm(UserCreationForm):
-    class Meta(UserCreationForm.Meta):
+    class Meta:
         model = Usuario
-        # fields = UserCreationForm.Meta.fields + ('rol', 'departamento', 'jefe')
-        fields = ['username', 'rol', 'departamento', 'jefe', 'fecha_entrada', 'password1', 'password2']
+        fields = ['username', 'first_name', 'last_name', 'email', 'rol', 'departamento', 'jefe', 'fecha_entrada', 'password1', 'password2']
         widgets = {
-            'fecha_entrada': DateInput(attrs={'type': 'date'}),  # Usar un input tipo date
+            'fecha_entrada': forms.DateInput(attrs={'type': 'date'}),
         }
 
 class UsuarioChangeForm(UserChangeForm):
@@ -26,22 +27,11 @@ class SolicitudForm(forms.ModelForm):
             'fecha_inicio': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'fecha_fin': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
         }
+        exclude = ['estado', 'aprobado_por']
 
-    def clean(self):
-        cleaned_data = super().clean()
-        fecha_inicio = cleaned_data.get('fecha_inicio')
-        fecha_fin = cleaned_data.get('fecha_fin')
-        tipo = cleaned_data.get('tipo')
-        
-        if fecha_inicio and fecha_fin:
-            if fecha_inicio >= fecha_fin:
-                raise forms.ValidationError("La fecha de inicio debe ser anterior a la fecha de fin.")
-        
-        if tipo == 'V':
-            if (fecha_fin - fecha_inicio).days > 30:
-                raise forms.ValidationError("Las vacaciones no pueden exceder los 30 días.")
-        
-        return cleaned_data
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['horas'].required = False
     
     
 class RegistrarHorasForm(forms.ModelForm):

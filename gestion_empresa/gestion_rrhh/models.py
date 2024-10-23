@@ -3,6 +3,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from datetime import date
 from decimal import Decimal  # Importar Decimal
+from django.db.models import Sum
 class Usuario(AbstractUser):
     ROLES = (
         ('GG', 'Gerente General'),
@@ -45,6 +46,7 @@ class Usuario(AbstractUser):
         self.dias_vacaciones = self.calcular_dias_vacaciones()
         super().save(*args, **kwargs)  # Llama al método `save` del modelo base
 
+
 class Departamento(models.Model):
     nombre = models.CharField(max_length=100)
     def __str__(self):
@@ -61,6 +63,7 @@ class Solicitud(models.Model):
         ('A', 'Aprobada'),
         ('R', 'Rechazada'),
     )
+
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
     tipo = models.CharField(max_length=2, choices=TIPOS)
     fecha_inicio = models.DateTimeField()
@@ -68,49 +71,38 @@ class Solicitud(models.Model):
     horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     estado = models.CharField(max_length=1, choices=ESTADOS, default='P')
     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador', null=True, blank=True, on_delete=models.SET_NULL)
-    
     def clean(self):
-        super().clean()
-        if self.tipo == 'HE' and self.usuario.rol == 'IN':
-            raise ValidationError("Los ingenieros no pueden solicitar horas extra.")
+        # Modificamos la validación para usar getattr y evitar el error
+        if not getattr(self, 'usuario_id', None):
+            return
+
+        # El resto de las validaciones solo se ejecutan si hay usuario
+        if self.usuario.rol == 'IN':  # Ingeniero
+            if self.tipo == 'HE':
+                raise ValidationError("Los ingenieros no pueden solicitar horas extra.")
         
+        elif self.usuario.rol == 'TE':  # Técnico
+            if self.tipo == 'HC':
+                raise ValidationError("Los técnicos no pueden solicitar horas compensatorias.")
+
         if self.estado != 'P' and self.aprobado_por == self.usuario:
             raise ValidationError("No puedes aprobar tu propia solicitud.")
-        
-        if self.tipo == 'HC' and self.usuario.rol == 'TE':
-            horas_extra = Solicitud.objects.filter(
-                usuario=self.usuario,
-                tipo='HE',
-                estado='A'
-            ).aggregate(total=models.Sum('horas'))['total'] or 0
-            
-            if self.horas > horas_extra:
-                raise ValidationError("No tienes suficientes horas extra para convertir en compensatorias.")
 
-    
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
-        
-        # Convertir horas extra a compensatorias para técnicos
-        if self.tipo == 'HC' and self.estado == 'A' and self.usuario.rol == 'TE':
-            horas_extra = Solicitud.objects.filter(
-                usuario=self.usuario,
-                tipo='HE',
-                estado='A'
-            ).order_by('fecha_inicio')
-            
-            horas_restantes = self.horas
-            for solicitud_he in horas_extra:
-                if horas_restantes <= 0:
-                    break
-                if solicitud_he.horas <= horas_restantes:
-                    solicitud_he.estado = 'R'  # Marcar como usada
-                    horas_restantes -= solicitud_he.horas
-                else:
-                    solicitud_he.horas -= horas_restantes
-                    horas_restantes = 0
-                solicitud_he.save()
+
+        if self.estado == 'A':
+            if self.tipo == 'HE' and self.usuario.rol == 'TE':
+                self.usuario.horas_extra_acumuladas -= self.horas
+                self.usuario.save()
+            elif self.tipo == 'HC' and self.usuario.rol in ['IN', 'GG', 'JI', 'JD']:
+                self.usuario.horas_compensatorias_disponibles -= self.horas
+                self.usuario.save()
+            elif self.tipo == 'V':
+                dias_solicitados = (self.fecha_fin - self.fecha_inicio).days + 1
+                self.usuario.dias_vacaciones -= dias_solicitados
+                self.usuario.save()
 
 class RegistroHoras(models.Model):
     TIPOS_HORAS = (
@@ -142,10 +134,3 @@ class RegistroHoras(models.Model):
         self.horas = self.calcular_horas()
         super().save(*args, **kwargs)
 
-        # Las horas solo se suman cuando la solicitud es aprobada
-        if self.estado == 'A':  # Si la solicitud es aprobada
-            if self.tipo_horas == 'HE':
-                self.usuario.horas_extra_acumuladas += Decimal(self.horas)
-            elif self.tipo_horas == 'HC':
-                self.usuario.horas_compensatorias_disponibles += Decimal(self.horas)
-            self.usuario.save()

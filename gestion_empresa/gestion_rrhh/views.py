@@ -8,8 +8,7 @@ from .forms import UsuarioCreationForm, SolicitudForm, RegistrarHorasForm,Regist
 from django.contrib import messages
 from django.contrib.auth import logout
 from .models import RegistroHoras
-
-
+from django.core.exceptions import ValidationError
 
 @login_required
 def dashboard(request):
@@ -31,33 +30,54 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
     template_name = 'crear_solicitud.html'
     success_url = reverse_lazy('lista_solicitudes')
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        if self.request.method in ('POST', 'PUT'):
+            data = kwargs['data'].copy()
+            data['usuario'] = self.request.user.id
+            kwargs['data'] = data
+        return kwargs
+
     def form_valid(self, form):
-        # Asignar el usuario y establecer el estado de la solicitud
         form.instance.usuario = self.request.user
         form.instance.estado = 'P'
-        tipo_solicitud = form.cleaned_data.get('tipo')
-        
-        if tipo_solicitud == 'V':  # Solicitud de Vacaciones
-            dias_vacaciones_disponibles = self.request.user.dias_vacaciones
-            dias_solicitados = (form.cleaned_data.get('fecha_fin') - form.cleaned_data.get('fecha_inicio')).days + 1
-            if dias_solicitados > dias_vacaciones_disponibles:
-                form.add_error(None, f"No tienes suficientes días de vacaciones disponibles (días disponibles: {dias_vacaciones_disponibles}).")
-                return self.form_invalid(form)
 
-        elif tipo_solicitud == 'HC':  # Solicitud de Horas Compensatorias
-            horas_disponibles = self.request.user.horas_extra_acumuladas
-            horas_solicitadas = form.cleaned_data.get('horas')
-            if horas_solicitadas > horas_disponibles:
-                form.add_error(None, f"No tienes suficientes horas extra acumuladas (horas disponibles: {horas_disponibles}).")
-                return self.form_invalid(form)
+        try:
+            # Validaciones específicas
+            tipo_solicitud = form.cleaned_data.get('tipo')
+            if tipo_solicitud == 'V':
+                dias_vacaciones_disponibles = self.request.user.dias_vacaciones
+                dias_solicitados = (form.cleaned_data.get('fecha_fin') - form.cleaned_data.get('fecha_inicio')).days + 1
+                if dias_solicitados > dias_vacaciones_disponibles:
+                    form.add_error(None, f"No tienes suficientes días de vacaciones disponibles (días disponibles: {dias_vacaciones_disponibles}).")
+                    return self.form_invalid(form)
 
-        # Si es de Horas Extra (HE), no necesita validación, simplemente se registra
-        return super().form_valid(form)
+            elif tipo_solicitud == 'HC':
+                if self.request.user.rol not in ['IN', 'GG', 'JI', 'JD']:
+                    form.add_error(None, "No tienes permiso para solicitar horas compensatorias.")
+                    return self.form_invalid(form)
+
+                horas_compensatorias_disponibles = self.request.user.horas_compensatorias_disponibles
+                horas_solicitadas = form.cleaned_data.get('horas')
+                if horas_solicitadas > horas_compensatorias_disponibles:
+                    form.add_error(None, f"No tienes suficientes horas compensatorias disponibles.")
+                    return self.form_invalid(form)
+
+            elif tipo_solicitud == 'HE':
+                if self.request.user.rol != 'TE':
+                    form.add_error(None, "Solo los técnicos pueden solicitar horas extra.")
+                    return self.form_invalid(form)
+
+            return super().form_valid(form)
+        except ValidationError as e:
+            form.add_error(None, str(e))
+            return self.form_invalid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['usuario'] = self.request.user  # Pasar el usuario autenticado
+        context['usuario'] = self.request.user
         return context
+
 
 
 class ListaSolicitudesView(LoginRequiredMixin, ListView):
@@ -69,6 +89,8 @@ class ListaSolicitudesView(LoginRequiredMixin, ListView):
         if self.request.user.is_superuser  or self.request.user.rol in ['GG', 'JI', 'JD']:
             return Solicitud.objects.filter(estado='P')
         return Solicitud.objects.filter(usuario=self.request.user)
+
+
 
 
 class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
@@ -101,7 +123,7 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
         if form.instance.estado in ['A', 'R']:
             form.instance.aprobado_por = self.request.user
 
-            # Lógica de manejo al aprobar la solicitud
+            # Lógica de manejo al aprobar la solicitud (Restar)
             if form.instance.estado == 'A':
                 if solicitud.tipo == 'V':  # Vacaciones
                     dias_solicitados = (solicitud.fecha_fin - solicitud.fecha_inicio).days + 1
@@ -109,16 +131,17 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
                     solicitud.usuario.save()
 
                 elif solicitud.tipo == 'HC':  # Horas Compensatorias
-                    solicitud.usuario.horas_extra_acumuladas -= solicitud.horas
-                    solicitud.usuario.horas_compensatorias_disponibles += solicitud.horas
+                    solicitud.usuario.horas_compensatorias_disponibles -= solicitud.horas
                     solicitud.usuario.save()
 
                 elif solicitud.tipo == 'HE':  # Horas Extra
-                    solicitud.usuario.horas_extra_acumuladas += solicitud.horas
+                    solicitud.usuario.horas_extra_acumuladas -= solicitud.horas
                     solicitud.usuario.save()
 
             messages.success(self.request, 'La solicitud ha sido procesada exitosamente.')
         return super().form_valid(form)
+
+
 
 
 
@@ -165,8 +188,7 @@ class HistorialSolicitudesView(ListView):
         return context
 
 
-
-class RegistrarHorasView(CreateView):
+class RegistrarHorasView(LoginRequiredMixin, CreateView):
     model = RegistroHoras
     form_class = RegistrarHorasForm
     template_name = 'registrar_horas.html'
@@ -175,46 +197,30 @@ class RegistrarHorasView(CreateView):
     def form_valid(self, form):
         form.instance.usuario = self.request.user  # Asignar el usuario autenticado
         form.instance.estado = 'P'  # Estado pendiente por defecto
+
+        # Validar según el rol del usuario
+        rol_usuario = self.request.user.rol
+        tipo_horas = form.cleaned_data.get('tipo_horas')
+
+        # Ingeniero (IN): Solo puede registrar horas compensatorias (HC)
+        if rol_usuario == 'IN' and tipo_horas == 'HE':  # Horas Extra no permitidas para ingenieros
+            form.add_error(None, "Los ingenieros no pueden registrar horas extra.")
+            return self.form_invalid(form)
+
+        # Técnico (TE): Solo puede registrar horas extra (HE)
+        elif rol_usuario == 'TE' and tipo_horas == 'HC':  # Horas Compensatorias no permitidas para técnicos
+            form.add_error(None, "Los técnicos solo pueden registrar horas extra.")
+            return self.form_invalid(form)
+
+        # Jefes o Gerentes (GG, JI, JD): Solo pueden registrar horas compensatorias (HC)
+        elif rol_usuario in ['GG', 'JI', 'JD'] and tipo_horas == 'HE':  # Horas Extra no permitidas para jefes o gerentes
+            form.add_error(None, "Los gerentes o jefes no pueden registrar horas extra.")
+            return self.form_invalid(form)
+
         messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
         return super().form_valid(form)
 
 
-
-class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
-    model = RegistroHoras  # Aquí deberías usar el modelo que maneja las horas extra o compensatorias
-    fields = ['estado']  # Solo permitimos cambiar el estado
-    template_name = 'aprobar_rechazar_horas.html'  # Asegúrate de tener esta plantilla
-    success_url = reverse_lazy('lista_horas_pendientes')  # Redirige a la lista de horas pendientes
-
-    def test_func(self):
-        registro = self.get_object()
-
-        # No permitir que el jefe apruebe su propia solicitud de horas
-        if registro.usuario == self.request.user:
-            messages.error(self.request, 'No puedes aprobar o rechazar tus propias horas.')
-            return False
-
-        # Lógica de permisos para jefes
-        if self.request.user.is_superuser or self.request.user.rol in ['GG', 'JI', 'JD']:
-            return True
-        return False
-
-    def form_valid(self, form):
-        registro = form.save(commit=False)
-
-        # Solo al aprobar/rechazar, asignar quién aprobó o rechazó las horas
-        if registro.estado in ['A', 'R']:
-            registro.aprobado_por = self.request.user
-            if registro.estado == 'A':
-                # Actualizar las horas extra o compensatorias del usuario
-                if registro.tipo_horas == 'HE':  # Horas Extra
-                    registro.usuario.horas_extra_acumuladas += registro.horas
-                elif registro.tipo_horas == 'HC':  # Horas Compensatorias
-                    registro.usuario.horas_compensatorias_disponibles += registro.horas
-                registro.usuario.save()
-
-        messages.success(self.request, 'El registro de horas ha sido procesado exitosamente.')
-        return super().form_valid(form)
 
 class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
     model = RegistroHoras
@@ -241,7 +247,7 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         # Solo al aprobar/rechazar, asignar quién aprobó o rechazó las horas
         if registro.estado in ['A', 'R']:
             registro.aprobado_por = self.request.user
-            if registro.estado == 'A':
+            if registro.estado == 'A':  # Si la solicitud es aprobada
                 # Actualizar las horas extra o compensatorias del usuario
                 if registro.tipo_horas == 'HE':
                     registro.usuario.horas_extra_acumuladas += registro.horas
@@ -251,6 +257,7 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
 
         messages.success(self.request, 'El registro de horas ha sido procesado exitosamente.')
         return super().form_valid(form)
+
 
 
 class ListaHorasPendientesView(ListView):
@@ -275,7 +282,7 @@ class ListaHorasPendientesView(ListView):
 
 class ListaRegistroHorasView(ListView):
     model = RegistroHoras
-    template_name = 'lista_registro_horas.html'
+    template_name = 'historial_registro_horas.html'
     context_object_name = 'registros_horas'
 
     def get_queryset(self):
