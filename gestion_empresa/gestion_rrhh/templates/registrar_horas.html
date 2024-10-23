@@ -1,25 +1,39 @@
 {% extends 'base.html' %}
+{% load crispy_forms_tags %}  <!-- Cargar las etiquetas de crispy_forms -->
 
 {% block title %}Registrar Horas{% endblock %}
 
 {% block content %}
-<h2>Registrar Horas</h2>
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Registrar Horas</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Información del usuario -->
+                    <div class="mb-3">
+                        <p><strong>Horas extra acumuladas:</strong> {{ user.horas_extra_acumuladas }}</p>
+                        <p><strong>Horas compensatorias disponibles:</strong> {{ user.horas_compensatorias_disponibles }}</p>
+                    </div>
 
-<!-- Información del usuario -->
-<p><strong>Horas extra acumuladas:</strong> {{ user.horas_extra_acumuladas }}</p>
-<p><strong>Horas compensatorias disponibles:</strong> {{ user.horas_compensatorias_disponibles }}</p>
+                    <!-- Formulario para registrar horas -->
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}  <!-- Utilizando Crispy Forms para renderizar el formulario de forma elegante -->
+                        <button type="submit" class="btn btn-success w-100">Registrar Horas</button>
+                    </form>
 
-<!-- Formulario para registrar horas -->
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">Registrar Horas</button>
-</form>
-
-<!-- Mostrar errores si los hay -->
-{% if form.non_field_errors %}
-    <div class="alert alert-danger">
-        {{ form.non_field_errors }}
+                    <!-- Mostrar errores si los hay -->
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger mt-3">
+                        {{ form.non_field_errors }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
-{% endif %}
+</div>
 {% endblock %}
