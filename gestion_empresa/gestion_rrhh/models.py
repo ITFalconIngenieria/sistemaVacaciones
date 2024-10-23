@@ -3,7 +3,8 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from datetime import date
 from decimal import Decimal  # Importar Decimal
-from django.db.models import Sum
+
+from .validators import validate_username
 class Usuario(AbstractUser):
     ROLES = (
         ('GG', 'Gerente General'),
@@ -11,6 +12,13 @@ class Usuario(AbstractUser):
         ('JD', 'Jefe de Departamento'),
         ('IN', 'Ingeniero'),
         ('TE', 'Técnico'),
+    )
+    # Aplicar el validador personalizado al campo `username`
+    username = models.CharField(
+        max_length=150,
+        unique=True,  # Mantener la unicidad
+        validators=[validate_username],  # Agregar el validador de solo letras
+        help_text="Solo letras, sin números ni caracteres especiales."
     )
     rol = models.CharField(max_length=2, choices=ROLES)
     departamento = models.ForeignKey('Departamento', on_delete=models.SET_NULL, null=True)

@@ -2,18 +2,24 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from .models import Usuario, Solicitud
 from django import forms
-from django.forms.widgets import DateInput
 from .models import RegistroHoras, Usuario
-
+from .validators import validate_username
 
 class UsuarioCreationForm(UserCreationForm):
+    username = forms.CharField(
+        max_length=150,
+        required=True,
+        validators=[validate_username],  # Aplicar el validador de solo letras
+        help_text="Solo letras, sin números ni caracteres especiales."
+    )
+    
     class Meta:
         model = Usuario
-        fields = ['username', 'first_name', 'last_name', 'email', 'rol', 'departamento', 'jefe', 'fecha_entrada', 'password1', 'password2']
+        fields = ['username', 'first_name', 'last_name', 'email', 'rol', 'departamento', 'jefe', 'fecha_entrada', 'fecha_salida', 'password1', 'password2']
         widgets = {
-            'fecha_entrada': forms.DateInput(attrs={'type': 'date'}),
+            'fecha_entrada': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'fecha_salida': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
         }
-
 class UsuarioChangeForm(UserChangeForm):
     class Meta(UserChangeForm.Meta):
         model = Usuario

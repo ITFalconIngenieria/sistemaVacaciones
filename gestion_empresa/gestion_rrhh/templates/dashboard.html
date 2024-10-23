@@ -3,10 +3,23 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<h2>Dashboard</h2>
-<p>Bienvenido, {{ user.username}}!</p>
-<p>Rol: {{ user.get_rol_display }}</p>
-<p>Departamento: {{ user.departamento }}</p>
-<p>Días de vacaciones disponibles: {{ user.dias_vacaciones }}</p>
-
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Dashboard</h4>
+                </div>
+                <div class="card-body">
+                    <p><strong>Bienvenido:</strong> {{ user.get_full_name }}</p>
+                    <p><strong>Rol:</strong> {{ user.get_rol_display }}</p>
+                    <p><strong>Departamento:</strong> {{ user.departamento }}</p>
+                    <p><strong>Días de vacaciones disponibles:</strong> {{ user.dias_vacaciones }}</p>
+                    <p><strong>Horas Compensatorias disponibles:</strong> {{ user.horas_compensatorias_disponibles}}</p>
+                    <p><strong>Horas extra disponibles:</strong> {{ user.horas_extra_acumuladas}}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
