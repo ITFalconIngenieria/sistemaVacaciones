@@ -44,23 +44,33 @@ class UsuarioChangeForm(UserChangeForm):
 class SolicitudForm(forms.ModelForm):
     class Meta:
         model = Solicitud
-        fields = ['tipo', 'fecha_inicio', 'fecha_fin', 'horas']
+        fields = ['tipo', 'fecha_inicio', 'fecha_fin']
         widgets = {
-            'fecha_inicio': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'fecha_fin': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'fecha_inicio': forms.DateTimeInput(
+                attrs={
+                    'type': 'datetime-local',
+                    'class': 'form-control',
+                    'required': 'required'
+                }
+            ),
+            'fecha_fin': forms.DateTimeInput(
+                attrs={
+                    'type': 'datetime-local',
+                    'class': 'form-control',
+                    'required': 'required'
+                }
+            )
         }
         exclude = ['estado', 'aprobado_por']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Marcar 'horas' como opcional
-        self.fields['horas'].required = False
-
         # Verificar si la instancia existe y si tiene un tipo
         if 'instance' in kwargs and kwargs['instance'] is not None:
-            if kwargs['instance'].tipo in ['HC', 'HE']:
-                self.fields['horas'].required = True
+            if kwargs['instance'].tipo == 'V':
+                self.fields['fecha_fin'].required = True  # Ejemplo, podrías ajustar otra lógica aquí.
+
 
 
 class RegistrarHorasForm(forms.ModelForm):
@@ -68,8 +78,27 @@ class RegistrarHorasForm(forms.ModelForm):
         model = RegistroHoras
         fields = ['tipo_horas', 'fecha_inicio', 'fecha_fin', 'descripcion']
         widgets = {
-            'fecha_inicio': forms.DateTimeInput(attrs={'type': 'datetime-local'}),  # Para seleccionar fecha y hora
-            'fecha_fin': forms.DateTimeInput(attrs={'type': 'datetime-local'}),  # Para seleccionar fecha y hora
+            'fecha_inicio': forms.DateTimeInput(
+                attrs={
+                    'type': 'datetime-local',
+                    'class': 'form-control',
+                    'required': 'required'
+                }
+            ),
+            'fecha_fin': forms.DateTimeInput(
+                attrs={
+                    'type': 'datetime-local',
+                    'class': 'form-control',
+                    'required': 'required'
+                }
+            ),
+            'descripcion': forms.Textarea(
+                attrs={
+                    'rows': 3,
+                    'class': 'form-control',
+                    'placeholder': 'Describa brevemente el trabajo realizado'
+                }
+            )
         }
 
     def clean(self):
@@ -77,7 +106,6 @@ class RegistrarHorasForm(forms.ModelForm):
         fecha_inicio = cleaned_data.get('fecha_inicio')
         fecha_fin = cleaned_data.get('fecha_fin')
 
-        # Validar que la fecha de fin sea posterior a la fecha de inicio
         if fecha_inicio and fecha_fin and fecha_fin <= fecha_inicio:
             raise forms.ValidationError("La fecha y hora de fin deben ser posteriores a la fecha y hora de inicio.")
 

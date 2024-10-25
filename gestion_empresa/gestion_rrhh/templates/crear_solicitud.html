@@ -21,7 +21,8 @@
                     <!-- Formulario para crear la solicitud -->
                     <form method="post">
                         {% csrf_token %}
-                        <div class="mb-3">
+                        {{ form|crispy }}
+                        <!-- <div class="mb-3">
                             <label for="id_tipo" class="form-label">Tipo de Solicitud</label>
                             {{ form.tipo|as_crispy_field }}
                         </div>
@@ -34,28 +35,23 @@
                         <div class="mb-3">
                             <label for="id_fecha_fin" class="form-label">Fecha de Fin</label>
                             {{ form.fecha_fin|as_crispy_field }}
-                        </div>
+                        </div> -->
 
-                        <!-- Div para el campo horas, controlado por JavaScript -->
-                        <div class="mb-3" id="horas-field" style="display: none;">
-                            <label for="id_horas" class="form-label">Horas</label>
-                            {{ form.horas|as_crispy_field }}
-                        </div>
 
                         <!-- Nota que muestra la cantidad de días solicitados -->
                         <div class="alert alert-info" id="dias-solicitados">
-                            La cantidad de días solicitados es: días.
+                            La cantidad de días solicitados es:  días.
                         </div>
+
+                        <div class="alert alert-info" id="horas-solicitadas">
+                            La cantidad de horas solicitadas es:  horas.
+                        </div>
+
+
 
                         <button type="submit" class="btn btn-success w-100">Crear Solicitud</button>
                     </form>
 
-                    <!-- Mostrar errores de validación si los hay -->
-                    {% if form.non_field_errors %}
-                    <div class="alert alert-danger mt-3">
-                        {{ form.non_field_errors }}
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -63,39 +59,69 @@
 </div>
 
 <script>
+    
     document.addEventListener('DOMContentLoaded', function () {
-        const tipoSelect = document.getElementById('id_tipo');
-        const horasField = document.getElementById('horas-field');
-        const fechaFinInput = document.getElementById('id_fecha_fin');
-        const fechaInicioInput = document.getElementById('id_fecha_inicio');
-        const diasSolicitadosInfo = document.getElementById('dias-solicitados');
+    const tipoSelect = document.getElementById('id_tipo');
+    const fechaFinInput = document.getElementById('id_fecha_fin');
+    const fechaInicioInput = document.getElementById('id_fecha_inicio');
+    const diasSolicitadosInfo = document.getElementById('dias-solicitados');
+    const horasSolicitadasInfo = document.getElementById('horas-solicitadas');
 
-        function calcularDiasSolicitados() {
-            const fechaInicio = new Date(fechaInicioInput.value);
-            const fechaFin = new Date(fechaFinInput.value);
+    function calcularHorasSolicitadas() {
+        const fechaInicio = new Date(fechaInicioInput.value);
+        const fechaFin = new Date(fechaFinInput.value);
 
-            if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
-                const diferenciaTiempo = fechaFin - fechaInicio;
-                const dias = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24)) + 1;
-                diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: ${dias} días.`;
-            } else {
-                diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: días.`;
-            }
+        if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
+            const diferenciaTiempo = fechaFin - fechaInicio;
+            const horas = diferenciaTiempo / (1000 * 60 * 60);
+            horasSolicitadasInfo.textContent = `La cantidad de horas solicitadas es: ${Math.round(horas * 100) / 100} horas.`;
+        } else {
+            horasSolicitadasInfo.textContent = `La cantidad de horas solicitadas es: 0 horas.`;
         }
+    }
 
-        function mostrarOcultarHoras() {
-            if (tipoSelect.value === 'V') {
-                horasField.style.display = 'none';
-                calcularDiasSolicitados();
-            } else {
-                horasField.style.display = 'block';
-            }
+    function calcularDiasSolicitados() {
+        const fechaInicio = new Date(fechaInicioInput.value);
+        const fechaFin = new Date(fechaFinInput.value);
+
+        if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
+            const diferenciaTiempo = fechaFin - fechaInicio;
+            const dias = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24)) + 1;
+            diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: ${dias} días.`;
+        } else {
+            diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: 0 días.`;
         }
+    }
 
-        mostrarOcultarHoras();
-        tipoSelect.addEventListener('change', mostrarOcultarHoras);
-        fechaInicioInput.addEventListener('change', calcularDiasSolicitados);
-        fechaFinInput.addEventListener('change', calcularDiasSolicitados);
-    });
+    function actualizarCalculos() {
+        if (tipoSelect.value === 'V') {
+            calcularDiasSolicitados();
+        } else if (tipoSelect.value === 'HE' || tipoSelect.value === 'HC') {
+            calcularHorasSolicitadas();
+        }
+    }
+
+    function mostrarOcultarDiasHoras() {
+        if (tipoSelect.value === 'V') {
+            diasSolicitadosInfo.style.display = 'block';
+            horasSolicitadasInfo.style.display = 'none';
+            calcularDiasSolicitados();
+        } else if (tipoSelect.value === 'HE' || tipoSelect.value === 'HC') {
+            diasSolicitadosInfo.style.display = 'none';
+            horasSolicitadasInfo.style.display = 'block';
+            calcularHorasSolicitadas();
+        } else {
+            diasSolicitadosInfo.style.display = 'none';
+            horasSolicitadasInfo.style.display = 'none';
+        }
+    }
+
+    // Inicialización y event listeners
+    mostrarOcultarDiasHoras();
+    tipoSelect.addEventListener('change', mostrarOcultarDiasHoras);
+    fechaInicioInput.addEventListener('change', actualizarCalculos);
+    fechaFinInput.addEventListener('change', actualizarCalculos);
+});
 </script>
+
 {% endblock %}

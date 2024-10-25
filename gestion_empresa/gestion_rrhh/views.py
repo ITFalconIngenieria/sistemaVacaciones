@@ -35,30 +35,35 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         form.instance.estado = 'P'
 
         tipo_solicitud = form.cleaned_data.get('tipo')
+        fecha_inicio = form.cleaned_data.get('fecha_inicio')
+        fecha_fin = form.cleaned_data.get('fecha_fin')
 
         if tipo_solicitud == 'V':  # Vacaciones
-            dias_solicitados = (form.cleaned_data.get('fecha_fin') - form.cleaned_data.get('fecha_inicio')).days + 1
+            dias_solicitados = (fecha_fin.date() - fecha_inicio.date()).days + 1
             if dias_solicitados > self.request.user.dias_vacaciones:
                 form.add_error(None, f"No tienes suficientes días de vacaciones disponibles (días disponibles: {self.request.user.dias_vacaciones}).")
                 return self.form_invalid(form)
-            
-            # Registrar los días solicitados en el campo `dias_solicitados`
             form.instance.dias_solicitados = dias_solicitados
 
-        elif tipo_solicitud == 'HC':  # Horas Compensatorias
-            if self.request.user.rol not in ['IN', 'GG', 'JI', 'JD']:
-                form.add_error(None, "No tienes permiso para solicitar horas compensatorias.")
-                return self.form_invalid(form)
+        elif tipo_solicitud in ['HC', 'HE']:  # Horas Compensatorias o Extra
+            # Calcular las horas
+            diferencia = fecha_fin - fecha_inicio
+            horas_solicitadas = diferencia.total_seconds() / 3600  # Convertir a horas
+            form.instance.horas = horas_solicitadas
 
-            horas_solicitadas = form.cleaned_data.get('horas')
-            if horas_solicitadas > self.request.user.horas_compensatorias_disponibles:
-                form.add_error(None, f"No tienes suficientes horas compensatorias disponibles (horas disponibles: {self.request.user.horas_compensatorias_disponibles}).")
-                return self.form_invalid(form)
+            if tipo_solicitud == 'HC':
+                if self.request.user.rol not in ['IN', 'GG', 'JI', 'JD']:
+                    form.add_error(None, "No tienes permiso para solicitar horas compensatorias.")
+                    return self.form_invalid(form)
+                
+                if horas_solicitadas > self.request.user.horas_compensatorias_disponibles:
+                    form.add_error(None, f"No tienes suficientes horas compensatorias disponibles (horas disponibles: {self.request.user.horas_compensatorias_disponibles}).")
+                    return self.form_invalid(form)
 
-        elif tipo_solicitud == 'HE':  # Horas Extra
-            if self.request.user.rol != 'TE':
-                form.add_error(None, "Solo los técnicos pueden solicitar horas extra.")
-                return self.form_invalid(form)
+            elif tipo_solicitud == 'HE':
+                if self.request.user.rol != 'TE':
+                    form.add_error(None, "Solo los técnicos pueden solicitar horas extra.")
+                    return self.form_invalid(form)
 
         return super().form_valid(form)
 
@@ -130,9 +135,6 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
         return super().form_valid(form)
 
 
-
-
-
 class ListaSolicitudesView(LoginRequiredMixin, ListView):
     model = Solicitud
     template_name = 'lista_solicitudes.html'
@@ -142,7 +144,6 @@ class ListaSolicitudesView(LoginRequiredMixin, ListView):
         if self.request.user.is_superuser  or self.request.user.rol in ['GG', 'JI', 'JD']:
             return Solicitud.objects.filter(estado='P')
         return Solicitud.objects.filter(usuario=self.request.user)
-
 
 
 class HistorialSolicitudesView(ListView):
@@ -221,9 +222,6 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-
-
-
 class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
     model = RegistroHoras
     fields = ['estado']
@@ -232,16 +230,18 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
 
     def test_func(self):
         registro = self.get_object()
+        registro = self.get_object()
+        return registro.usuario != self.request.user and self.request.user.rol in ['GG', 'JI', 'JD']
 
         # No permitir que el jefe apruebe su propia solicitud
-        if registro.usuario == self.request.user:
-            messages.error(self.request, 'No puedes aprobar o rechazar tus propias horas.')
-            return False
+        # if registro.usuario == self.request.user:
+        #     messages.error(self.request, 'No puedes aprobar o rechazar tus propias horas.')
+        #     return False
 
         # Permitir que jefes aprueben las solicitudes de sus subordinados
-        if self.request.user.rol in ['GG', 'JI', 'JD']:
-            return True
-        return False
+        # if self.request.user.rol in ['GG', 'JI', 'JD']:
+        #     return True
+        # return False
 
     def form_valid(self, form):
         registro = self.get_object()
@@ -260,8 +260,6 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         form.instance.aprobado_por = self.request.user  # Asignar quién aprobó las horas
         messages.success(self.request, 'El registro de horas ha sido procesado exitosamente.')
         return super().form_valid(form)
-
-
 
 
 class ListaHorasPendientesView(ListView):
