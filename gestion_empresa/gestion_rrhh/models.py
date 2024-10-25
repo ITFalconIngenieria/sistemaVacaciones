@@ -6,6 +6,7 @@ from decimal import Decimal  # Importar Decimal
 
 from .validators import validate_username
 class Usuario(AbstractUser):
+    recalcular_vacaciones = True
     ROLES = (
         ('GG', 'Gerente General'),
         ('JI', 'Jefe de Ingenieros'),
@@ -51,7 +52,8 @@ class Usuario(AbstractUser):
 
     def save(self, *args, **kwargs):
         # Actualiza el campo `dias_vacaciones` con el resultado de `calcular_dias_vacaciones`
-        self.dias_vacaciones = self.calcular_dias_vacaciones()
+        if self.recalcular_vacaciones:
+            self.dias_vacaciones = self.calcular_dias_vacaciones()
         super().save(*args, **kwargs)  # Llama al método `save` del modelo base
 
 
@@ -59,6 +61,7 @@ class Departamento(models.Model):
     nombre = models.CharField(max_length=100)
     def __str__(self):
         return self.nombre
+
 
 class Solicitud(models.Model):
     TIPOS = (
@@ -77,40 +80,37 @@ class Solicitud(models.Model):
     fecha_inicio = models.DateTimeField()
     fecha_fin = models.DateTimeField()
     horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    dias_solicitados = models.IntegerField(null=True, blank=True)
     estado = models.CharField(max_length=1, choices=ESTADOS, default='P')
     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador', null=True, blank=True, on_delete=models.SET_NULL)
+
     def clean(self):
-        # Modificamos la validación para usar getattr y evitar el error
         if not getattr(self, 'usuario_id', None):
             return
 
-        # El resto de las validaciones solo se ejecutan si hay usuario
-        if self.usuario.rol == 'IN':  # Ingeniero
-            if self.tipo == 'HE':
-                raise ValidationError("Los ingenieros no pueden solicitar horas extra.")
-        
-        elif self.usuario.rol == 'TE':  # Técnico
-            if self.tipo == 'HC':
-                raise ValidationError("Los técnicos no pueden solicitar horas compensatorias.")
+        # Calcular días solicitados si es una solicitud de vacaciones
+        if self.tipo == 'V':
+            self.dias_solicitados = (self.fecha_fin.date() - self.fecha_inicio.date()).days + 1
 
+        if self.usuario.rol == 'IN' and self.tipo == 'HE':
+            raise ValidationError("Los ingenieros no pueden solicitar horas extra.")
+        if self.usuario.rol == 'TE' and self.tipo == 'HC':
+            raise ValidationError("Los técnicos no pueden solicitar horas compensatorias.")
         if self.estado != 'P' and self.aprobado_por == self.usuario:
             raise ValidationError("No puedes aprobar tu propia solicitud.")
+
+        if self.tipo == 'V' and self.usuario.dias_vacaciones < self.dias_solicitados:
+            raise ValidationError(f"No tienes suficientes días de vacaciones disponibles. Tienes {self.usuario.dias_vacaciones} días y estás solicitando {self.dias_solicitados}.")
+        if self.tipo == 'HC' and self.usuario.horas_compensatorias_disponibles < self.horas:
+            raise ValidationError("No tienes suficientes horas compensatorias disponibles.")
+        if self.tipo == 'HE' and self.usuario.horas_extra_acumuladas < self.horas:
+            raise ValidationError("No tienes suficientes horas extra acumuladas.")
 
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
 
-        if self.estado == 'A':
-            if self.tipo == 'HE' and self.usuario.rol == 'TE':
-                self.usuario.horas_extra_acumuladas -= self.horas
-                self.usuario.save()
-            elif self.tipo == 'HC' and self.usuario.rol in ['IN', 'GG', 'JI', 'JD']:
-                self.usuario.horas_compensatorias_disponibles -= self.horas
-                self.usuario.save()
-            elif self.tipo == 'V':
-                dias_solicitados = (self.fecha_fin - self.fecha_inicio).days + 1
-                self.usuario.dias_vacaciones -= dias_solicitados
-                self.usuario.save()
+
 
 class RegistroHoras(models.Model):
     TIPOS_HORAS = (
@@ -122,14 +122,14 @@ class RegistroHoras(models.Model):
         ('A', 'Aprobado'),
         ('R', 'Rechazado'),
     )
-    usuario = models.ForeignKey('Usuario', on_delete=models.CASCADE)  # Usuario al que se le registran las horas
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)  # Usuario al que se le registran las horas
     tipo_horas = models.CharField(max_length=2, choices=TIPOS_HORAS)
     fecha_inicio = models.DateTimeField()  # Fecha y hora de inicio
     fecha_fin = models.DateTimeField()  # Fecha y hora de fin
     horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)  # Horas calculadas
     descripcion = models.TextField(null=True, blank=True)  # Descripción de la actividad
-    estado = models.CharField(max_length=1, choices=ESTADOS, default='P')  # Estado de aprobación (Pendiente, Aprobado, Rechazado)
-    aprobado_por = models.ForeignKey('Usuario', related_name='aprobador_horas', null=True, blank=True, on_delete=models.SET_NULL)  # Jefe que aprueba
+    estado = models.CharField(max_length=1, choices=ESTADOS, default='P')  # Estado de aprobación
+    aprobado_por = models.ForeignKey(Usuario, related_name='aprobador_horas', null=True, blank=True, on_delete=models.SET_NULL)
 
     def calcular_horas(self):
         """ Calcula las horas trabajadas a partir de la diferencia entre fecha_inicio y fecha_fin. """
@@ -141,4 +141,5 @@ class RegistroHoras(models.Model):
         # Calcular las horas automáticamente antes de guardar
         self.horas = self.calcular_horas()
         super().save(*args, **kwargs)
+
 

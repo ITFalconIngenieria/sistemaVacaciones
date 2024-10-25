@@ -27,9 +27,11 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'crear_solicitud' %}">Crear Solicitud</a>
                         </li>
+                        {% if user.rol in 'GG,JI,JD' %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'lista_solicitudes' %}">Solicitudes</a>
                         </li>
+                        {% endif %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'historial_solicitudes' %}">Ver Historial de Solicitudes</a>
                         </li>

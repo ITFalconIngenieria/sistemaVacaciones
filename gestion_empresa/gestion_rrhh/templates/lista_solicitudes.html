@@ -13,6 +13,7 @@
             <th>Fecha Inicio</th>
             <th>Fecha Fin</th>
             <th>Horas</th>
+            <th>Dias</th>
             <th>Estado</th>
             <th>Acciones</th>
         </tr>
@@ -25,6 +26,7 @@
             <td>{{ solicitud.fecha_inicio }}</td>
             <td>{{ solicitud.fecha_fin }}</td>
             <td>{{ solicitud.horas }}</td>
+            <td>{{ solicitud.dias_solicitados }}</td>
             <td>{{ solicitud.get_estado_display }}</td>
             <td>
                 <!-- Solo permitir la aprobación para jefes y solo si la solicitud no es del propio jefe -->

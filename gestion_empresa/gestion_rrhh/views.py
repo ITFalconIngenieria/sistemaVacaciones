@@ -30,48 +30,37 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
     template_name = 'crear_solicitud.html'
     success_url = reverse_lazy('lista_solicitudes')
 
-    def get_form_kwargs(self):
-        kwargs = super().get_form_kwargs()
-        if self.request.method in ('POST', 'PUT'):
-            data = kwargs['data'].copy()
-            data['usuario'] = self.request.user.id
-            kwargs['data'] = data
-        return kwargs
-
     def form_valid(self, form):
         form.instance.usuario = self.request.user
         form.instance.estado = 'P'
 
-        try:
-            # Validaciones específicas
-            tipo_solicitud = form.cleaned_data.get('tipo')
-            if tipo_solicitud == 'V':
-                dias_vacaciones_disponibles = self.request.user.dias_vacaciones
-                dias_solicitados = (form.cleaned_data.get('fecha_fin') - form.cleaned_data.get('fecha_inicio')).days + 1
-                if dias_solicitados > dias_vacaciones_disponibles:
-                    form.add_error(None, f"No tienes suficientes días de vacaciones disponibles (días disponibles: {dias_vacaciones_disponibles}).")
-                    return self.form_invalid(form)
+        tipo_solicitud = form.cleaned_data.get('tipo')
 
-            elif tipo_solicitud == 'HC':
-                if self.request.user.rol not in ['IN', 'GG', 'JI', 'JD']:
-                    form.add_error(None, "No tienes permiso para solicitar horas compensatorias.")
-                    return self.form_invalid(form)
+        if tipo_solicitud == 'V':  # Vacaciones
+            dias_solicitados = (form.cleaned_data.get('fecha_fin') - form.cleaned_data.get('fecha_inicio')).days + 1
+            if dias_solicitados > self.request.user.dias_vacaciones:
+                form.add_error(None, f"No tienes suficientes días de vacaciones disponibles (días disponibles: {self.request.user.dias_vacaciones}).")
+                return self.form_invalid(form)
+            
+            # Registrar los días solicitados en el campo `dias_solicitados`
+            form.instance.dias_solicitados = dias_solicitados
 
-                horas_compensatorias_disponibles = self.request.user.horas_compensatorias_disponibles
-                horas_solicitadas = form.cleaned_data.get('horas')
-                if horas_solicitadas > horas_compensatorias_disponibles:
-                    form.add_error(None, f"No tienes suficientes horas compensatorias disponibles.")
-                    return self.form_invalid(form)
+        elif tipo_solicitud == 'HC':  # Horas Compensatorias
+            if self.request.user.rol not in ['IN', 'GG', 'JI', 'JD']:
+                form.add_error(None, "No tienes permiso para solicitar horas compensatorias.")
+                return self.form_invalid(form)
 
-            elif tipo_solicitud == 'HE':
-                if self.request.user.rol != 'TE':
-                    form.add_error(None, "Solo los técnicos pueden solicitar horas extra.")
-                    return self.form_invalid(form)
+            horas_solicitadas = form.cleaned_data.get('horas')
+            if horas_solicitadas > self.request.user.horas_compensatorias_disponibles:
+                form.add_error(None, f"No tienes suficientes horas compensatorias disponibles (horas disponibles: {self.request.user.horas_compensatorias_disponibles}).")
+                return self.form_invalid(form)
 
-            return super().form_valid(form)
-        except ValidationError as e:
-            form.add_error(None, str(e))
-            return self.form_invalid(form)
+        elif tipo_solicitud == 'HE':  # Horas Extra
+            if self.request.user.rol != 'TE':
+                form.add_error(None, "Solo los técnicos pueden solicitar horas extra.")
+                return self.form_invalid(form)
+
+        return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -80,24 +69,11 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
 
 
 
-class ListaSolicitudesView(LoginRequiredMixin, ListView):
-    model = Solicitud
-    template_name = 'lista_solicitudes.html'
-    context_object_name = 'solicitudes'
-
-    def get_queryset(self):
-        if self.request.user.is_superuser  or self.request.user.rol in ['GG', 'JI', 'JD']:
-            return Solicitud.objects.filter(estado='P')
-        return Solicitud.objects.filter(usuario=self.request.user)
-
-
-
-
 class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Solicitud
     fields = ['estado']  # Solo permite cambiar el estado (Pendiente, Aprobado, Rechazado)
     template_name = 'aprobar_rechazar_solicitud.html'
-    success_url = reverse_lazy('lista_solicitudes')
+    success_url = reverse_lazy('historial_solicitudes')
 
     def test_func(self):
         solicitud = self.get_object()
@@ -118,30 +94,54 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
 
     def form_valid(self, form):
         solicitud = self.get_object()
+        solicitud.usuario.recalcular_vacaciones = False
+        # Verificamos que el estado haya cambiado a 'Aprobada'
+        if form.instance.estado == 'A':
+            if solicitud.tipo == 'V':  # Vacaciones
+                if solicitud.usuario.dias_vacaciones >= solicitud.dias_solicitados:
+                    solicitud.usuario.dias_vacaciones -= solicitud.dias_solicitados
+                    solicitud.usuario.save()  # Actualizar el usuario en la base de datos
+                    print(f"Días de vacaciones después: {solicitud.usuario.dias_vacaciones}")
+                else:
+                    messages.error(self.request, f"No se puede aprobar. El usuario no tiene suficientes días de vacaciones.")
+                    return self.form_invalid(form)
 
-        # Solo al aprobar/rechazar, asignar quién aprobó o rechazó la solicitud
-        if form.instance.estado in ['A', 'R']:
-            form.instance.aprobado_por = self.request.user
-
-            # Lógica de manejo al aprobar la solicitud (Restar)
-            if form.instance.estado == 'A':
-                if solicitud.tipo == 'V':  # Vacaciones
-                    dias_solicitados = (solicitud.fecha_fin - solicitud.fecha_inicio).days + 1
-                    solicitud.usuario.dias_vacaciones -= dias_solicitados
-                    solicitud.usuario.save()
-
-                elif solicitud.tipo == 'HC':  # Horas Compensatorias
+            elif solicitud.tipo == 'HC':  # Horas Compensatorias
+                if solicitud.usuario.horas_compensatorias_disponibles >= solicitud.horas:
                     solicitud.usuario.horas_compensatorias_disponibles -= solicitud.horas
-                    solicitud.usuario.save()
+                    solicitud.usuario.save()  # Actualizar el usuario en la base de datos
+                    print(f"Horas compensatorias después: {solicitud.usuario.horas_compensatorias_disponibles}")
+                else:
+                    messages.error(self.request, f"No se puede aprobar. El usuario no tiene suficientes horas compensatorias.")
+                    return self.form_invalid(form)
 
-                elif solicitud.tipo == 'HE':  # Horas Extra
+            elif solicitud.tipo == 'HE':  # Horas Extra
+                if solicitud.usuario.horas_extra_acumuladas >= solicitud.horas:
                     solicitud.usuario.horas_extra_acumuladas -= solicitud.horas
-                    solicitud.usuario.save()
+                    solicitud.usuario.save()  # Actualizar el usuario en la base de datos
+                    print(f"Horas extra después: {solicitud.usuario.horas_extra_acumuladas}")
+                else:
+                    messages.error(self.request, f"No se puede aprobar. El usuario no tiene suficientes horas extra.")
+                    return self.form_invalid(form)
 
-            messages.success(self.request, 'La solicitud ha sido procesada exitosamente.')
+        # Asignar el aprobador
+        form.instance.aprobado_por = self.request.user
+        messages.success(self.request, 'La solicitud ha sido procesada exitosamente.')
         return super().form_valid(form)
 
 
+
+
+
+class ListaSolicitudesView(LoginRequiredMixin, ListView):
+    model = Solicitud
+    template_name = 'lista_solicitudes.html'
+    context_object_name = 'solicitudes'
+
+    def get_queryset(self):
+        if self.request.user.is_superuser  or self.request.user.rol in ['GG', 'JI', 'JD']:
+            return Solicitud.objects.filter(estado='P')
+        return Solicitud.objects.filter(usuario=self.request.user)
 
 
 
@@ -222,6 +222,8 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
 
 
 
+
+
 class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
     model = RegistroHoras
     fields = ['estado']
@@ -242,21 +244,23 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         return False
 
     def form_valid(self, form):
-        registro = form.save(commit=False)
+        registro = self.get_object()
 
         # Solo al aprobar/rechazar, asignar quién aprobó o rechazó las horas
-        if registro.estado in ['A', 'R']:
-            registro.aprobado_por = self.request.user
-            if registro.estado == 'A':  # Si la solicitud es aprobada
-                # Actualizar las horas extra o compensatorias del usuario
-                if registro.tipo_horas == 'HE':
-                    registro.usuario.horas_extra_acumuladas += registro.horas
-                elif registro.tipo_horas == 'HC':
-                    registro.usuario.horas_compensatorias_disponibles += registro.horas
-                registro.usuario.save()
+        if form.instance.estado == 'A':  # Si la solicitud es aprobada
+            # Actualizar las horas extra o compensatorias del usuario
+            if registro.tipo_horas == 'HE':
+                registro.usuario.horas_extra_acumuladas += registro.horas
+                print(f"Horas extra después: {registro.usuario.horas_extra_acumuladas}")
+            elif registro.tipo_horas == 'HC':
+                registro.usuario.horas_compensatorias_disponibles += registro.horas
+                print(f"Horas compensatorias después: {registro.usuario.horas_compensatorias_disponibles}")
+            registro.usuario.save()
 
+        form.instance.aprobado_por = self.request.user  # Asignar quién aprobó las horas
         messages.success(self.request, 'El registro de horas ha sido procesado exitosamente.')
         return super().form_valid(form)
+
 
 
 

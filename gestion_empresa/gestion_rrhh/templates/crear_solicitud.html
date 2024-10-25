@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
-{% load crispy_forms_tags %}  <!-- Cargar las etiquetas de crispy_forms aquí -->
-
+{% load crispy_forms_tags %}
 {% block title %}Crear Solicitud{% endblock %}
 
 {% block content %}
@@ -37,9 +36,15 @@
                             {{ form.fecha_fin|as_crispy_field }}
                         </div>
 
-                        <div class="mb-3">
+                        <!-- Div para el campo horas, controlado por JavaScript -->
+                        <div class="mb-3" id="horas-field" style="display: none;">
                             <label for="id_horas" class="form-label">Horas</label>
                             {{ form.horas|as_crispy_field }}
+                        </div>
+
+                        <!-- Nota que muestra la cantidad de días solicitados -->
+                        <div class="alert alert-info" id="dias-solicitados">
+                            La cantidad de días solicitados es: días.
                         </div>
 
                         <button type="submit" class="btn btn-success w-100">Crear Solicitud</button>
@@ -56,4 +61,41 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const tipoSelect = document.getElementById('id_tipo');
+        const horasField = document.getElementById('horas-field');
+        const fechaFinInput = document.getElementById('id_fecha_fin');
+        const fechaInicioInput = document.getElementById('id_fecha_inicio');
+        const diasSolicitadosInfo = document.getElementById('dias-solicitados');
+
+        function calcularDiasSolicitados() {
+            const fechaInicio = new Date(fechaInicioInput.value);
+            const fechaFin = new Date(fechaFinInput.value);
+
+            if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
+                const diferenciaTiempo = fechaFin - fechaInicio;
+                const dias = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24)) + 1;
+                diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: ${dias} días.`;
+            } else {
+                diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: días.`;
+            }
+        }
+
+        function mostrarOcultarHoras() {
+            if (tipoSelect.value === 'V') {
+                horasField.style.display = 'none';
+                calcularDiasSolicitados();
+            } else {
+                horasField.style.display = 'block';
+            }
+        }
+
+        mostrarOcultarHoras();
+        tipoSelect.addEventListener('change', mostrarOcultarHoras);
+        fechaInicioInput.addEventListener('change', calcularDiasSolicitados);
+        fechaFinInput.addEventListener('change', calcularDiasSolicitados);
+    });
+</script>
 {% endblock %}
