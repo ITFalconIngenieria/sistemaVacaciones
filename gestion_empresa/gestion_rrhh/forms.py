@@ -25,22 +25,6 @@ class UsuarioChangeForm(UserChangeForm):
         model = Usuario
         fields = UserChangeForm.Meta.fields
 
-# class SolicitudForm(forms.ModelForm):
-#     class Meta:
-#         model = Solicitud
-#         fields = ['tipo', 'fecha_inicio', 'fecha_fin', 'horas']
-#         widgets = {
-#             'fecha_inicio': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-#             'fecha_fin': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-#         }
-#         exclude = ['estado', 'aprobado_por']
-
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         self.fields['horas'].required = False
-    
-
-
 class SolicitudForm(forms.ModelForm):
     class Meta:
         model = Solicitud
@@ -69,7 +53,7 @@ class SolicitudForm(forms.ModelForm):
         # Verificar si la instancia existe y si tiene un tipo
         if 'instance' in kwargs and kwargs['instance'] is not None:
             if kwargs['instance'].tipo == 'V':
-                self.fields['fecha_fin'].required = True  # Ejemplo, podrías ajustar otra lógica aquí.
+                self.fields['fecha_fin'].required = True  
 
 
 
