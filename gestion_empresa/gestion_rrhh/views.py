@@ -52,9 +52,9 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
             form.instance.horas = horas_solicitadas
 
             if tipo_solicitud == 'HC':
-                if self.request.user.rol not in ['IN', 'GG', 'JI', 'JD']:
-                    form.add_error(None, "No tienes permiso para solicitar horas compensatorias.")
-                    return self.form_invalid(form)
+                # if self.request.user.rol not in ['IN', 'GG', 'JI', 'JD']:
+                #     form.add_error(None, "No tienes permiso para solicitar horas compensatorias.")
+                #     return self.form_invalid(form)
                 
                 if horas_solicitadas > self.request.user.horas_compensatorias_disponibles:
                     form.add_error(None, f"No tienes suficientes horas compensatorias disponibles (horas disponibles: {self.request.user.horas_compensatorias_disponibles}).")
@@ -62,7 +62,7 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
 
             elif tipo_solicitud == 'HE':
                 if self.request.user.rol != 'TE':
-                    form.add_error(None, "Solo los técnicos pueden solicitar horas extra.")
+                    form.add_error(None, "Solo los técnicos pueden solicitar horas extra por que son pagadas.")
                     return self.form_invalid(form)
 
         return super().form_valid(form)
@@ -209,9 +209,9 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
             return self.form_invalid(form)
 
         # Técnico (TE): Solo puede registrar horas extra (HE)
-        elif rol_usuario == 'TE' and tipo_horas == 'HC':  # Horas Compensatorias no permitidas para técnicos
-            form.add_error(None, "Los técnicos solo pueden registrar horas extra.")
-            return self.form_invalid(form)
+        # elif rol_usuario == 'TE' and tipo_horas == 'HC':  # Horas Compensatorias no permitidas para técnicos
+        #     form.add_error(None, "Los técnicos solo pueden registrar horas extra.")
+        #     return self.form_invalid(form)
 
         # Jefes o Gerentes (GG, JI, JD): Solo pueden registrar horas compensatorias (HC)
         elif rol_usuario in ['GG', 'JI', 'JD'] and tipo_horas == 'HE':  # Horas Extra no permitidas para jefes o gerentes
@@ -233,15 +233,6 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         registro = self.get_object()
         return registro.usuario != self.request.user and self.request.user.rol in ['GG', 'JI', 'JD']
 
-        # No permitir que el jefe apruebe su propia solicitud
-        # if registro.usuario == self.request.user:
-        #     messages.error(self.request, 'No puedes aprobar o rechazar tus propias horas.')
-        #     return False
-
-        # Permitir que jefes aprueben las solicitudes de sus subordinados
-        # if self.request.user.rol in ['GG', 'JI', 'JD']:
-        #     return True
-        # return False
 
     def form_valid(self, form):
         registro = self.get_object()

@@ -22,20 +22,6 @@
                     <form method="post">
                         {% csrf_token %}
                         {{ form|crispy }}
-                        <!-- <div class="mb-3">
-                            <label for="id_tipo" class="form-label">Tipo de Solicitud</label>
-                            {{ form.tipo|as_crispy_field }}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="id_fecha_inicio" class="form-label">Fecha de Inicio</label>
-                            {{ form.fecha_inicio|as_crispy_field }}
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="id_fecha_fin" class="form-label">Fecha de Fin</label>
-                            {{ form.fecha_fin|as_crispy_field }}
-                        </div> -->
 
 
                         <!-- Nota que muestra la cantidad de días solicitados -->

@@ -66,7 +66,7 @@ class Departamento(models.Model):
 class Solicitud(models.Model):
     TIPOS = (
         ('V', 'Vacaciones'),
-        ('HE', 'Horas Extra'),
+        # ('HE', 'Horas Extra'),
         ('HC', 'Horas Compensatorias'),
     )
     ESTADOS = (
@@ -97,14 +97,10 @@ class Solicitud(models.Model):
                 )
         
         # Si es una solicitud de horas extra o compensatorias, calcular duración en horas y validar
-        elif self.tipo in ['HE', 'HC']:
+        elif self.tipo in ['HC']:
             duracion = self.fecha_fin - self.fecha_inicio
             self.horas = duracion.total_seconds() / 3600  # Convertir a horas
-            if self.tipo == 'HE' and self.usuario.horas_extra_acumuladas < self.horas:
-                raise ValidationError(
-                    f"No tienes suficientes horas extra. Disponibles: {self.usuario.horas_extra_acumuladas}, solicitadas: {self.horas:.2f}."
-                )
-            elif self.tipo == 'HC' and self.usuario.horas_compensatorias_disponibles < self.horas:
+            if self.tipo == 'HC' and self.usuario.horas_compensatorias_disponibles < self.horas:
                 raise ValidationError(
                     f"No tienes suficientes horas compensatorias. Disponibles: {self.usuario.horas_compensatorias_disponibles}, solicitadas: {self.horas:.2f}."
                 )
