@@ -84,26 +84,26 @@ class Solicitud(models.Model):
     estado = models.CharField(max_length=1, choices=ESTADOS, default='P')
     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador', null=True, blank=True, on_delete=models.SET_NULL)
 
-    def clean(self):
-        if not getattr(self, 'usuario_id', None):
-            return
+    # def clean(self):
+    #     if not getattr(self, 'usuario_id', None):
+    #         return
 
-        # Si es una solicitud de vacaciones, calcular días solicitados y validar
-        if self.tipo == 'V':
-            self.dias_solicitados = (self.fecha_fin.date() - self.fecha_inicio.date()).days + 1
-            if self.usuario.dias_vacaciones < self.dias_solicitados:
-                raise ValidationError(
-                    f"No tienes suficientes días de vacaciones. Disponibles: {self.usuario.dias_vacaciones}, solicitados: {self.dias_solicitados}."
-                )
+    #     # Si es una solicitud de vacaciones, calcular días solicitados y validar
+    #     if self.tipo == 'V':
+    #         self.dias_solicitados = (self.fecha_fin.date() - self.fecha_inicio.date()).days + 1
+    #         # if self.usuario.dias_vacaciones < self.dias_solicitados:
+    #         #     raise ValidationError(
+    #         #         f"No tienes suficientes días de vacaciones. Disponibles: {self.usuario.dias_vacaciones}, solicitados: {self.dias_solicitados}."
+    #         #     )
         
-        # Si es una solicitud de horas extra o compensatorias, calcular duración en horas y validar
-        elif self.tipo in ['HC']:
-            duracion = self.fecha_fin - self.fecha_inicio
-            self.horas = duracion.total_seconds() / 3600  # Convertir a horas
-            if self.tipo == 'HC' and self.usuario.horas_compensatorias_disponibles < self.horas:
-                raise ValidationError(
-                    f"No tienes suficientes horas compensatorias. Disponibles: {self.usuario.horas_compensatorias_disponibles}, solicitadas: {self.horas:.2f}."
-                )
+    #     # Si es una solicitud de horas extra o compensatorias, calcular duración en horas y validar
+    #     elif self.tipo in ['HC']:
+    #         duracion = self.fecha_fin - self.fecha_inicio
+    #         self.horas = duracion.total_seconds() / 3600  # Convertir a horas
+    #         if self.tipo == 'HC' and self.usuario.horas_compensatorias_disponibles < self.horas:
+    #             raise ValidationError(
+    #                 f"No tienes suficientes horas compensatorias. Disponibles: {self.usuario.horas_compensatorias_disponibles}, solicitadas: {self.horas:.2f}."
+    #             )
 
     def save(self, *args, **kwargs):
         # Ejecutar validaciones personalizadas en el método save

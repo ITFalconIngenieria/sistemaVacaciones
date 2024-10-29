@@ -103,19 +103,12 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
         # Verificamos que el estado haya cambiado a 'Aprobada'
         if form.instance.estado == 'A':
             if solicitud.tipo == 'V':  # Vacaciones
-                if solicitud.usuario.dias_vacaciones >= solicitud.dias_solicitados:
-                    solicitud.usuario.dias_vacaciones -= solicitud.dias_solicitados
-                    solicitud.usuario.save()  # Actualizar el usuario en la base de datos
-                    print(f"Días de vacaciones después: {solicitud.usuario.dias_vacaciones}")
-                else:
-                    messages.error(self.request, f"No se puede aprobar. El usuario no tiene suficientes días de vacaciones.")
-                    return self.form_invalid(form)
-
-            elif solicitud.tipo == 'HC':  # Horas Compensatorias
+                solicitud.usuario.dias_vacaciones -= solicitud.dias_solicitados
+                solicitud.usuario.save()
+            elif solicitud.tipo == 'HC':  
                 if solicitud.usuario.horas_compensatorias_disponibles >= solicitud.horas:
                     solicitud.usuario.horas_compensatorias_disponibles -= solicitud.horas
-                    solicitud.usuario.save()  # Actualizar el usuario en la base de datos
-                    print(f"Horas compensatorias después: {solicitud.usuario.horas_compensatorias_disponibles}")
+                    solicitud.usuario.save()  
                 else:
                     messages.error(self.request, f"No se puede aprobar. El usuario no tiene suficientes horas compensatorias.")
                     return self.form_invalid(form)
