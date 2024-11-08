@@ -33,36 +33,29 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.usuario = self.request.user
         form.instance.estado = 'P'
-
         tipo_solicitud = form.cleaned_data.get('tipo')
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
-
         if tipo_solicitud == 'V':  # Vacaciones
             dias_solicitados = (fecha_fin.date() - fecha_inicio.date()).days + 1
-            if dias_solicitados > self.request.user.dias_vacaciones:
-                form.add_error(None, f"No tienes suficientes días de vacaciones disponibles (días disponibles: {self.request.user.dias_vacaciones}).")
-                return self.form_invalid(form)
             form.instance.dias_solicitados = dias_solicitados
+            # Verifica si el usuario tiene suficientes días de vacaciones
+            if dias_solicitados > self.request.user.dias_vacaciones:
+                # Mostrar una advertencia en lugar de bloquear la solicitud
+                messages.warning(
+                    self.request, 
+                    f"Advertencia: estás solicitando {dias_solicitados} días, pero solo tienes {self.request.user.dias_vacaciones} días disponibles. Esto resultará en un saldo negativo."
+                )
 
-        elif tipo_solicitud in ['HC', 'HE']:  # Horas Compensatorias o Extra
+        elif tipo_solicitud in ['HE']:  # Horas Compensatorias o Extra
             # Calcular las horas
             diferencia = fecha_fin - fecha_inicio
             horas_solicitadas = diferencia.total_seconds() / 3600  # Convertir a horas
             form.instance.horas = horas_solicitadas
 
             if tipo_solicitud == 'HC':
-                # if self.request.user.rol not in ['IN', 'GG', 'JI', 'JD']:
-                #     form.add_error(None, "No tienes permiso para solicitar horas compensatorias.")
-                #     return self.form_invalid(form)
-                
                 if horas_solicitadas > self.request.user.horas_compensatorias_disponibles:
                     form.add_error(None, f"No tienes suficientes horas compensatorias disponibles (horas disponibles: {self.request.user.horas_compensatorias_disponibles}).")
-                    return self.form_invalid(form)
-
-            elif tipo_solicitud == 'HE':
-                if self.request.user.rol != 'TE':
-                    form.add_error(None, "Solo los técnicos pueden solicitar horas extra por que son pagadas.")
                     return self.form_invalid(form)
 
         return super().form_valid(form)
@@ -73,12 +66,11 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         return context
 
 
-
 class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Solicitud
     fields = ['estado']  # Solo permite cambiar el estado (Pendiente, Aprobado, Rechazado)
     template_name = 'aprobar_rechazar_solicitud.html'
-    success_url = reverse_lazy('historial_solicitudes')
+    success_url = reverse_lazy('mis_solicitudes')
 
     def test_func(self):
         solicitud = self.get_object()
@@ -103,6 +95,10 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
         # Verificamos que el estado haya cambiado a 'Aprobada'
         if form.instance.estado == 'A':
             if solicitud.tipo == 'V':  # Vacaciones
+                dias_faltantes = solicitud.usuario.dias_vacaciones - solicitud.dias_solicitados
+                if dias_faltantes < 0:
+                    # Muestra una advertencia si el saldo será negativo
+                    messages.warning(self.request, f"Advertencia: Al aprobar esta solicitud, el saldo de días de vacaciones será negativo ({dias_faltantes}).")
                 solicitud.usuario.dias_vacaciones -= solicitud.dias_solicitados
                 solicitud.usuario.save()
             elif solicitud.tipo == 'HC':  
@@ -139,9 +135,9 @@ class ListaSolicitudesView(LoginRequiredMixin, ListView):
         return Solicitud.objects.filter(usuario=self.request.user)
 
 
-class HistorialSolicitudesView(ListView):
+class HistorialMisSolicitudesView(ListView):
     model = Solicitud
-    template_name = 'historial_solicitudes.html'
+    template_name = 'mis_solicitudes.html'
     context_object_name = 'solicitudes'
 
     def get_queryset(self):
@@ -153,12 +149,8 @@ class HistorialSolicitudesView(ListView):
         tipo = self.request.GET.get('tipo')
         usuario_id = self.request.GET.get('usuario')
 
-        # Si es jefe, filtrar sus propias solicitudes y las de sus subordinados
-        if user.rol in ['GG', 'JI', 'JD']:
-            queryset = queryset.filter(usuario__in=[user] + list(user.subordinados.all()))
-        else:
-            # Si no es jefe, solo ver sus propias solicitudes
-            queryset = queryset.filter(usuario=user)
+        #ver mis solicitudes
+        queryset = queryset.filter(usuario=user)
 
         # Filtrar por estado si se seleccionó
         if estado:
@@ -173,6 +165,42 @@ class HistorialSolicitudesView(ListView):
             queryset = queryset.filter(usuario_id=usuario_id)
 
         return queryset
+    
+class HistorialSolicitudesView(ListView):
+    model = Solicitud
+    template_name = 'historial_solicitudes.html'
+    context_object_name = 'solicitudes'
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Solicitud.objects.all()
+
+        # Obtener los valores de los filtros desde el formulario
+        estado = self.request.GET.get('estado')
+        tipo = self.request.GET.get('tipo')
+        usuario_id = self.request.GET.get('usuario')
+
+        #filtrar las solicitudes de sus subordinados
+        queryset = queryset.filter(usuario__in=[user] + list(user.subordinados.all()))
+
+        # Filtrar por estado si se seleccionó
+        if estado:
+            queryset = queryset.filter(estado=estado)
+
+        # Filtrar por tipo de solicitud si se seleccionó
+        if tipo:
+            queryset = queryset.filter(tipo=tipo)
+
+        # Filtrar por usuario si es jefe y se seleccionó un usuario
+        if usuario_id:
+            queryset = queryset.filter(usuario_id=usuario_id)
+
+        return queryset
+
+
+
+
+
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -200,11 +228,6 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         if rol_usuario == 'IN' and tipo_horas == 'HE':  # Horas Extra no permitidas para ingenieros
             form.add_error(None, "Los ingenieros no pueden registrar horas extra.")
             return self.form_invalid(form)
-
-        # Técnico (TE): Solo puede registrar horas extra (HE)
-        # elif rol_usuario == 'TE' and tipo_horas == 'HC':  # Horas Compensatorias no permitidas para técnicos
-        #     form.add_error(None, "Los técnicos solo pueden registrar horas extra.")
-        #     return self.form_invalid(form)
 
         # Jefes o Gerentes (GG, JI, JD): Solo pueden registrar horas compensatorias (HC)
         elif rol_usuario in ['GG', 'JI', 'JD'] and tipo_horas == 'HE':  # Horas Extra no permitidas para jefes o gerentes

@@ -25,7 +25,9 @@
             <select name="tipo" id="tipo" class="form-select">
                 <option value="">Todos</option>
                 <option value="V" {% if request.GET.tipo == "V" %}selected{% endif %}>Vacaciones</option>
+                {% if user.rol == 'TE' %}
                 <option value="HE" {% if request.GET.tipo == "HE" %}selected{% endif %}>Horas Extra</option>
+                {% endif %}
                 <option value="HC" {% if request.GET.tipo == "HC" %}selected{% endif %}>Horas Compensatorias</option>
             </select>
         </div>
@@ -36,6 +38,7 @@
             <label for="usuario" class="form-label">Filtrar por usuario:</label>
             <select name="usuario" id="usuario" class="form-select">
                 <option value="">Todos</option>
+                <option value="{{ user.id }}" {% if request.GET.usuario == user.id|stringformat:"s" %}selected{% endif %}>Yo mismo</option>
                 {% for subordinado in subordinados %}
                 <option value="{{ subordinado.id }}" {% if request.GET.usuario == subordinado.id|stringformat:"s" %}selected{% endif %}>
                     {{ subordinado.get_full_name }}

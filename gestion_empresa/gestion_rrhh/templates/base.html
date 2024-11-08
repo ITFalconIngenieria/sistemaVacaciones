@@ -29,20 +29,30 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'crear_solicitud' %}">Crear Solicitud</a>
-                        </li>
                         {% if user.rol in 'GG,JI,JD' %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'lista_solicitudes' %}">Solicitudes</a>
                         </li>
                         {% endif %}
+
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'historial_solicitudes' %}">Ver Historial de Solicitudes</a>
+                            <a class="nav-link" href="{% url 'registrar_horas' %}">Registro</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'registrar_horas' %}">Registrar Horas</a>
+                            <a class="nav-link" href="{% url 'crear_solicitud' %}">Crear Solicitud</a>
                         </li>
+                        
+                        {% if user.rol in 'GG,JI,JD' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'historial_solicitudes' %}">Historial Solicitudes</a>
+                        </li>
+                        {% endif %}
+
+
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'mis_solicitudes' %}">Mis solicitudes</a>
+                        </li>
+                        
                         {% if user.rol in 'GG,JI,JD' %}
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'lista_horas_pendientes' %}">Horas Pendientes de Aprobación</a>
