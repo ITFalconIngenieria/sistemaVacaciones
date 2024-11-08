@@ -124,15 +124,34 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
         return super().form_valid(form)
 
 
+# class ListaSolicitudesView(LoginRequiredMixin, ListView):
+#     model = Solicitud
+#     template_name = 'lista_solicitudes.html'
+#     context_object_name = 'solicitudes'
+
+#     def get_queryset(self):
+#         if self.request.user.is_superuser  or self.request.user.rol in ['GG', 'JI', 'JD']:
+#             return Solicitud.objects.filter(estado='P')
+#         return Solicitud.objects.filter(usuario=self.request.user)
+
+
 class ListaSolicitudesView(LoginRequiredMixin, ListView):
     model = Solicitud
     template_name = 'lista_solicitudes.html'
     context_object_name = 'solicitudes'
 
     def get_queryset(self):
-        if self.request.user.is_superuser  or self.request.user.rol in ['GG', 'JI', 'JD']:
-            return Solicitud.objects.filter(estado='P')
-        return Solicitud.objects.filter(usuario=self.request.user)
+        user = self.request.user
+        
+        # Verificar si el usuario tiene rol de supervisor o gerente
+        if user.is_superuser or user.rol in ['GG', 'JI', 'JD']:
+            # Mostrar solo las solicitudes de los subordinados del usuario
+            return Solicitud.objects.filter(usuario__in=user.subordinados.all(), estado='P')
+        
+        # Para otros usuarios, mostrar solo sus propias solicitudes
+        return Solicitud.objects.filter(usuario=user, estado='P')
+
+
 
 
 class HistorialMisSolicitudesView(ListView):
@@ -196,11 +215,6 @@ class HistorialSolicitudesView(ListView):
             queryset = queryset.filter(usuario_id=usuario_id)
 
         return queryset
-
-
-
-
-
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
