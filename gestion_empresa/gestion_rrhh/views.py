@@ -124,16 +124,6 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
         return super().form_valid(form)
 
 
-# class ListaSolicitudesView(LoginRequiredMixin, ListView):
-#     model = Solicitud
-#     template_name = 'lista_solicitudes.html'
-#     context_object_name = 'solicitudes'
-
-#     def get_queryset(self):
-#         if self.request.user.is_superuser  or self.request.user.rol in ['GG', 'JI', 'JD']:
-#             return Solicitud.objects.filter(estado='P')
-#         return Solicitud.objects.filter(usuario=self.request.user)
-
 
 class ListaSolicitudesView(LoginRequiredMixin, ListView):
     model = Solicitud
@@ -165,8 +155,6 @@ class HistorialMisSolicitudesView(ListView):
 
         # Obtener los valores de los filtros desde el formulario
         estado = self.request.GET.get('estado')
-        tipo = self.request.GET.get('tipo')
-        usuario_id = self.request.GET.get('usuario')
 
         #ver mis solicitudes
         queryset = queryset.filter(usuario=user)
@@ -175,13 +163,6 @@ class HistorialMisSolicitudesView(ListView):
         if estado:
             queryset = queryset.filter(estado=estado)
 
-        # Filtrar por tipo de solicitud si se seleccionó
-        if tipo:
-            queryset = queryset.filter(tipo=tipo)
-
-        # Filtrar por usuario si es jefe y se seleccionó un usuario
-        if usuario_id:
-            queryset = queryset.filter(usuario_id=usuario_id)
 
         return queryset
     
@@ -200,7 +181,9 @@ class HistorialSolicitudesView(ListView):
         usuario_id = self.request.GET.get('usuario')
 
         #filtrar las solicitudes de sus subordinados
-        queryset = queryset.filter(usuario__in=[user] + list(user.subordinados.all()))
+        # queryset = queryset.filter(usuario__in=[user] + list(user.subordinados.all()))
+        queryset = queryset.filter(usuario__in=user.subordinados.all())
+
 
         # Filtrar por estado si se seleccionó
         if estado:

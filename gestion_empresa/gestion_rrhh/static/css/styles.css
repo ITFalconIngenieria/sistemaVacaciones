@@ -24,3 +24,21 @@ html, body {
     padding: 10px 0;
     text-align: center;
 }
+
+
+
+
+/* Estilo para submenús anidados */
+/* .dropdown-submenu {
+    position: relative !important;
+}
+
+.dropdown-submenu .dropdown-menu {
+    top: 0 !important;
+    left: 100% !important;
+    margin-top: -1px !important;
+}
+
+.dropdown-submenu:hover .dropdown-menu {
+    display: block !important;
+} */
