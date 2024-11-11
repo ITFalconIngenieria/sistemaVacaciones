@@ -28,7 +28,7 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
     model = Solicitud
     form_class = SolicitudForm
     template_name = 'crear_solicitud.html'
-    success_url = reverse_lazy('lista_solicitudes')
+    success_url = reverse_lazy('mis_solicitudes')
 
     def form_valid(self, form):
         form.instance.usuario = self.request.user
@@ -132,23 +132,6 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
 
 
 
-# class ListaSolicitudesPendientesView(LoginRequiredMixin, ListView):
-#     model = Solicitud
-#     template_name = 'lista_solicitudes.html'
-#     context_object_name = 'solicitudes'
-
-#     def get_queryset(self):
-#         user = self.request.user
-        
-#         # Verificar si el usuario tiene rol de supervisor o gerente
-#         if user.is_superuser or user.rol in ['GG', 'JI', 'JD']:
-#             # Mostrar solo las solicitudes de los subordinados del usuario
-#             return Solicitud.objects.filter(usuario__in=user.subordinados.all(), estado='P')
-        
-#         # Para otros usuarios, mostrar solo sus propias solicitudes
-#         return Solicitud.objects.filter(usuario=user, estado='P')
-
-
 class RegistrarHorasView(LoginRequiredMixin, CreateView):
     model = RegistroHoras
     form_class = RegistrarHorasForm
@@ -208,25 +191,6 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         return super().form_valid(form)
 
 
-# class ListaHorasPendientesView(ListView):
-#     model = RegistroHoras
-#     template_name = 'lista_horas_pendientes.html'
-#     context_object_name = 'registros_horas'
-
-#     def get_queryset(self):
-#         user = self.request.user
-#         queryset = RegistroHoras.objects.filter(estado='P')  # Filtrar solo las horas pendientes
-
-#         # Si el usuario es un jefe, ver sus solicitudes y las de sus subordinados
-#         if user.rol in ['GG', 'JI', 'JD']:
-#             queryset = queryset.filter(usuario__in=user.subordinados.all())
-        
-#         # Si no es jefe, no debería ver ninguna solicitud
-#         else:
-#             queryset = RegistroHoras.objects.none()
-
-#         return queryset
-
 
 
 class ListaSolicitudesRegistrosPendientesView(ListView):
@@ -252,8 +216,8 @@ class ListaSolicitudesRegistrosPendientesView(ListView):
             solicitudes_queryset = solicitudes_queryset.filter(usuario__in=user.subordinados.all())
         # Si no es jefe, solo puede ver sus propias solicitudes y registros de horas pendientes
         else:
-            registros_queryset = registros_queryset.filter(usuario=user)
-            solicitudes_queryset = solicitudes_queryset.filter(usuario=user)
+            registros_queryset = RegistroHoras.objects.none()
+            solicitudes_queryset = Solicitud.objects.none()
         
         # Agregar ambos querysets al contexto
         context['registros_horas'] = registros_queryset

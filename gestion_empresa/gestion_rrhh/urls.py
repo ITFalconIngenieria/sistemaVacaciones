@@ -20,9 +20,7 @@ urlpatterns = [
 
     # Registro de horas y aprobación
     path('registrar-horas/', views.RegistrarHorasView.as_view(), name='registrar_horas'),
-    # path('lista-horas-pendientes/', views.ListaHorasPendientesView.as_view(), name='lista_horas_pendientes'),
     path('aprobar-rechazar-horas/<int:pk>/', views.AprobarRechazarHorasView.as_view(), name='aprobar_rechazar_horas'),
-
 
 
 ]
