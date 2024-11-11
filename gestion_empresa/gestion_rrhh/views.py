@@ -150,45 +150,45 @@ class ListaSolicitudesView(LoginRequiredMixin, ListView):
 
 
     
-class HistorialSolicitudesView(ListView):
-    model = Solicitud
-    template_name = 'historial_solicitudes.html'
-    context_object_name = 'solicitudes'
+# class HistorialSolicitudesView(ListView):
+#     model = Solicitud
+#     template_name = 'historial_solicitudes.html'
+#     context_object_name = 'solicitudes'
 
-    def get_queryset(self):
-        user = self.request.user
-        queryset = Solicitud.objects.all()
+#     def get_queryset(self):
+#         user = self.request.user
+#         queryset = Solicitud.objects.all()
 
-        # Obtener los valores de los filtros desde el formulario
-        estado = self.request.GET.get('estado')
-        tipo = self.request.GET.get('tipo')
-        usuario_id = self.request.GET.get('usuario')
+#         # Obtener los valores de los filtros desde el formulario
+#         estado = self.request.GET.get('estado')
+#         tipo = self.request.GET.get('tipo')
+#         usuario_id = self.request.GET.get('usuario')
 
-        #filtrar las solicitudes de sus subordinados
-        # queryset = queryset.filter(usuario__in=[user] + list(user.subordinados.all()))
-        queryset = queryset.filter(usuario__in=user.subordinados.all())
+#         #filtrar las solicitudes de sus subordinados
+#         # queryset = queryset.filter(usuario__in=[user] + list(user.subordinados.all()))
+#         queryset = queryset.filter(usuario__in=user.subordinados.all())
 
 
-        # Filtrar por estado si se seleccionó
-        if estado:
-            queryset = queryset.filter(estado=estado)
+#         # Filtrar por estado si se seleccionó
+#         if estado:
+#             queryset = queryset.filter(estado=estado)
 
-        # Filtrar por tipo de solicitud si se seleccionó
-        if tipo:
-            queryset = queryset.filter(tipo=tipo)
+#         # Filtrar por tipo de solicitud si se seleccionó
+#         if tipo:
+#             queryset = queryset.filter(tipo=tipo)
 
-        # Filtrar por usuario si es jefe y se seleccionó un usuario
-        if usuario_id:
-            queryset = queryset.filter(usuario_id=usuario_id)
+#         # Filtrar por usuario si es jefe y se seleccionó un usuario
+#         if usuario_id:
+#             queryset = queryset.filter(usuario_id=usuario_id)
 
-        return queryset
+#         return queryset
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        # Pasar la lista de subordinados al contexto si el usuario es jefe
-        if self.request.user.rol in ['GG', 'JI', 'JD']:
-            context['subordinados'] = Usuario.objects.filter(jefe=self.request.user)
-        return context
+#     def get_context_data(self, **kwargs):
+#         context = super().get_context_data(**kwargs)
+#         # Pasar la lista de subordinados al contexto si el usuario es jefe
+#         if self.request.user.rol in ['GG', 'JI', 'JD']:
+#             context['subordinados'] = Usuario.objects.filter(jefe=self.request.user)
+#         return context
 
 
 class RegistrarHorasView(LoginRequiredMixin, CreateView):
@@ -269,6 +269,87 @@ class ListaHorasPendientesView(ListView):
 
         return queryset
 
+# class HistorialRegistroHorasView(ListView):
+#     model = RegistroHoras
+#     template_name = 'historial_registro_horas.html'
+#     context_object_name = 'registros_horas'
+
+#     def get_queryset(self):
+#         user = self.request.user
+#         queryset = RegistroHoras.objects.all()
+
+#         # Obtener los datos del formulario de filtro
+#         estado = self.request.GET.get('estado')
+#         usuario_id = self.request.GET.get('usuario')
+
+#         # Ver los registros de sus subordinados
+#         queryset = queryset.filter(usuario__in=user.subordinados.all())
+
+#         # Filtro por estado
+#         if estado:
+#             queryset = queryset.filter(estado=estado)
+
+#         # Filtro por usuario (solo si es jefe)
+#         if usuario_id:
+#             queryset = queryset.filter(usuario_id=usuario_id)
+
+#         return queryset
+
+#     def get_context_data(self, **kwargs):
+#         context = super().get_context_data(**kwargs)
+#         # Añadir el formulario de filtro al contexto, pasando el usuario autenticado
+#         context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=self.request.user)
+
+#         return context
+
+class HistorialCombinadoView(ListView):
+    template_name = 'historial_solicitudes.html'
+    context_object_name = 'registros_y_solicitudes'
+
+    def get_queryset(self):
+        # No usaremos el queryset principal de la vista, ya que estamos trabajando con dos modelos
+        return None
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        
+        # Obtener los valores de los filtros desde el formulario
+        estado = self.request.GET.get('estado')
+        tipo = self.request.GET.get('tipo')
+        usuario_id = self.request.GET.get('usuario')
+
+        # Filtrar los registros de horas de los subordinados del usuario
+        registros_queryset = RegistroHoras.objects.filter(usuario__in=user.subordinados.all())
+        # Filtrar las solicitudes de los subordinados del usuario
+        solicitudes_queryset = Solicitud.objects.filter(usuario__in=user.subordinados.all())
+
+        # Aplicar filtros a `RegistroHoras`
+        if estado:
+            registros_queryset = registros_queryset.filter(estado=estado)
+        if usuario_id:
+            registros_queryset = registros_queryset.filter(usuario_id=usuario_id)
+
+        # Aplicar filtros a `Solicitud`
+        if estado:
+            solicitudes_queryset = solicitudes_queryset.filter(estado=estado)
+        if tipo:
+            solicitudes_queryset = solicitudes_queryset.filter(tipo=tipo)
+        if usuario_id:
+            solicitudes_queryset = solicitudes_queryset.filter(usuario_id=usuario_id)
+
+        # Agregar ambos querysets al contexto
+        context['registros_horas'] = registros_queryset
+        context['solicitudes'] = solicitudes_queryset
+
+        # Añadir el formulario de filtro al contexto
+        context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=user)
+
+        return context
+
+
+
+
 class ListaRegistroHorasView(ListView):
     model = RegistroHoras
     template_name = 'historial_registro_horas.html'
@@ -301,9 +382,6 @@ class ListaRegistroHorasView(ListView):
         context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=self.request.user)
 
         return context
-
-
-    
 
 class MiSolicitudYRegistroView(ListView):
     template_name = 'mis_solicitudes.html'

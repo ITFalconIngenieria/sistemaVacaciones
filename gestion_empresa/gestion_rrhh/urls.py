@@ -15,7 +15,7 @@ urlpatterns = [
     path('crear-solicitud/', views.CrearSolicitudView.as_view(), name='crear_solicitud'),
     path('solicitudes/', views.ListaSolicitudesView.as_view(), name='lista_solicitudes'),  # Ruta única para la lista de solicitudes
     path('solicitud/<int:pk>/aprobar-rechazar/', views.AprobarRechazarSolicitudView.as_view(), name='aprobar_rechazar_solicitud'),
-    path('historial-solicitudes/', views.HistorialSolicitudesView.as_view(), name='historial_solicitudes'),
+    path('historial-solicitudes/', views.HistorialCombinadoView.as_view(), name='historial_solicitudes'),
     path('mis-solicitudes/', views.MiSolicitudYRegistroView.as_view(), name='mis_solicitudes'),
 
     # Registro de horas y aprobación
