@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.contrib.auth import logout
 from .models import RegistroHoras
 from django.core.exceptions import ValidationError
-
+from operator import attrgetter
 @login_required
 def dashboard(request):
     return render(request, 'dashboard.html')
@@ -193,49 +193,56 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
 
 
 
+
 class ListaSolicitudesRegistrosPendientesView(ListView):
     template_name = 'lista_solicitudes.html'
-    context_object_name = 'registros_y_solicitudes'
+    context_object_name = 'pendientes'  # Nombre combinado para la lista de ambos tipos
 
     def get_queryset(self):
-        return None  # No necesitamos el queryset principal de ListView ya que vamos a combinar dos querysets diferentes
+        return None  # No necesitamos el queryset principal de ListView
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
         
-        # Filtrar registros de horas pendientes
+        # Obtener registros de horas pendientes
         registros_queryset = RegistroHoras.objects.filter(estado='P')
         
-        # Filtrar solicitudes pendientes
+        # Obtener solicitudes pendientes
         solicitudes_queryset = Solicitud.objects.filter(estado='P')
         
-        # Si el usuario es un jefe, ver las solicitudes y registros de horas de sus subordinados
-        if user.rol in ['GG', 'JI', 'JD']:
+        # Filtrar por rol del usuario
+        if user.rol in ['GG', 'JI', 'JD']:  # Si el usuario es jefe
             registros_queryset = registros_queryset.filter(usuario__in=user.subordinados.all())
             solicitudes_queryset = solicitudes_queryset.filter(usuario__in=user.subordinados.all())
-        # Si no es jefe, solo puede ver sus propias solicitudes y registros de horas pendientes
-        else:
+        else:  # Si no es jefe, mostrar listas vacías
             registros_queryset = RegistroHoras.objects.none()
             solicitudes_queryset = Solicitud.objects.none()
         
-        # Agregar ambos querysets al contexto
-        context['registros_horas'] = registros_queryset
-        context['solicitudes'] = solicitudes_queryset
+        # Combinar los querysets en una lista y añadir un atributo `tipo_objeto` para diferenciar
+        pendientes = list(registros_queryset) + list(solicitudes_queryset)
+        
+        # Añadir un campo `tipo_objeto` para distinguir en el template
+        for item in pendientes:
+            item.tipo_objeto = 'registro' if isinstance(item, RegistroHoras) else 'solicitud'
+        
+        # Ordenar por estado
+        pendientes = sorted(pendientes, key=attrgetter('estado'))
+
+        # Añadir la lista combinada al contexto
+        context['pendientes'] = pendientes
 
         # Añadir el formulario de filtro al contexto (si es necesario)
         context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=user)
 
         return context
 
-
 class HistorialCombinadoView(ListView):
     template_name = 'historial_solicitudes.html'
     context_object_name = 'registros_y_solicitudes'
 
     def get_queryset(self):
-        # No usaremos el queryset principal de la vista, ya que estamos trabajando con dos modelos
-        return None
+        return None  # No necesitamos el queryset principal de ListView, ya que vamos a combinar dos querysets
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -265,9 +272,20 @@ class HistorialCombinadoView(ListView):
         if usuario_id:
             solicitudes_queryset = solicitudes_queryset.filter(usuario_id=usuario_id)
 
-        # Agregar ambos querysets al contexto
-        context['registros_horas'] = registros_queryset
-        context['solicitudes'] = solicitudes_queryset
+        # Combinar ambos querysets en una lista
+        registros_y_solicitudes = list(registros_queryset) + list(solicitudes_queryset)
+
+        # Añadir un campo `tipo_objeto` y `estado_orden` para ordenar por estado
+        estado_prioridad = {'P': 1, 'R': 2, 'A': 3}  # Prioridad: Pendiente, Rechazado, Aprobado
+        for item in registros_y_solicitudes:
+            item.tipo_objeto = 'solicitud' if isinstance(item, Solicitud) else 'registro'
+            item.estado_orden = estado_prioridad.get(item.estado, 4)  # Asigna un valor de orden al estado
+
+        # Ordenar la lista combinada primero por `estado_orden` y luego por cualquier otro criterio secundario
+        registros_y_solicitudes = sorted(registros_y_solicitudes, key=attrgetter('estado_orden'))
+
+        # Añadir la lista combinada ordenada al contexto
+        context['registros_y_solicitudes'] = registros_y_solicitudes
 
         # Añadir el formulario de filtro al contexto
         context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=user)
@@ -278,30 +296,39 @@ class HistorialCombinadoView(ListView):
 
 class MiSolicitudYRegistroView(ListView):
     template_name = 'mis_solicitudes.html'
-    context_object_name = 'solicitudes'  # Cambiamos el nombre para reflejar ambos tipos de solicitudes
+    context_object_name = 'solicitudes_y_registros'
 
     def get_queryset(self):
-        return None  # No usamos el queryset directo de ListView porque traeremos dos conjuntos de datos distintos
+        return None  # No necesitamos el queryset principal de ListView, ya que vamos a combinar dos querysets
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
         
-        # Obtener las solicitudes del usuario
+        # Obtener las solicitudes y registros de horas del usuario actual
         solicitudes_queryset = Solicitud.objects.filter(usuario=user)
-
-        # Obtener los registros de horas del usuario
         registros_queryset = RegistroHoras.objects.filter(usuario=user)
 
-        # Filtro por estado (si aplica a ambos modelos)
+        # Aplicar filtro de estado a ambos querysets si está presente en la solicitud
         estado = self.request.GET.get('estado')
         if estado:
             solicitudes_queryset = solicitudes_queryset.filter(estado=estado)
             registros_queryset = registros_queryset.filter(estado=estado)
 
-        # Agregar ambos querysets al contexto
-        context['solicitudes'] = solicitudes_queryset
-        context['registros'] = registros_queryset
+        # Combinar ambos querysets en una lista
+        solicitudes_y_registros = list(solicitudes_queryset) + list(registros_queryset)
+
+        # Añadir un campo `tipo_objeto` y `estado_orden` para diferenciar y ordenar
+        estado_prioridad = {'P': 1, 'R': 2, 'A': 3}  # Prioridad: Pendiente, Rechazado, Aprobado
+        for item in solicitudes_y_registros:
+            item.tipo_objeto = 'solicitud' if isinstance(item, Solicitud) else 'registro'
+            item.estado_orden = estado_prioridad.get(item.estado, 4)  # Asigna un valor de orden al estado
+
+        # Ordenar la lista combinada primero por `estado_orden` y luego por cualquier otro criterio secundario
+        solicitudes_y_registros = sorted(solicitudes_y_registros, key=attrgetter('estado_orden', 'fecha_inicio'))
+
+        # Añadir la lista combinada ordenada al contexto
+        context['solicitudes_y_registros'] = solicitudes_y_registros
 
         # Añadir el formulario de filtro al contexto
         context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=user)

@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 
-{% block title %}Historial de Solicitudes{% endblock %}
+{% block title %}Historial de Solicitudes y Registros de Horas{% endblock %}
 
 {% block content %}
-<h2>Mis Solicitudes</h2>
+<h2>Mis Solicitudes y Registros de Horas</h2>
 
-<!-- Formulario para filtrar solicitudes por estado, usuario y tipo -->
+<!-- Formulario para filtrar solicitudes por estado -->
 <form method="get" class="mb-3">
     <div class="row">
         <!-- Filtro por estado -->
@@ -23,7 +23,7 @@
     <button type="submit" class="btn btn-primary mt-3">Filtrar</button>
 </form>
 
-<!-- Tabla para mostrar el historial de solicitudes -->
+<!-- Tabla para mostrar el historial de solicitudes y registros de horas -->
 <table class="table">
     <thead>
         <tr>
@@ -37,42 +37,33 @@
         </tr>
     </thead>
     <tbody>
-        {% for solicitud in solicitudes %}
+        {% for item in solicitudes_y_registros %}
         <tr>
-            <td>{{ solicitud.usuario.get_full_name }}</td>
-            <td>{{ solicitud.get_tipo_display }}</td>
-            <td>{{ solicitud.fecha_inicio }}</td>
-            <td>{{ solicitud.fecha_fin }}</td>
-            <td>{{ solicitud.horas }}</td>
-            <td>{{ solicitud.dias_solicitados}}</td>
-            <td>{{ solicitud.get_estado_display }}</td>
+            <td>{{ item.usuario.get_full_name }}</td>
+            <td>
+                {% if item.tipo_objeto == 'solicitud' %}
+                    {{ item.get_tipo_display }}
+                {% else %}
+                    Registro de Horas
+                {% endif %}
+            </td>
+            <td>{{ item.fecha_inicio }}</td>
+            <td>{{ item.fecha_fin }}</td>
+            <td>{{ item.horas }}</td>
+            <td>
+                {% if item.tipo_objeto == 'solicitud' %}
+                    {{ item.dias_solicitados }}
+                {% else %}
+                    0
+                {% endif %}
+            </td>
+            <td>{{ item.get_estado_display }}</td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="6">No hay solicitudes en el historial.</td>
+            <td colspan="7">No hay solicitudes ni registros de horas en el historial.</td>
         </tr>
         {% endfor %}
-
-
-        {% for registro in registros %}
-        <tr>
-           
-            <td>{{ registro.usuario.get_full_name }}</td>
-            <td>{{ registro.get_tipo_display }}</td>
-            <td>{{ registro.fecha_inicio }}</td>
-            <td>{{ registro.fecha_fin }}</td>
-            <td>{{ registro.horas }}</td>
-            <td>0</td>
-            <td>{{ registro.get_estado_display }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="6">No hay solicitudes en el historial.</td>
-        </tr>
-        {% endfor %}
-
-
-        
     </tbody>
 </table>
 {% endblock %}

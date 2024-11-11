@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 
-{% block title %}Lista de Solicitudes{% endblock %}
+{% block title %}Lista de Solicitudes y Registros de Horas Pendientes{% endblock %}
 
 {% block content %}
-<h2>Lista de Solicitudes</h2>
+<h2>Lista de Solicitudes y Registros de Horas Pendientes</h2>
 
 <table class="table">
     <thead>
@@ -19,41 +19,38 @@
         </tr>
     </thead>
     <tbody>
-        {% for solicitud in solicitudes %}
+        {% for item in pendientes %}
         <tr>
-            <td>{{ solicitud.usuario.get_full_name }}</td>
-            <td>{{ solicitud.get_tipo_display }}</td>
-            <td>{{ solicitud.fecha_inicio }}</td>
-            <td>{{ solicitud.fecha_fin }}</td>
-            <td>{{ solicitud.horas }}</td>
-            <td>{{ solicitud.dias_solicitados }}</td>
-            <td>{{ solicitud.get_estado_display }}</td>
+            <td>{{ item.usuario.get_full_name }}</td>
             <td>
-                <a href="{% url 'aprobar_rechazar_solicitud' solicitud.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
+                {% if item.tipo_objeto == 'solicitud' %}
+                    {{ item.get_tipo_display }}
+                {% else %}
+                    Registro de Horas
+                {% endif %}
+            </td>
+            <td>{{ item.fecha_inicio }}</td>
+            <td>{{ item.fecha_fin }}</td>
+            <td>{{ item.horas }}</td>
+            <td>
+                {% if item.tipo_objeto == 'solicitud' %}
+                    {{ item.dias_solicitados }}
+                {% else %}
+                    0
+                {% endif %}
+            </td>
+            <td>{{ item.get_estado_display }}</td>
+            <td>
+                {% if item.tipo_objeto == 'solicitud' %}
+                    <a href="{% url 'aprobar_rechazar_solicitud' item.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
+                {% else %}
+                    <a href="{% url 'aprobar_rechazar_horas' item.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
+                {% endif %}
             </td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="7">No hay solicitudes disponibles.</td>
-        </tr>
-        {% endfor %}
-
-        {% for registro in registros_horas%}
-        <tr>
-            <td>{{ registro.usuario.get_full_name }}</td>
-            <td>{{ registro.get_tipo_display }}</td>
-            <td>{{ registro.fecha_inicio }}</td>
-            <td>{{ registro.fecha_fin }}</td>
-            <td>{{ registro.horas }}</td>
-            <td>0</td>
-            <td>{{ registro.get_estado_display }}</td>
-            <td>
-                <a href="{% url 'aprobar_rechazar_horas' registro.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
-            </td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="6">No hay horas pendientes de aprobación.</td>
+            <td colspan="8">No hay solicitudes ni registros de horas pendientes.</td>
         </tr>
         {% endfor %}
     </tbody>
