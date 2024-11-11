@@ -23,7 +23,7 @@ class CrearUsuarioView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     def test_func(self):
         return self.request.user.is_superuser or self.request.user.rol in ['GG', 'JI', 'JD']
 
-
+# Solicitud para tomar vacaciones y horas compensatorias
 class CrearSolicitudView(LoginRequiredMixin, CreateView):
     model = Solicitud
     form_class = SolicitudForm
@@ -34,6 +34,7 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         form.instance.usuario = self.request.user
         form.instance.estado = 'P'
         tipo_solicitud = form.cleaned_data.get('tipo')
+        print("tipo solicitud" , tipo_solicitud)
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
         if tipo_solicitud == 'V':  # Vacaciones
@@ -47,16 +48,22 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                     f"Advertencia: estás solicitando {dias_solicitados} días, pero solo tienes {self.request.user.dias_vacaciones} días disponibles. Esto resultará en un saldo negativo."
                 )
 
-        elif tipo_solicitud in ['HE']:  # Horas Compensatorias o Extra
-            # Calcular las horas
-            diferencia = fecha_fin - fecha_inicio
-            horas_solicitadas = diferencia.total_seconds() / 3600  # Convertir a horas
-            form.instance.horas = horas_solicitadas
+        # if tipo_solicitud in ['HE']: 
+        #     # Calcular las horas
+        #     diferencia = fecha_fin - fecha_inicio
+        #     horas_solicitadas = diferencia.total_seconds() / 3600  # Convertir a horas
+        #     form.instance.horas = horas_solicitadas
 
-            if tipo_solicitud == 'HC':
-                if horas_solicitadas > self.request.user.horas_compensatorias_disponibles:
-                    form.add_error(None, f"No tienes suficientes horas compensatorias disponibles (horas disponibles: {self.request.user.horas_compensatorias_disponibles}).")
-                    return self.form_invalid(form)
+
+        if tipo_solicitud == 'HC':
+            print("si entra")
+            diferencia = fecha_fin - fecha_inicio
+            horas_solicitadas = diferencia.total_seconds() / 3600
+            if horas_solicitadas > self.request.user.horas_compensatorias_disponibles:
+                form.add_error(None, f"No tienes suficientes horas compensatorias disponibles (horas disponibles: {self.request.user.horas_compensatorias_disponibles}).")
+                return self.form_invalid(form)
+            else:
+                form.instance.horas = horas_solicitadas
 
         return super().form_valid(form)
 
@@ -142,27 +149,6 @@ class ListaSolicitudesView(LoginRequiredMixin, ListView):
         return Solicitud.objects.filter(usuario=user, estado='P')
 
 
-class HistorialMisSolicitudesView(ListView):
-    model = Solicitud
-    template_name = 'mis_solicitudes.html'
-    context_object_name = 'solicitudes'
-
-    def get_queryset(self):
-        user = self.request.user
-        queryset = Solicitud.objects.all()
-
-        # Obtener los valores de los filtros desde el formulario
-        estado = self.request.GET.get('estado')
-
-        #ver mis solicitudes
-        queryset = queryset.filter(usuario=user)
-
-        # Filtrar por estado si se seleccionó
-        if estado:
-            queryset = queryset.filter(estado=estado)
-
-
-        return queryset
     
 class HistorialSolicitudesView(ListView):
     model = Solicitud
@@ -217,7 +203,7 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
 
         # Validar según el rol del usuario
         rol_usuario = self.request.user.rol
-        tipo_horas = form.cleaned_data.get('tipo_horas')
+        tipo_horas = form.cleaned_data.get('tipo')
 
         # Ingeniero (IN): Solo puede registrar horas compensatorias (HC)
         if rol_usuario == 'IN' and tipo_horas == 'HE':  # Horas Extra no permitidas para ingenieros
@@ -251,10 +237,10 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         # Solo al aprobar/rechazar, asignar quién aprobó o rechazó las horas
         if form.instance.estado == 'A':  # Si la solicitud es aprobada
             # Actualizar las horas extra o compensatorias del usuario
-            if registro.tipo_horas == 'HE':
+            if registro.tipo == 'HE':
                 registro.usuario.horas_extra_acumuladas += registro.horas
                 print(f"Horas extra después: {registro.usuario.horas_extra_acumuladas}")
-            elif registro.tipo_horas == 'HC':
+            elif registro.tipo == 'HC':
                 registro.usuario.horas_compensatorias_disponibles += registro.horas
                 print(f"Horas compensatorias después: {registro.usuario.horas_compensatorias_disponibles}")
             registro.usuario.save()
@@ -317,32 +303,37 @@ class ListaRegistroHorasView(ListView):
         return context
 
 
-class ListaRegistroMisHorasView(ListView):
-    model = RegistroHoras
-    template_name = 'mi_registro_horas.html'
-    context_object_name = 'registros_horas'
+    
+
+class MiSolicitudYRegistroView(ListView):
+    template_name = 'mis_solicitudes.html'
+    context_object_name = 'solicitudes'  # Cambiamos el nombre para reflejar ambos tipos de solicitudes
 
     def get_queryset(self):
-        user = self.request.user
-        queryset = RegistroHoras.objects.all()
-
-        # Obtener los datos del formulario de filtro
-        estado = self.request.GET.get('estado')
-        
-        # Ver sus propios registros
-        queryset = queryset.filter(usuario=user)
-
-
-        # Filtro por estado
-        if estado:
-            queryset = queryset.filter(estado=estado)
-
-        return queryset
+        return None  # No usamos el queryset directo de ListView porque traeremos dos conjuntos de datos distintos
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Añadir el formulario de filtro al contexto, pasando el usuario autenticado
-        context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=self.request.user)
+        user = self.request.user
+        
+        # Obtener las solicitudes del usuario
+        solicitudes_queryset = Solicitud.objects.filter(usuario=user)
+
+        # Obtener los registros de horas del usuario
+        registros_queryset = RegistroHoras.objects.filter(usuario=user)
+
+        # Filtro por estado (si aplica a ambos modelos)
+        estado = self.request.GET.get('estado')
+        if estado:
+            solicitudes_queryset = solicitudes_queryset.filter(estado=estado)
+            registros_queryset = registros_queryset.filter(estado=estado)
+
+        # Agregar ambos querysets al contexto
+        context['solicitudes'] = solicitudes_queryset
+        context['registros'] = registros_queryset
+
+        # Añadir el formulario de filtro al contexto
+        context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=user)
 
         return context
 

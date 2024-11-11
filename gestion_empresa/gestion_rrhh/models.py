@@ -65,9 +65,9 @@ class Departamento(models.Model):
 
 class Solicitud(models.Model):
     TIPOS = (
-        ('V', 'Vacaciones'),
+        ('V', 'Solicitud Vacaciones'),
         # ('HE', 'Horas Extra'),
-        ('HC', 'Horas Compensatorias'),
+        ('HC', 'Solicitud Horas Compensatorias'),
     )
     ESTADOS = (
         ('P', 'Pendiente'),
@@ -92,8 +92,8 @@ class Solicitud(models.Model):
 
 class RegistroHoras(models.Model):
     TIPOS_HORAS = (
-        ('HE', 'Horas Extra'),
-        ('HC', 'Horas Compensatorias'),
+        ('HE', 'Registro Horas Extra'),
+        ('HC', 'Registro Horas Compensatorias'),
     )
     ESTADOS = (
         ('P', 'Pendiente'),
@@ -101,7 +101,7 @@ class RegistroHoras(models.Model):
         ('R', 'Rechazado'),
     )
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)  # Usuario al que se le registran las horas
-    tipo_horas = models.CharField(max_length=2, choices=TIPOS_HORAS)
+    tipo = models.CharField(max_length=2, choices=TIPOS_HORAS)
     fecha_inicio = models.DateTimeField()  # Fecha y hora de inicio
     fecha_fin = models.DateTimeField()  # Fecha y hora de fin
     horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)  # Horas calculadas

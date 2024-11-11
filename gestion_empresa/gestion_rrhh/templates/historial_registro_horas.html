@@ -52,7 +52,7 @@
         {% for registro in registros_horas %}
         <tr>
             <td>{{ registro.usuario.get_full_name }}</td>
-            <td>{{ registro.get_tipo_horas_display }}</td>
+            <td>{{ registro.get_tipo_display }}</td>
             <td>{{ registro.fecha_inicio }}</td>
             <td>{{ registro.fecha_fin }}</td>
             <td>{{ registro.horas }}</td>

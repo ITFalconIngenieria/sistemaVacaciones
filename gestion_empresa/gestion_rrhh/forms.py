@@ -60,7 +60,7 @@ class SolicitudForm(forms.ModelForm):
 class RegistrarHorasForm(forms.ModelForm):
     class Meta:
         model = RegistroHoras
-        fields = ['tipo_horas', 'fecha_inicio', 'fecha_fin', 'descripcion']
+        fields = ['tipo', 'fecha_inicio', 'fecha_fin', 'descripcion']
         widgets = {
             'fecha_inicio': forms.DateTimeInput(
                 attrs={

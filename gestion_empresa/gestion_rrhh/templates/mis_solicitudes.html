@@ -52,6 +52,27 @@
             <td colspan="6">No hay solicitudes en el historial.</td>
         </tr>
         {% endfor %}
+
+
+        {% for registro in registros %}
+        <tr>
+           
+            <td>{{ registro.usuario.get_full_name }}</td>
+            <td>{{ registro.get_tipo_display }}</td>
+            <td>{{ registro.fecha_inicio }}</td>
+            <td>{{ registro.fecha_fin }}</td>
+            <td>{{ registro.horas }}</td>
+            <td>0</td>
+            <td>{{ registro.get_estado_display }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6">No hay solicitudes en el historial.</td>
+        </tr>
+        {% endfor %}
+
+
+        
     </tbody>
 </table>
 {% endblock %}
