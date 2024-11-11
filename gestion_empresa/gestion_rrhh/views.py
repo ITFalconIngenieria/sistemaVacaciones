@@ -142,8 +142,6 @@ class ListaSolicitudesView(LoginRequiredMixin, ListView):
         return Solicitud.objects.filter(usuario=user, estado='P')
 
 
-
-
 class HistorialMisSolicitudesView(ListView):
     model = Solicitud
     template_name = 'mis_solicitudes.html'
@@ -277,14 +275,13 @@ class ListaHorasPendientesView(ListView):
 
         # Si el usuario es un jefe, ver sus solicitudes y las de sus subordinados
         if user.rol in ['GG', 'JI', 'JD']:
-            queryset = queryset.filter(usuario__in=[user] + list(user.subordinados.all()))
+            queryset = queryset.filter(usuario__in=user.subordinados.all())
         
         # Si no es jefe, no debería ver ninguna solicitud
         else:
             queryset = RegistroHoras.objects.none()
 
         return queryset
-
 
 class ListaRegistroHorasView(ListView):
     model = RegistroHoras
@@ -299,12 +296,8 @@ class ListaRegistroHorasView(ListView):
         estado = self.request.GET.get('estado')
         usuario_id = self.request.GET.get('usuario')
 
-        # Si es jefe, ver sus registros y los de sus subordinados
-        if user.rol in ['GG', 'JI', 'JD']:
-            queryset = queryset.filter(usuario__in=[user] + list(user.subordinados.all()))
-        else:
-            # Si no es jefe, solo ver sus propios registros
-            queryset = queryset.filter(usuario=user)
+        # Ver los registros de sus subordinados
+        queryset = queryset.filter(usuario__in=user.subordinados.all())
 
         # Filtro por estado
         if estado:
@@ -322,6 +315,37 @@ class ListaRegistroHorasView(ListView):
         context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=self.request.user)
 
         return context
+
+
+class ListaRegistroMisHorasView(ListView):
+    model = RegistroHoras
+    template_name = 'mi_registro_horas.html'
+    context_object_name = 'registros_horas'
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = RegistroHoras.objects.all()
+
+        # Obtener los datos del formulario de filtro
+        estado = self.request.GET.get('estado')
+        
+        # Ver sus propios registros
+        queryset = queryset.filter(usuario=user)
+
+
+        # Filtro por estado
+        if estado:
+            queryset = queryset.filter(estado=estado)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Añadir el formulario de filtro al contexto, pasando el usuario autenticado
+        context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=self.request.user)
+
+        return context
+
 
 
 def logout_view(request):

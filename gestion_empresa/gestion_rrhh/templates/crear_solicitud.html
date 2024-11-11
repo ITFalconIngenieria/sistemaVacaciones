@@ -23,17 +23,13 @@
                         {% csrf_token %}
                         {{ form|crispy }}
 
-
                         <!-- Nota que muestra la cantidad de días solicitados -->
                         <div class="alert alert-info" id="dias-solicitados">
                             La cantidad de días solicitados es:  días.
                         </div>
-
                         <div class="alert alert-info" id="horas-solicitadas">
                             La cantidad de horas solicitadas es:  horas.
                         </div>
-
-
 
                         <button type="submit" class="btn btn-success w-100">Crear Solicitud</button>
                     </form>

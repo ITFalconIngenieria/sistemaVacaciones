@@ -25,12 +25,7 @@
             <td>{{ registro.fecha_fin }}</td>
             <td>{{ registro.horas }}</td>
             <td>
-                <!-- Si el jefe está viendo su propia solicitud, desactivar el botón -->
-                {% if registro.usuario == user %}
-                    <button class="btn btn-sm btn-secondary" disabled>No puedes aprobar/rechazar tu propia solicitud</button>
-                {% else %}
-                    <a href="{% url 'aprobar_rechazar_horas' registro.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
-                {% endif %}
+                <a href="{% url 'aprobar_rechazar_horas' registro.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
             </td>
         </tr>
         {% empty %}

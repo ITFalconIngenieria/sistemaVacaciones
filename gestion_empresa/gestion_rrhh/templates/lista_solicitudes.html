@@ -29,12 +29,7 @@
             <td>{{ solicitud.dias_solicitados }}</td>
             <td>{{ solicitud.get_estado_display }}</td>
             <td>
-                <!-- Solo permitir la aprobación para jefes y solo si la solicitud no es del propio jefe -->
-                {% if user.rol in 'GG,JI,JD' and solicitud.estado == 'P' and solicitud.usuario != user %}
                 <a href="{% url 'aprobar_rechazar_solicitud' solicitud.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
-                {% else %}
-                <button class="btn btn-sm btn-secondary" disabled>No puedes aprobar/rechazar tu propia solicitud</button>
-                {% endif %}
             </td>
         </tr>
         {% empty %}

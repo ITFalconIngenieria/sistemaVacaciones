@@ -22,6 +22,9 @@ urlpatterns = [
     path('registrar-horas/', views.RegistrarHorasView.as_view(), name='registrar_horas'),
     path('lista-horas-pendientes/', views.ListaHorasPendientesView.as_view(), name='lista_horas_pendientes'),
     path('aprobar-rechazar-horas/<int:pk>/', views.AprobarRechazarHorasView.as_view(), name='aprobar_rechazar_horas'),
+    path('registros-horas/', views.ListaRegistroHorasView.as_view(), name='registros_horas'),
+    path('mis-registros-horas/', views.ListaRegistroMisHorasView.as_view(), name='mis_registros_horas'),
 
-    path('mis-registros-horas/', views.ListaRegistroHorasView.as_view(), name='mis_registros_horas'),
+
+
 ]
