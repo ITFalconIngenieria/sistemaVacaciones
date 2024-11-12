@@ -70,7 +70,7 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
     model = Solicitud
     fields = ['estado']  # Solo permite cambiar el estado (Pendiente, Aprobado, Rechazado)
     template_name = 'aprobar_rechazar_solicitud.html'
-    success_url = reverse_lazy('mis_solicitudes')
+    success_url = reverse_lazy('lista_solicitudes')
 
     def test_func(self):
         solicitud = self.get_object()
@@ -154,7 +154,7 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
     model = RegistroHoras
     fields = ['estado']
     template_name = 'aprobar_rechazar_horas.html'
-    success_url = reverse_lazy('lista_horas_pendientes')
+    success_url = reverse_lazy('lista_solicitudes')
 
     def test_func(self):
         registro = self.get_object()

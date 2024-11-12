@@ -118,6 +118,9 @@ class RegistroHoras(models.Model):
     def save(self, *args, **kwargs):
         # Calcular las horas automáticamente antes de guardar
         self.horas = self.calcular_horas()
+         # Multiplicar horas por 2 si es domingo y el tipo es compensatorias (HC)
+        if self.tipo == 'HC' and self.fecha_inicio.weekday() == 6 and self.fecha_fin.weekday()== 6:  # 6 representa domingo en Python
+            self.horas *= 2
         super().save(*args, **kwargs)
 
 
