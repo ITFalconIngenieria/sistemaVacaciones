@@ -5,10 +5,8 @@
 {% block content %}
 <h2>Mis Solicitudes y Registros de Horas</h2>
 
-<!-- Formulario para filtrar solicitudes por estado -->
 <form method="get" class="mb-3">
     <div class="row">
-        <!-- Filtro por estado -->
         <div class="col-md-3">
             <label for="estado" class="form-label">Filtrar por estado:</label>
             <select name="estado" id="estado" class="form-select">
@@ -23,7 +21,6 @@
     <button type="submit" class="btn btn-primary mt-3">Filtrar</button>
 </form>
 
-<!-- Tabla para mostrar el historial de solicitudes y registros de horas -->
 <table class="table">
     <thead>
         <tr>
@@ -66,4 +63,23 @@
         {% endfor %}
     </tbody>
 </table>
+
+<!-- Controles de Paginación -->
+<div class="pagination">
+    <span class="step-links">
+        {% if page_obj.has_previous %}
+            <a href="?page=1{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}">Primera</a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}">Anterior</a>
+        {% endif %}
+
+        <span class="current">
+            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        </span>
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}">Siguiente</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}">Última</a>
+        {% endif %}
+    </span>
+</div>
 {% endblock %}

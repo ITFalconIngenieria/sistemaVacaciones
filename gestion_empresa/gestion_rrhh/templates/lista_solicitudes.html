@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 
-{% block title %}Lista de Solicitudes y Registros de Horas Pendientes{% endblock %}
+{% block title %}Lista de Solicitudes y Registros de Horas Pendientes de Aprobrar / Rechazar{% endblock %}
 
 {% block content %}
-<h2>Lista de Solicitudes y Registros de Horas Pendientes</h2>
+<h2>Lista de Solicitudes y Registros de Horas Pendientes de Aprobrar / Rechazar</h2>
 
 <table class="table">
     <thead>
@@ -13,7 +13,7 @@
             <th>Fecha Inicio</th>
             <th>Fecha Fin</th>
             <th>Horas</th>
-            <th>Dias</th>
+            <th>Días</th>
             <th>Estado</th>
             <th>Acciones</th>
         </tr>
@@ -55,4 +55,23 @@
         {% endfor %}
     </tbody>
 </table>
+
+<!-- Controles de Paginación -->
+<div class="pagination">
+    <span class="step-links">
+        {% if page_obj.has_previous %}
+            <a href="?page=1">Primera</a>
+            <a href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+        {% endif %}
+
+        <span class="current">
+            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        </span>
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+        {% endif %}
+    </span>
+</div>
 {% endblock %}

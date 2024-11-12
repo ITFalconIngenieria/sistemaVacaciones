@@ -10,6 +10,7 @@ from django.contrib.auth import logout
 from .models import RegistroHoras
 from django.core.exceptions import ValidationError
 from operator import attrgetter
+from django.core.paginator import Paginator
 @login_required
 def dashboard(request):
     return render(request, 'dashboard.html')
@@ -48,13 +49,6 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                     f"Advertencia: estás solicitando {dias_solicitados} días, pero solo tienes {self.request.user.dias_vacaciones} días disponibles. Esto resultará en un saldo negativo."
                 )
 
-        # if tipo_solicitud in ['HE']: 
-        #     # Calcular las horas
-        #     diferencia = fecha_fin - fecha_inicio
-        #     horas_solicitadas = diferencia.total_seconds() / 3600  # Convertir a horas
-        #     form.instance.horas = horas_solicitadas
-
-
         if tipo_solicitud == 'HC':
             print("si entra")
             diferencia = fecha_fin - fecha_inicio
@@ -71,7 +65,6 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context['usuario'] = self.request.user
         return context
-
 
 class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Solicitud
@@ -130,8 +123,6 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
         messages.success(self.request, 'La solicitud ha sido procesada exitosamente.')
         return super().form_valid(form)
 
-
-
 class RegistrarHorasView(LoginRequiredMixin, CreateView):
     model = RegistroHoras
     form_class = RegistrarHorasForm
@@ -158,7 +149,6 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
 
         messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
         return super().form_valid(form)
-
 
 class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
     model = RegistroHoras
@@ -190,25 +180,20 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         messages.success(self.request, 'El registro de horas ha sido procesado exitosamente.')
         return super().form_valid(form)
 
-
-
-
-
 class ListaSolicitudesRegistrosPendientesView(ListView):
     template_name = 'lista_solicitudes.html'
-    context_object_name = 'pendientes'  # Nombre combinado para la lista de ambos tipos
-
+    context_object_name = 'pendientes'
+    
     def get_queryset(self):
-        return None  # No necesitamos el queryset principal de ListView
+        return []  # Retorna un queryset vacío para evitar la paginación automática de Django
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
         
-        # Obtener registros de horas pendientes
+        # Filtrar registros de horas pendientes
         registros_queryset = RegistroHoras.objects.filter(estado='P')
-        
-        # Obtener solicitudes pendientes
+        # Filtrar solicitudes pendientes
         solicitudes_queryset = Solicitud.objects.filter(estado='P')
         
         # Filtrar por rol del usuario
@@ -219,35 +204,35 @@ class ListaSolicitudesRegistrosPendientesView(ListView):
             registros_queryset = RegistroHoras.objects.none()
             solicitudes_queryset = Solicitud.objects.none()
         
-        # Combinar los querysets en una lista y añadir un atributo `tipo_objeto` para diferenciar
+        # Combinar los querysets
         pendientes = list(registros_queryset) + list(solicitudes_queryset)
         
-        # Añadir un campo `tipo_objeto` para distinguir en el template
+        # Añadir `tipo_objeto` para distinguir
         for item in pendientes:
-            item.tipo_objeto = 'registro' if isinstance(item, RegistroHoras) else 'solicitud'
+            item.tipo_objeto = 'solicitud' if isinstance(item, Solicitud) else 'registro'
         
-        # Ordenar por estado
-        pendientes = sorted(pendientes, key=attrgetter('estado'))
+        # Paginación manual
+        paginator = Paginator(pendientes, 10)
+        page_number = self.request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
 
-        # Añadir la lista combinada al contexto
-        context['pendientes'] = pendientes
-
-        # Añadir el formulario de filtro al contexto (si es necesario)
-        context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=user)
+        # Añadir al contexto
+        context['pendientes'] = page_obj
+        context['page_obj'] = page_obj
 
         return context
 
 class HistorialCombinadoView(ListView):
     template_name = 'historial_solicitudes.html'
     context_object_name = 'registros_y_solicitudes'
-
+    
     def get_queryset(self):
-        return None  # No necesitamos el queryset principal de ListView, ya que vamos a combinar dos querysets
+        return []  # Retorna un queryset vacío para evitar la paginación automática de Django
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        
+
         # Obtener los valores de los filtros desde el formulario
         estado = self.request.GET.get('estado')
         tipo = self.request.GET.get('tipo')
@@ -258,53 +243,51 @@ class HistorialCombinadoView(ListView):
         # Filtrar las solicitudes de los subordinados del usuario
         solicitudes_queryset = Solicitud.objects.filter(usuario__in=user.subordinados.all())
 
-        # Aplicar filtros a `RegistroHoras`
+        # Aplicar filtros
         if estado:
             registros_queryset = registros_queryset.filter(estado=estado)
-        if usuario_id:
-            registros_queryset = registros_queryset.filter(usuario_id=usuario_id)
-
-        # Aplicar filtros a `Solicitud`
-        if estado:
             solicitudes_queryset = solicitudes_queryset.filter(estado=estado)
         if tipo:
             solicitudes_queryset = solicitudes_queryset.filter(tipo=tipo)
         if usuario_id:
+            registros_queryset = registros_queryset.filter(usuario_id=usuario_id)
             solicitudes_queryset = solicitudes_queryset.filter(usuario_id=usuario_id)
 
         # Combinar ambos querysets en una lista
         registros_y_solicitudes = list(registros_queryset) + list(solicitudes_queryset)
 
-        # Añadir un campo `tipo_objeto` y `estado_orden` para ordenar por estado
-        estado_prioridad = {'P': 1, 'R': 2, 'A': 3}  # Prioridad: Pendiente, Rechazado, Aprobado
+        # Añadir campo `tipo_objeto` y `estado_orden`
+        estado_prioridad = {'P': 1, 'R': 2, 'A': 3}
         for item in registros_y_solicitudes:
             item.tipo_objeto = 'solicitud' if isinstance(item, Solicitud) else 'registro'
-            item.estado_orden = estado_prioridad.get(item.estado, 4)  # Asigna un valor de orden al estado
+            item.estado_orden = estado_prioridad.get(item.estado, 4)
 
-        # Ordenar la lista combinada primero por `estado_orden` y luego por cualquier otro criterio secundario
-        registros_y_solicitudes = sorted(registros_y_solicitudes, key=attrgetter('estado_orden'))
+        # Ordenar la lista combinada
+        registros_y_solicitudes = sorted(registros_y_solicitudes, key=attrgetter('estado_orden', 'fecha_inicio'))
 
-        # Añadir la lista combinada ordenada al contexto
-        context['registros_y_solicitudes'] = registros_y_solicitudes
+        # Paginación manual
+        paginator = Paginator(registros_y_solicitudes, 10)
+        page_number = self.request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
 
-        # Añadir el formulario de filtro al contexto
+        # Añadir al contexto
+        context['registros_y_solicitudes'] = page_obj
+        context['page_obj'] = page_obj
         context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=user)
 
         return context
-
-
 
 class MiSolicitudYRegistroView(ListView):
     template_name = 'mis_solicitudes.html'
     context_object_name = 'solicitudes_y_registros'
 
     def get_queryset(self):
-        return None  # No necesitamos el queryset principal de ListView, ya que vamos a combinar dos querysets
+        return []  # Retorna un queryset vacío ya que la paginación se hará manualmente
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        
+
         # Obtener las solicitudes y registros de horas del usuario actual
         solicitudes_queryset = Solicitud.objects.filter(usuario=user)
         registros_queryset = RegistroHoras.objects.filter(usuario=user)
@@ -327,15 +310,19 @@ class MiSolicitudYRegistroView(ListView):
         # Ordenar la lista combinada primero por `estado_orden` y luego por cualquier otro criterio secundario
         solicitudes_y_registros = sorted(solicitudes_y_registros, key=attrgetter('estado_orden', 'fecha_inicio'))
 
-        # Añadir la lista combinada ordenada al contexto
-        context['solicitudes_y_registros'] = solicitudes_y_registros
+        # Paginación manual de la lista combinada
+        paginator = Paginator(solicitudes_y_registros,8)  # Paginación de 10 elementos por página
+        page_number = self.request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        
+        # Añadir la lista paginada al contexto
+        context['solicitudes_y_registros'] = page_obj
+        context['page_obj'] = page_obj  # Objeto de la página para usar en el template
 
         # Añadir el formulario de filtro al contexto
         context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=user)
 
         return context
-
-
 
 def logout_view(request):
     logout(request)
