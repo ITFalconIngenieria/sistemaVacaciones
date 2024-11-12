@@ -102,11 +102,12 @@ class RegistroHoras(models.Model):
     )
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)  # Usuario al que se le registran las horas
     tipo = models.CharField(max_length=2, choices=TIPOS_HORAS)
-    fecha_inicio = models.DateTimeField()  # Fecha y hora de inicio
-    fecha_fin = models.DateTimeField()  # Fecha y hora de fin
-    horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)  # Horas calculadas
-    descripcion = models.TextField(null=True, blank=True)  # Descripción de la actividad
-    estado = models.CharField(max_length=1, choices=ESTADOS, default='P')  # Estado de aprobación
+    fecha_inicio = models.DateTimeField()
+    fecha_fin = models.DateTimeField() 
+    horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True) 
+    numero_proyecto=models.IntegerField(null=True, blank=True)
+    descripcion = models.TextField(null=True, blank=True) 
+    estado = models.CharField(max_length=1, choices=ESTADOS, default='P') 
     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador_horas', null=True, blank=True, on_delete=models.SET_NULL)
 
     def calcular_horas(self):
@@ -121,6 +122,8 @@ class RegistroHoras(models.Model):
          # Multiplicar horas por 2 si es domingo y el tipo es compensatorias (HC)
         if self.tipo == 'HC' and self.fecha_inicio.weekday() == 6 and self.fecha_fin.weekday()== 6:  # 6 representa domingo en Python
             self.horas *= 2
+
+            
         super().save(*args, **kwargs)
 
 

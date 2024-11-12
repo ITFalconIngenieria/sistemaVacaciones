@@ -60,7 +60,7 @@ class SolicitudForm(forms.ModelForm):
 class RegistrarHorasForm(forms.ModelForm):
     class Meta:
         model = RegistroHoras
-        fields = ['tipo', 'fecha_inicio', 'fecha_fin', 'descripcion']
+        fields = ['tipo', 'fecha_inicio', 'fecha_fin','numero_proyecto', 'descripcion']
         widgets = {
             'fecha_inicio': forms.DateTimeInput(
                 attrs={
@@ -74,6 +74,12 @@ class RegistrarHorasForm(forms.ModelForm):
                     'type': 'datetime-local',
                     'class': 'form-control',
                     'required': 'required'
+                }
+            ),'numero_proyecto': forms.NumberInput(
+                attrs={
+                    'class': 'form-control',
+                    'placeholder': 'Numero de Proyecto',
+                    'min': '0' 
                 }
             ),
             'descripcion': forms.Textarea(
@@ -89,6 +95,14 @@ class RegistrarHorasForm(forms.ModelForm):
         cleaned_data = super().clean()
         fecha_inicio = cleaned_data.get('fecha_inicio')
         fecha_fin = cleaned_data.get('fecha_fin')
+        numero_proyecto = cleaned_data.get('numero_proyecto')
+        descripcion = cleaned_data.get('descripcion')
+
+         # Verificar si numero_proyecto está vacío o es 0 y si descripcion está vacío
+        if (numero_proyecto is None or numero_proyecto == 0) and not descripcion:
+            raise forms.ValidationError(
+                "Debe llenar la descripción porque el número de proyecto está vacío o es 0."
+            )
 
         if fecha_inicio and fecha_fin and fecha_fin <= fecha_inicio:
             raise forms.ValidationError("La fecha y hora de fin deben ser posteriores a la fecha y hora de inicio.")
