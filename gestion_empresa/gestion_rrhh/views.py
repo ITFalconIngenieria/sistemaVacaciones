@@ -62,9 +62,12 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                 )
 
         if tipo_solicitud == 'HC':
-            print("si entra")
             diferencia = fecha_fin - fecha_inicio
             horas_solicitadas = diferencia.total_seconds() / 3600
+
+            if horas_solicitadas >9:
+                form.add_error(None, f"La cantidad de horas solicitadas excede las 9 horas")
+                return self.form_invalid(form)
             if horas_solicitadas > self.request.user.horas_compensatorias_disponibles:
                 form.add_error(None, f"No tienes suficientes horas compensatorias disponibles (horas disponibles: {self.request.user.horas_compensatorias_disponibles}).")
                 return self.form_invalid(form)
@@ -191,7 +194,7 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         registro = self.get_object()
 
         # Solo al aprobar/rechazar, asignar quién aprobó o rechazó las horas
-        if form.instance.estado == 'A':  # Si la solicitud es aprobada
+        if form.instance.estado == 'A':  
             # Actualizar las horas extra o compensatorias del usuario
             if registro.tipo == 'HE':
                 registro.usuario.horas_extra_acumuladas += registro.horas
@@ -241,7 +244,7 @@ class ListaSolicitudesRegistrosPendientesView(ListView):
         pendientes = sorted(pendientes, key=attrgetter('estado_orden', 'fecha_inicio'))
 
         # Paginación manual
-        paginator = Paginator(pendientes,8)  # 10 elementos por página
+        paginator = Paginator(pendientes,8)
         page_number = self.request.GET.get('page')
         page_obj = paginator.get_page(page_number)
 
@@ -295,7 +298,7 @@ class HistorialCombinadoView(ListView):
         registros_y_solicitudes = sorted(registros_y_solicitudes, key=attrgetter('estado_orden', 'fecha_inicio'))
 
         # Paginación manual
-        paginator = Paginator(registros_y_solicitudes, 10)
+        paginator = Paginator(registros_y_solicitudes, 8)
         page_number = self.request.GET.get('page')
         page_obj = paginator.get_page(page_number)
 
