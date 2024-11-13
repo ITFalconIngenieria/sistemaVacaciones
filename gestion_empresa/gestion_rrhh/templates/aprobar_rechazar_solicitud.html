@@ -7,6 +7,7 @@
 <form method="post">
     {% csrf_token %}
     <div class="mb-3">
+        <p><strong>Nº Solicitud:</strong> {{ object.numero_solicitud }}</p>
         <p><strong>Usuario:</strong> {{ object.usuario.get_full_name }}</p>
         <p><strong>Tipo:</strong> {{ object.get_tipo_display }}</p>
         <p><strong>Fecha Inicio:</strong> {{ object.fecha_inicio }}</p>
