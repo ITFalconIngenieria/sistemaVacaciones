@@ -31,6 +31,18 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
     template_name = 'crear_solicitud.html'
     success_url = reverse_lazy('mis_solicitudes')
 
+    def get_initial(self):
+        initial = super().get_initial()
+        
+        last_record = Solicitud.objects.order_by('id').last()
+        if last_record:
+            numero_solicitud = last_record.id + 1 
+        else:
+            numero_solicitud = 1 
+        
+        initial['numero_solicitud'] = f"S-{numero_solicitud:04d}"
+        return initial
+
     def form_valid(self, form):
         form.instance.usuario = self.request.user
         form.instance.estado = 'P'
@@ -58,7 +70,7 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                 return self.form_invalid(form)
             else:
                 form.instance.horas = horas_solicitadas
-
+        form.instance.numero_solicitud = form.cleaned_data['numero_solicitud']
         return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
