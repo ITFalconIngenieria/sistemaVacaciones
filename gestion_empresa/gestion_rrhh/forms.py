@@ -28,8 +28,12 @@ class UsuarioChangeForm(UserChangeForm):
 class SolicitudForm(forms.ModelForm):
     class Meta:
         model = Solicitud
-        fields = ['tipo', 'fecha_inicio', 'fecha_fin']
+        fields = ['numero_solicitud','tipo', 'fecha_inicio', 'fecha_fin']
         widgets = {
+             'numero_solicitud': forms.TextInput(attrs={
+                'class': 'form-control',
+                'readonly': 'readonly'  # Campo solo lectura
+            }),
             'fecha_inicio': forms.DateTimeInput(
                 attrs={
                     'type': 'datetime-local',
