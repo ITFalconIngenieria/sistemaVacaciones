@@ -129,6 +129,19 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
     template_name = 'registrar_horas.html'
     success_url = reverse_lazy('dashboard')
 
+    def get_initial(self):
+        initial = super().get_initial()
+        
+        last_record = RegistroHoras.objects.order_by('id').last()
+        if last_record:
+            numero_registro = last_record.id + 1 
+        else:
+            numero_registro = 1 
+        
+        initial['numero_registro'] = f"RGH-{numero_registro:04d}"
+        return initial
+
+
     def form_valid(self, form):
         form.instance.usuario = self.request.user  # Asignar el usuario autenticado
         form.instance.estado = 'P'  # Estado pendiente por defecto
@@ -146,7 +159,7 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         elif rol_usuario in ['GG', 'JI', 'JD'] and tipo_horas == 'HE':  # Horas Extra no permitidas para jefes o gerentes
             form.add_error(None, "Los gerentes o jefes no pueden registrar horas extra.")
             return self.form_invalid(form)
-
+        form.instance.numero_registro = form.cleaned_data['numero_registro']
         messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
         return super().form_valid(form)
 

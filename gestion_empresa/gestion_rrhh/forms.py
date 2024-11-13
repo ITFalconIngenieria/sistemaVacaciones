@@ -60,8 +60,12 @@ class SolicitudForm(forms.ModelForm):
 class RegistrarHorasForm(forms.ModelForm):
     class Meta:
         model = RegistroHoras
-        fields = ['tipo', 'fecha_inicio', 'fecha_fin','numero_proyecto', 'descripcion']
+        fields = ['numero_registro', 'tipo', 'fecha_inicio', 'fecha_fin','numero_proyecto', 'descripcion']
         widgets = {
+             'numero_registro': forms.TextInput(attrs={
+                'class': 'form-control',
+                'readonly': 'readonly'  # Campo solo lectura
+            }),
             'fecha_inicio': forms.DateTimeInput(
                 attrs={
                     'type': 'datetime-local',

@@ -102,6 +102,7 @@ class RegistroHoras(models.Model):
     )
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)  # Usuario al que se le registran las horas
     tipo = models.CharField(max_length=2, choices=TIPOS_HORAS)
+    numero_registro = models.CharField(max_length=10,unique=True, blank=True)  # Número de registro personalizado
     fecha_inicio = models.DateTimeField()
     fecha_fin = models.DateTimeField() 
     horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True) 
@@ -109,7 +110,7 @@ class RegistroHoras(models.Model):
     descripcion = models.TextField(null=True, blank=True) 
     estado = models.CharField(max_length=1, choices=ESTADOS, default='P') 
     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador_horas', null=True, blank=True, on_delete=models.SET_NULL)
-
+   
     def calcular_horas(self):
         """ Calcula las horas trabajadas a partir de la diferencia entre fecha_inicio y fecha_fin. """
         delta = self.fecha_fin - self.fecha_inicio
