@@ -196,42 +196,46 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
 class ListaSolicitudesRegistrosPendientesView(ListView):
     template_name = 'lista_solicitudes.html'
     context_object_name = 'pendientes'
-    
+
     def get_queryset(self):
         return []  # Retorna un queryset vacío para evitar la paginación automática de Django
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        
-        # Filtrar registros de horas pendientes
+
+        # Filtrar y obtener registros de horas y solicitudes pendientes
         registros_queryset = RegistroHoras.objects.filter(estado='P')
-        # Filtrar solicitudes pendientes
         solicitudes_queryset = Solicitud.objects.filter(estado='P')
-        
-        # Filtrar por rol del usuario
-        if user.rol in ['GG', 'JI', 'JD']:  # Si el usuario es jefe
+
+        # Filtrar por rol del usuario para que solo vea solicitudes y registros de sus subordinados
+        if user.rol in ['GG', 'JI', 'JD']:
             registros_queryset = registros_queryset.filter(usuario__in=user.subordinados.all())
             solicitudes_queryset = solicitudes_queryset.filter(usuario__in=user.subordinados.all())
-        else:  # Si no es jefe, mostrar listas vacías
+        else:
             registros_queryset = RegistroHoras.objects.none()
             solicitudes_queryset = Solicitud.objects.none()
-        
-        # Combinar los querysets
-        pendientes = list(registros_queryset) + list(solicitudes_queryset)
-        
-        # Añadir `tipo_objeto` para distinguir
+
+        # Combinar ambos querysets en una lista
+        pendientes = list(solicitudes_queryset) + list(registros_queryset)
+
+        # Definir prioridad de estado y tipo de objeto
+        estado_prioridad = {'P': 1, 'R': 2, 'A': 3}  # Orden: Pendiente, Rechazado, Aprobado
         for item in pendientes:
             item.tipo_objeto = 'solicitud' if isinstance(item, Solicitud) else 'registro'
-        
+            item.estado_orden = estado_prioridad.get(item.estado, 4)  # Asigna el orden de prioridad del estado
+
+        # Ordenar la lista combinada por `estado_orden` y luego por `id` en orden descendente
+        pendientes = sorted(pendientes, key=attrgetter('estado_orden', 'fecha_inicio'))
+
         # Paginación manual
-        paginator = Paginator(pendientes, 10)
+        paginator = Paginator(pendientes,8)  # 10 elementos por página
         page_number = self.request.GET.get('page')
         page_obj = paginator.get_page(page_number)
 
         # Añadir al contexto
         context['pendientes'] = page_obj
-        context['page_obj'] = page_obj
+        context['page_obj'] = page_obj  # Objeto de la página para usar en el template
 
         return context
 
