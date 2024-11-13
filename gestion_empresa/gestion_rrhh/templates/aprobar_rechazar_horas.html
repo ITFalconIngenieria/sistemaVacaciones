@@ -4,7 +4,7 @@
 
 {% block content %}
 <h2>Aprobar/Rechazar Registro de Horas</h2>
-
+<p><strong>Nº Proyecto:</strong> {{ object.numero_proyecto }}</p>
 <p><strong>Usuario:</strong> {{ object.usuario.get_full_name }}</p>
 <p><strong>Tipo de horas:</strong> {{ object.get_tipo_display }}</p>
 <p><strong>Fecha y Hora de Inicio:</strong> {{ object.fecha_inicio }}</p>
