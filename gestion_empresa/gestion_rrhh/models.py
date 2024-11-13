@@ -76,6 +76,7 @@ class Solicitud(models.Model):
     )
 
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    numero_solicitud=models.CharField(max_length=10,unique=True, blank=True)
     tipo = models.CharField(max_length=2, choices=TIPOS)
     fecha_inicio = models.DateTimeField()
     fecha_fin = models.DateTimeField()
