@@ -27,8 +27,9 @@ class Usuario(AbstractUser):
     fecha_entrada = models.DateField(null=True, blank=True)
     fecha_salida= models.DateField(null=True, blank=True)
     dias_vacaciones = models.IntegerField(default=0)
-    horas_extra_acumuladas = models.DecimalField(max_digits=5, decimal_places=2, default=0)  # Horas extra acumuladas
-    horas_compensatorias_disponibles = models.DecimalField(max_digits=5, decimal_places=2, default=0)  # Horas compensatorias disponibles
+    horas_extra_acumuladas = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    horas_compensatorias_disponibles = models.DecimalField(max_digits=5, decimal_places=2, default=0)  
+    mostrar_en_dashboard = models.BooleanField(default=True, help_text="Determina si el usuario aparecerá en el dashboard.")
     
     def calcular_dias_vacaciones(self):
         """Calcula los días de vacaciones disponibles según los años trabajados."""
@@ -54,7 +55,7 @@ class Usuario(AbstractUser):
         # Actualiza el campo `dias_vacaciones` con el resultado de `calcular_dias_vacaciones`
         if self.recalcular_vacaciones:
             self.dias_vacaciones = self.calcular_dias_vacaciones()
-        super().save(*args, **kwargs)  # Llama al método `save` del modelo base
+        super().save(*args, **kwargs) 
 
 
 class Departamento(models.Model):

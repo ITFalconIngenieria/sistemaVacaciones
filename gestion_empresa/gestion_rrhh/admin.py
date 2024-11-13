@@ -8,7 +8,7 @@ class UsuarioAdmin(UserAdmin):
             'fields': ('fecha_entrada', 'fecha_salida')
         }),
         ('Información Adicional', {
-            'fields': ('rol', 'departamento', 'jefe')
+            'fields': ('rol', 'departamento', 'jefe','mostrar_en_dashboard')
         }),
     )
 
