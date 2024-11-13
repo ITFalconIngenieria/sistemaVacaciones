@@ -4,7 +4,8 @@ from .models import Usuario, Solicitud
 from django import forms
 from .models import RegistroHoras, Usuario
 from .validators import validate_username
-
+from django.utils import timezone
+from django.core.exceptions import ValidationError
 class UsuarioCreationForm(UserCreationForm):
     username = forms.CharField(
         max_length=150,
@@ -59,7 +60,18 @@ class SolicitudForm(forms.ModelForm):
             if kwargs['instance'].tipo == 'V':
                 self.fields['fecha_fin'].required = True  
 
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_inicio = cleaned_data.get('fecha_inicio')
+        fecha_fin = cleaned_data.get('fecha_fin')
+        fecha_actual = timezone.now()
 
+        # Verificar que la fecha de inicio no sea menor a la fecha actual
+        if fecha_inicio and fecha_inicio < fecha_actual:
+            raise ValidationError("La fecha de inicio no puede ser anterior a la fecha actual.")
+
+        
+        return cleaned_data
 
 class RegistrarHorasForm(forms.ModelForm):
     class Meta:
