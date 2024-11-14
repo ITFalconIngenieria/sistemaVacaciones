@@ -137,19 +137,6 @@ class RegistroHoras(models.Model):
         super().save(*args, **kwargs)
 
 
-# class HistorialVacaciones(models.Model):
-#     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
-#     año = models.IntegerField()
-#     dias_asignados = models.IntegerField(default=0)
-#     dias_tomados = models.IntegerField(default=0)
-
-#     class Meta:
-#         unique_together = ('usuario', 'año')
-
-#     def dias_disponibles(self):
-#         """Retorna los días de vacaciones disponibles."""
-#         return self.dias_asignados - self.dias_tomados
-
 
 
 class HistorialVacaciones(models.Model):
@@ -160,22 +147,6 @@ class HistorialVacaciones(models.Model):
 
     class Meta:
         unique_together = ('usuario', 'año')
-
-    def dias_disponibles(self):
-        """Retorna los días de vacaciones disponibles en este registro, incluyendo ajustes."""
-        dias_sin_ajustes = self.dias_asignados - self.dias_tomados
-        ajuste_vacaciones = AjusteVacaciones.objects.filter(usuario=self.usuario).aggregate(
-            total_ajuste=models.Sum('dias_ajustados')
-        )['total_ajuste'] or 0
-
-        return dias_sin_ajustes + ajuste_vacaciones
-
-    @classmethod
-    def calcular_dias_disponibles_totales(cls, usuario):
-        """Calcula el total de días de vacaciones disponibles para el usuario considerando todos los años."""
-        historial = cls.objects.filter(usuario=usuario)
-        total_dias_disponibles = sum(item.dias_disponibles() for item in historial)
-        return total_dias_disponibles
 
 
 

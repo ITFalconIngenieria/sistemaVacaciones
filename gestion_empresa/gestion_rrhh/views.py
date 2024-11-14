@@ -16,20 +16,25 @@ from .forms import AjusteVacacionesForm
 from django.db.models import Sum
 
 
+
 @login_required
 def dashboard(request):
     usuario = request.user
+    # Calcula el total de días asignados y tomados considerando todo el historial del usuario
+    total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
+    total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
+    total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
+    # Calcula el total de días disponibles incluyendo los ajustes
+    dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
     
-    # Calcular el total de días de vacaciones disponibles considerando todo el historial
-    dias_vacaciones_disponibles = HistorialVacaciones.calcular_dias_disponibles_totales(usuario)
-
     context = {
-        'user': usuario,
-        'dias_vacaciones_disponibles': dias_vacaciones_disponibles,
+    'user': usuario,
+    'dias_vacaciones_disponibles': dias_disponibles,
+
     }
     return render(request, 'dashboard.html', context)
 
-@login_required
+
 class CrearUsuarioView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = Usuario
     form_class = UsuarioCreationForm
@@ -38,7 +43,8 @@ class CrearUsuarioView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 
     def test_func(self):
         return self.request.user.is_superuser or self.request.user.rol in ['GG', 'JI', 'JD']
-@login_required
+    
+
 # Solicitud para tomar vacaciones y horas compensatorias
 class CrearSolicitudView(LoginRequiredMixin, CreateView):
     model = Solicitud
@@ -64,13 +70,24 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         tipo_solicitud = form.cleaned_data.get('tipo')
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
+
+
+
+        usuario = self.request.user
+        # Calcula el total de días asignados y tomados considerando todo el historial del usuario
+        total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
+        total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
+        total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
+        # Calcula el total de días disponibles incluyendo los ajustes
+        dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
+    
         
         if tipo_solicitud == 'V':  # Vacaciones
             dias_solicitados = (fecha_fin.date() - fecha_inicio.date()).days + 1
             form.instance.dias_solicitados = dias_solicitados
             
             # Calcular el total de días disponibles en el historial
-            dias_disponibles_totales = HistorialVacaciones.calcular_dias_disponibles_totales(self.request.user)
+            dias_disponibles_totales = dias_disponibles
 
             # Verificar si hay suficientes días disponibles
             if dias_solicitados > dias_disponibles_totales:
@@ -104,8 +121,15 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
         usuario = self.request.user
 
+        # Calcula el total de días asignados y tomados considerando todo el historial del usuario
+        total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
+        total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
+        total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
+        # Calcula el total de días disponibles incluyendo los ajustes
+        dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
+
         # Obtener el total de días de vacaciones disponibles para todo el historial
-        dias_vacaciones = HistorialVacaciones.calcular_dias_disponibles_totales(usuario)
+        dias_vacaciones = dias_disponibles
 
         context.update({
             'usuario': usuario,
@@ -113,7 +137,7 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         })
         return context
     
-@login_required
+
 class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Solicitud
     fields = ['estado']  # Solo permite cambiar el estado (Pendiente, Aprobada, Rechazada)
@@ -190,7 +214,8 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
         form.instance.aprobado_por = self.request.user
         messages.success(self.request, 'La solicitud ha sido procesada exitosamente.')
         return super().form_valid(form)
-@login_required
+
+
 class RegistrarHorasView(LoginRequiredMixin, CreateView):
     model = RegistroHoras
     form_class = RegistrarHorasForm
@@ -230,7 +255,8 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         form.instance.numero_registro = form.cleaned_data['numero_registro']
         messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
         return super().form_valid(form)
-@login_required
+
+
 class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
     model = RegistroHoras
     fields = ['estado']
@@ -260,7 +286,8 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         form.instance.aprobado_por = self.request.user  # Asignar quién aprobó las horas
         messages.success(self.request, 'El registro de horas ha sido procesado exitosamente.')
         return super().form_valid(form)
-@login_required
+
+
 class ListaSolicitudesRegistrosPendientesView(ListView):
     template_name = 'lista_solicitudes.html'
     context_object_name = 'pendientes'
@@ -306,7 +333,8 @@ class ListaSolicitudesRegistrosPendientesView(ListView):
         context['page_obj'] = page_obj  # Objeto de la página para usar en el template
 
         return context
-@login_required
+
+
 class HistorialCombinadoView(ListView):
     template_name = 'historial_solicitudes.html'
     context_object_name = 'registros_y_solicitudes'
@@ -361,7 +389,8 @@ class HistorialCombinadoView(ListView):
         context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=user)
 
         return context
-@login_required
+
+
 class MiSolicitudYRegistroView(ListView):
     template_name = 'mis_solicitudes.html'
     context_object_name = 'solicitudes_y_registros'
@@ -409,7 +438,7 @@ class MiSolicitudYRegistroView(ListView):
 
         return context
 
-@login_required
+
 def ajuste_vacaciones(request):
     # Verifica que el usuario tenga rol de jefe
     if request.user.rol not in ['GG', 'JI', 'JD']:

@@ -11,12 +11,13 @@
                     <h4 class="mb-0">Dashboard</h4>
                 </div>
                 <div class="card-body">
-                    <p><strong>Bienvenido:</strong> {{ user.get_full_name }}</p>
-                    <p><strong>Rol:</strong> {{ user.get_rol_display }}</p>
-                    <p><strong>Departamento:</strong> {{ user.departamento }}</p>
-                    <p><strong>Días de vacaciones disponibles:</strong> {{ dias_vacaciones_disponibles }}</p>
-                    <p><strong>Horas Compensatorias disponibles:</strong> {{ user.horas_compensatorias_disponibles}}</p>
-                    <p><strong>Horas extra disponibles:</strong> {{ user.horas_extra_acumuladas}}</p>
+                    
+                        <p><strong>Bienvenido:</strong> {{ user.get_full_name }}</p>
+                        <p><strong>Rol:</strong> {{ user.get_rol_display }}</p>
+                        <p><strong>Departamento:</strong> {{ user.departamento }}</p>
+                        <p><strong>Días de vacaciones disponibles:</strong> {{ dias_vacaciones_disponibles}}</p>
+                        <p><strong>Horas Compensatorias disponibles:</strong> {{ user.horas_compensatorias_disponibles}}</p>
+                        <p><strong>Horas extra disponibles:</strong> {{ user.horas_extra_acumuladas}}</p>
                 </div>
             </div>
         </div>
