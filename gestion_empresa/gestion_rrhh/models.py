@@ -1,10 +1,12 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.core.exceptions import ValidationError
 from datetime import date
 from decimal import Decimal  # Importar Decimal
-
+from django.contrib.auth import get_user_model
 from .validators import validate_username
+
+
+
 class Usuario(AbstractUser):
     recalcular_vacaciones = True
     ROLES = (
@@ -26,36 +28,41 @@ class Usuario(AbstractUser):
     jefe = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, related_name='subordinados')
     fecha_entrada = models.DateField(null=True, blank=True)
     fecha_salida= models.DateField(null=True, blank=True)
-    dias_vacaciones = models.IntegerField(default=0)
     horas_extra_acumuladas = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     horas_compensatorias_disponibles = models.DecimalField(max_digits=5, decimal_places=2, default=0)  
     mostrar_en_dashboard = models.BooleanField(default=True, help_text="Determina si el usuario aparecerá en el dashboard.")
     
-    def calcular_dias_vacaciones(self):
-        """Calcula los días de vacaciones disponibles según los años trabajados."""
+    def asignar_vacaciones_anuales(self):
+        """Asigna días de vacaciones al usuario según los años trabajados."""
         if not self.fecha_entrada:
-            return 0  # Si no hay fecha de entrada registrada, no se puede calcular
-
+            return
+        
         hoy = date.today()
+        año_actual = hoy.year
         años_trabajados = hoy.year - self.fecha_entrada.year - ((hoy.month, hoy.day) < (self.fecha_entrada.month, self.fecha_entrada.day))
 
-        # Lógica para los días de vacaciones según los años trabajados
+        dias_vacaciones = 0
         if años_trabajados < 1:
-            return 0  # Menos de un año no tiene días de vacaciones
+            dias_vacaciones = 0
         elif años_trabajados == 1:
-            return 10  # Primer año: 10 días
+            dias_vacaciones = 10
         elif años_trabajados == 2:
-            return 12  # Segundo año: 12 días
+            dias_vacaciones = 12
         elif años_trabajados == 3:
-            return 15  # Tercer año: 15 días
+            dias_vacaciones = 15
         else:
-            return 20  # A partir del cuarto año: 20 días
+            dias_vacaciones = 20
+        
+        # Obtener o crear el registro de vacaciones para el año actual
+        historial, created = HistorialVacaciones.objects.get_or_create(usuario=self, año=año_actual)
+        if created:
+            historial.dias_asignados = dias_vacaciones
+            historial.save()
 
     def save(self, *args, **kwargs):
-        # Actualiza el campo `dias_vacaciones` con el resultado de `calcular_dias_vacaciones`
-        if self.recalcular_vacaciones:
-            self.dias_vacaciones = self.calcular_dias_vacaciones()
-        super().save(*args, **kwargs) 
+        """Override save to assign vacations automatically each year."""
+        self.asignar_vacaciones_anuales()
+        super().save(*args, **kwargs)
 
 
 class Departamento(models.Model):
@@ -130,3 +137,27 @@ class RegistroHoras(models.Model):
         super().save(*args, **kwargs)
 
 
+class HistorialVacaciones(models.Model):
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    año = models.IntegerField()
+    dias_asignados = models.IntegerField(default=0)
+    dias_tomados = models.IntegerField(default=0)
+
+    class Meta:
+        unique_together = ('usuario', 'año')
+
+    def dias_disponibles(self):
+        """Retorna los días de vacaciones disponibles."""
+        return self.dias_asignados - self.dias_tomados
+    
+
+
+
+class AjusteVacaciones(models.Model):
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    descripcion = models.TextField()
+    dias_ajustados = models.IntegerField()  # Puede ser positivo o negativo
+    fecha_ajuste = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Ajuste para {self.usuario.get_full_name()} - {self.dias_ajustados} días"

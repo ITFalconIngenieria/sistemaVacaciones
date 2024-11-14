@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Ajuste de Vacaciones{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Ajuste de Vacaciones</h2>
+    <p>Solo disponible para jefes.</p>
+    
+    {% for item in usuarios_vacaciones %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">{{ item.usuario.get_full_name }}</h5>
+            <p><strong>Rol:</strong> {{ item.usuario.get_rol_display }}</p>
+            <p><strong>Días de vacaciones asignados:</strong> {{ item.dias_asignados }}</p>
+            <p><strong>Días de vacaciones tomados:</strong> {{ item.dias_tomados }}</p>
+            <p><strong>Días ajustados:</strong> {{ item.dias_ajustados }}</p>
+            <p><strong>Días de vacaciones disponibles:</strong> {{ item.dias_disponibles }}</p>
+
+            <form method="post" action="{% url 'ajuste_vacaciones' %}">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <input type="hidden" name="usuario_id" value="{{ item.usuario.id }}">
+                <button type="submit" class="btn btn-primary">Ajustar Vacaciones</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

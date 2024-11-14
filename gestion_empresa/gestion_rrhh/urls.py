@@ -22,5 +22,7 @@ urlpatterns = [
     path('registrar-horas/', views.RegistrarHorasView.as_view(), name='registrar_horas'),
     path('aprobar-rechazar-horas/<int:pk>/', views.AprobarRechazarHorasView.as_view(), name='aprobar_rechazar_horas'),
 
+    path('ajuste-vacaciones/', views.ajuste_vacaciones, name='ajuste_vacaciones'),
+
 
 ]

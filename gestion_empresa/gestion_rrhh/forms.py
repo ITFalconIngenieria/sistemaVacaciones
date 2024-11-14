@@ -1,11 +1,12 @@
-from django import forms
+
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
-from .models import Usuario, Solicitud
-from django import forms
-from .models import RegistroHoras, Usuario
+from .models import Solicitud, RegistroHoras, Usuario, AjusteVacaciones
 from .validators import validate_username
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django import forms
+
+
 class UsuarioCreationForm(UserCreationForm):
     username = forms.CharField(
         max_length=150,
@@ -63,13 +64,18 @@ class SolicitudForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
         fecha_inicio = cleaned_data.get('fecha_inicio')
-        fecha_fin = cleaned_data.get('fecha_fin')
         fecha_actual = timezone.now()
 
-        # Verificar que la fecha de inicio no sea menor a la fecha actual
-        if fecha_inicio and fecha_inicio < fecha_actual:
-            raise ValidationError("La fecha de inicio no puede ser anterior a la fecha actual.")
+        # Convertir ambas fechas a formato de solo fecha (sin hora)
+        if fecha_inicio:
+            fecha_inicio_date = fecha_inicio.date()
+            fecha_actual_date = fecha_actual.date()
 
+            print("Fecha de inicio:", fecha_inicio_date, "Fecha actual:", fecha_actual_date)
+
+            # Validar que la fecha de inicio no sea anterior a la fecha actual
+            if fecha_inicio_date < fecha_actual_date:
+                raise ValidationError("La fecha de inicio no puede ser anterior a la fecha actual.")
         
         return cleaned_data
 
@@ -153,3 +159,15 @@ class RegistroHorasFilterForm(forms.Form):
         else:
             # Si no es jefe, ocultar el campo de usuario (asignar su propio registro)
             del self.fields['usuario']
+
+
+
+
+class AjusteVacacionesForm(forms.ModelForm):
+    class Meta:
+        model = AjusteVacaciones
+        fields = ['descripcion', 'dias_ajustados']
+        labels = {
+            'descripcion': 'Descripción del Ajuste',
+            'dias_ajustados': 'Días de Vacaciones Ajustados',
+        }
