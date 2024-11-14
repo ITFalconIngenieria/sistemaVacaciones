@@ -13,16 +13,15 @@ from operator import attrgetter
 from django.core.paginator import Paginator
 from datetime import date
 from .forms import AjusteVacacionesForm
+from django.db.models import Sum
+
 
 @login_required
 def dashboard(request):
     usuario = request.user
-    año_actual = date.today().year
-    # Obtén el historial de vacaciones del usuario para el año actual
-    historial_vacaciones = HistorialVacaciones.objects.filter(usuario=usuario, año=año_actual).first()
-    ajuste_vacaciones = AjusteVacaciones.objects.filter(usuario=usuario).first()
-    # Si existe, calcula los días disponibles; si no, asigna 0
-    dias_vacaciones_disponibles = (historial_vacaciones.dias_disponibles()+ ajuste_vacaciones.dias_ajustados) if historial_vacaciones else 0
+    
+    # Calcular el total de días de vacaciones disponibles considerando todo el historial
+    dias_vacaciones_disponibles = HistorialVacaciones.calcular_dias_disponibles_totales(usuario)
 
     context = {
         'user': usuario,
@@ -30,6 +29,7 @@ def dashboard(request):
     }
     return render(request, 'dashboard.html', context)
 
+@login_required
 class CrearUsuarioView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = Usuario
     form_class = UsuarioCreationForm
@@ -38,7 +38,7 @@ class CrearUsuarioView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 
     def test_func(self):
         return self.request.user.is_superuser or self.request.user.rol in ['GG', 'JI', 'JD']
-
+@login_required
 # Solicitud para tomar vacaciones y horas compensatorias
 class CrearSolicitudView(LoginRequiredMixin, CreateView):
     model = Solicitud
@@ -60,41 +60,60 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.usuario = self.request.user
+        form.instance.estado = 'P'
         tipo_solicitud = form.cleaned_data.get('tipo')
+        fecha_inicio = form.cleaned_data.get('fecha_inicio')
+        fecha_fin = form.cleaned_data.get('fecha_fin')
         
         if tipo_solicitud == 'V':  # Vacaciones
-            fecha_inicio = form.cleaned_data.get('fecha_inicio')
-            fecha_fin = form.cleaned_data.get('fecha_fin')
             dias_solicitados = (fecha_fin.date() - fecha_inicio.date()).days + 1
-
-            # Obtener el historial de vacaciones para el año en curso
-            año_actual = date.today().year
-            historial_vacaciones = HistorialVacaciones.objects.filter(usuario=self.request.user, año=año_actual).first()
+            form.instance.dias_solicitados = dias_solicitados
             
-            if historial_vacaciones and dias_solicitados > historial_vacaciones.dias_disponibles():
+            # Calcular el total de días disponibles en el historial
+            dias_disponibles_totales = HistorialVacaciones.calcular_dias_disponibles_totales(self.request.user)
+
+            # Verificar si hay suficientes días disponibles
+            if dias_solicitados > dias_disponibles_totales:
                 messages.warning(
                     self.request,
-                    f"Advertencia: estás solicitando {dias_solicitados} días, pero solo tienes {historial_vacaciones.dias_disponibles()} días disponibles."
+                    f"Advertencia: estás solicitando {dias_solicitados} días, pero solo tienes {dias_disponibles_totales} días disponibles."
                 )
-            else:
-                form.instance.dias_solicitados = dias_solicitados
+                return self.form_invalid(form)
+
+        elif tipo_solicitud == 'HC':  # Horas Compensatorias
+            diferencia = fecha_fin - fecha_inicio
+            horas_solicitadas = diferencia.total_seconds() / 3600
+
+            # Verificar si las horas solicitadas exceden el límite de 9 horas
+            if horas_solicitadas > 9:
+                form.add_error(None, "La cantidad de horas solicitadas excede las 9 horas permitidas.")
+                return self.form_invalid(form)
+            
+            # Verificar si el usuario tiene suficientes horas compensatorias disponibles
+            if horas_solicitadas > self.request.user.horas_compensatorias_disponibles:
+                form.add_error(None, f"No tienes suficientes horas compensatorias disponibles (horas disponibles: {self.request.user.horas_compensatorias_disponibles}).")
+                return self.form_invalid(form)
+            
+            # Asignar las horas solicitadas si todo está en orden
+            form.instance.horas = horas_solicitadas
+
+        form.instance.numero_solicitud = form.cleaned_data['numero_solicitud']
         return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         usuario = self.request.user
-        año_actual = date.today().year
-        historial_vacaciones = HistorialVacaciones.objects.filter(usuario=usuario, año=año_actual).first()
-        
-        # Calcular los días de vacaciones disponibles
-        dias_vacaciones = historial_vacaciones.dias_disponibles() if historial_vacaciones else 0
 
-        # Pasar la información al contexto
-        context['usuario'] = usuario
-        context['dias_vacaciones'] = dias_vacaciones
+        # Obtener el total de días de vacaciones disponibles para todo el historial
+        dias_vacaciones = HistorialVacaciones.calcular_dias_disponibles_totales(usuario)
+
+        context.update({
+            'usuario': usuario,
+            'dias_vacaciones': dias_vacaciones,
+        })
         return context
     
-
+@login_required
 class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Solicitud
     fields = ['estado']  # Solo permite cambiar el estado (Pendiente, Aprobada, Rechazada)
@@ -123,25 +142,33 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
         
         # Verificamos que el estado haya cambiado a 'Aprobada'
         if form.instance.estado == 'A':
-            año_actual = date.today().year
             if solicitud.tipo == 'V':  # Vacaciones
-                # Obtener o crear el historial de vacaciones para el año actual
-                historial_vacaciones, created = HistorialVacaciones.objects.get_or_create(
-                    usuario=solicitud.usuario, año=año_actual
-                )
+                # Calcular el total de días disponibles incluyendo todos los años y ajustes
+                dias_disponibles_totales = HistorialVacaciones.calcular_dias_disponibles_totales(solicitud.usuario)
 
-                ajsute_vacaciones, created = AjusteVacaciones.objects.get_or_create(
-                    usuario=solicitud.usuario
-                )
-                
-                if solicitud.dias_solicitados > (historial_vacaciones.dias_disponibles() + ajsute_vacaciones.dias_ajustados):
+                if solicitud.dias_solicitados > dias_disponibles_totales:
                     # Muestra una advertencia si el saldo será negativo
-                    dias_faltantes = solicitud.dias_solicitados - (historial_vacaciones.dias_disponibles() + AjusteVacaciones.dias_ajustados)
-                    messages.warning(self.request, f"Advertencia: Al aprobar esta solicitud, el saldo de días de vacaciones será negativo en {dias_faltantes} días.")
+                    dias_faltantes = solicitud.dias_solicitados - dias_disponibles_totales
+                    messages.warning(
+                        self.request, 
+                        f"Advertencia: Al aprobar esta solicitud, el saldo de días de vacaciones será negativo en {dias_faltantes} días."
+                    )
+                    return self.form_invalid(form)  # No permite la aprobación si los días son insuficientes
+
+                # Resta los días solicitados de los registros históricos, empezando por los más antiguos
+                dias_por_restar = solicitud.dias_solicitados
+                historial_vacaciones = HistorialVacaciones.objects.filter(usuario=solicitud.usuario).order_by('año')
                 
-                # Resta los días solicitados del historial de vacaciones
-                historial_vacaciones.dias_tomados += solicitud.dias_solicitados
-                historial_vacaciones.save()
+                for registro in historial_vacaciones:
+                    dias_disponibles = registro.dias_disponibles()
+                    if dias_por_restar <= dias_disponibles:
+                        registro.dias_tomados += dias_por_restar
+                        registro.save()
+                        break
+                    else:
+                        registro.dias_tomados += dias_disponibles
+                        dias_por_restar -= dias_disponibles
+                        registro.save()
 
             elif solicitud.tipo == 'HC':  # Horas Compensatorias
                 if solicitud.usuario.horas_compensatorias_disponibles >= solicitud.horas:
@@ -163,7 +190,7 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
         form.instance.aprobado_por = self.request.user
         messages.success(self.request, 'La solicitud ha sido procesada exitosamente.')
         return super().form_valid(form)
-
+@login_required
 class RegistrarHorasView(LoginRequiredMixin, CreateView):
     model = RegistroHoras
     form_class = RegistrarHorasForm
@@ -203,7 +230,7 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         form.instance.numero_registro = form.cleaned_data['numero_registro']
         messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
         return super().form_valid(form)
-
+@login_required
 class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
     model = RegistroHoras
     fields = ['estado']
@@ -233,7 +260,7 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         form.instance.aprobado_por = self.request.user  # Asignar quién aprobó las horas
         messages.success(self.request, 'El registro de horas ha sido procesado exitosamente.')
         return super().form_valid(form)
-
+@login_required
 class ListaSolicitudesRegistrosPendientesView(ListView):
     template_name = 'lista_solicitudes.html'
     context_object_name = 'pendientes'
@@ -279,7 +306,7 @@ class ListaSolicitudesRegistrosPendientesView(ListView):
         context['page_obj'] = page_obj  # Objeto de la página para usar en el template
 
         return context
-
+@login_required
 class HistorialCombinadoView(ListView):
     template_name = 'historial_solicitudes.html'
     context_object_name = 'registros_y_solicitudes'
@@ -334,7 +361,7 @@ class HistorialCombinadoView(ListView):
         context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=user)
 
         return context
-
+@login_required
 class MiSolicitudYRegistroView(ListView):
     template_name = 'mis_solicitudes.html'
     context_object_name = 'solicitudes_y_registros'
@@ -382,38 +409,35 @@ class MiSolicitudYRegistroView(ListView):
 
         return context
 
-
+@login_required
 def ajuste_vacaciones(request):
     # Verifica que el usuario tenga rol de jefe
-    if not request.user.rol in ['GG', 'JI', 'JD']:
+    if request.user.rol not in ['GG', 'JI', 'JD']:
         messages.error(request, "No tienes permiso para acceder a esta página.")
         return redirect('dashboard')  # Redirige a la página principal del dashboard
 
     usuarios = Usuario.objects.all()
-    año_actual = date.today().year
     usuarios_vacaciones = []
 
     for usuario in usuarios:
-        # Obtén o crea el historial de vacaciones para el año actual
-        historial = HistorialVacaciones.objects.filter(usuario=usuario, año=año_actual).first()
-        ajuste = AjusteVacaciones.objects.filter(usuario=usuario).first()
-        if historial:
-            dias_asignados = historial.dias_asignados
-            dias_tomados = historial.dias_tomados
-            dias_ajustados=ajuste.dias_ajustados
-            dias_disponibles = historial.dias_disponibles() + ajuste.dias_ajustados
-        else:
-            dias_asignados = dias_tomados =dias_ajustados= dias_disponibles = 0
+        # Calcula el total de días asignados y tomados considerando todo el historial del usuario
+        total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
+        total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
+        total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
+
+        # Calcula el total de días disponibles incluyendo los ajustes
+        dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
         
         # Agrega un diccionario con los datos al listado de usuarios
         usuarios_vacaciones.append({
             'usuario': usuario,
-            'dias_asignados': dias_asignados,
-            'dias_tomados': dias_tomados,
+            'dias_asignados': total_dias_asignados,
+            'dias_tomados': total_dias_tomados,
+            'dias_ajustados': total_dias_ajustados,
             'dias_disponibles': dias_disponibles,
-            'dias_ajustados': dias_ajustados,
         })
 
+    # Manejo del formulario de ajuste de vacaciones
     if request.method == 'POST':
         usuario_id = request.POST.get('usuario_id')
         usuario = get_object_or_404(Usuario, id=usuario_id)
@@ -422,12 +446,8 @@ def ajuste_vacaciones(request):
         if form.is_valid():
             ajuste = form.save(commit=False)
             ajuste.usuario = usuario
+            ajuste.año = date.today().year  # Registrar el año actual en el ajuste
             ajuste.save()
-
-            # # Actualizar el HistorialVacaciones para reflejar el ajuste
-            # historial, created = HistorialVacaciones.objects.get_or_create(usuario=usuario, año=año_actual)
-            # historial.dias_asignados += ajuste.dias_ajustados
-            # historial.save()
 
             messages.success(request, f"Vacaciones ajustadas para {usuario.get_full_name()}")
             return redirect('ajuste_vacaciones')
@@ -437,11 +457,8 @@ def ajuste_vacaciones(request):
     context = {
         'usuarios_vacaciones': usuarios_vacaciones,
         'form': form,
-        'año_actual': año_actual,
     }
     return render(request, 'ajuste_vacaciones.html', context)
-
-
 
 
 
