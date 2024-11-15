@@ -99,6 +99,41 @@ class Solicitud(models.Model):
 
 
 
+# class RegistroHoras(models.Model):
+#     TIPOS_HORAS = (
+#         ('HE', 'Registro Horas Extra'),
+#         ('HC', 'Registro Horas Compensatorias'),
+#     )
+#     ESTADOS = (
+#         ('P', 'Pendiente'),
+#         ('A', 'Aprobado'),
+#         ('R', 'Rechazado'),
+#     )
+#     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)  # Usuario al que se le registran las horas
+#     tipo = models.CharField(max_length=2, choices=TIPOS_HORAS)
+#     numero_registro = models.CharField(max_length=10,unique=True, blank=True)  # Número de registro personalizado
+#     fecha_inicio = models.DateTimeField()
+#     fecha_fin = models.DateTimeField() 
+#     horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True) 
+#     numero_proyecto=models.IntegerField(null=True, blank=True)
+#     descripcion = models.TextField(null=True, blank=True) 
+#     estado = models.CharField(max_length=1, choices=ESTADOS, default='P') 
+#     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador_horas', null=True, blank=True, on_delete=models.SET_NULL)
+   
+#     def calcular_horas(self):
+#         """ Calcula las horas trabajadas a partir de la diferencia entre fecha_inicio y fecha_fin. """
+#         delta = self.fecha_fin - self.fecha_inicio
+#         horas = delta.total_seconds() / 3600  # Convierte segundos a horas
+#         return Decimal(horas).quantize(Decimal('0.01'))  # Convertir a decimal y redondear a dos decimales
+
+#     def save(self, *args, **kwargs):
+#         # Calcular las horas automáticamente antes de guardar
+#         self.horas = self.calcular_horas()
+#          # Multiplicar horas por 2 si es domingo y el tipo es compensatorias (HC)
+#         if self.tipo == 'HC' and self.fecha_inicio.weekday() == 6 and self.fecha_fin.weekday()== 6:  # 6 representa domingo en Python
+#             self.horas *= 2
+#         super().save(*args, **kwargs)
+
 class RegistroHoras(models.Model):
     TIPOS_HORAS = (
         ('HE', 'Registro Horas Extra'),
@@ -109,15 +144,20 @@ class RegistroHoras(models.Model):
         ('A', 'Aprobado'),
         ('R', 'Rechazado'),
     )
+    ESTADOS_PAGO = (
+        ('NP', 'No Pagado'),
+        ('PG', 'Pagado'),
+    )
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)  # Usuario al que se le registran las horas
     tipo = models.CharField(max_length=2, choices=TIPOS_HORAS)
-    numero_registro = models.CharField(max_length=10,unique=True, blank=True)  # Número de registro personalizado
+    numero_registro = models.CharField(max_length=10, unique=True, blank=True)  # Número de registro personalizado
     fecha_inicio = models.DateTimeField()
     fecha_fin = models.DateTimeField() 
     horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True) 
-    numero_proyecto=models.IntegerField(null=True, blank=True)
+    numero_proyecto = models.IntegerField(null=True, blank=True)
     descripcion = models.TextField(null=True, blank=True) 
     estado = models.CharField(max_length=1, choices=ESTADOS, default='P') 
+    estado_pago = models.CharField(max_length=2, choices=ESTADOS_PAGO, default='NP')  # Estado de pago
     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador_horas', null=True, blank=True, on_delete=models.SET_NULL)
    
     def calcular_horas(self):
@@ -130,12 +170,9 @@ class RegistroHoras(models.Model):
         # Calcular las horas automáticamente antes de guardar
         self.horas = self.calcular_horas()
          # Multiplicar horas por 2 si es domingo y el tipo es compensatorias (HC)
-        if self.tipo == 'HC' and self.fecha_inicio.weekday() == 6 and self.fecha_fin.weekday()== 6:  # 6 representa domingo en Python
+        if self.tipo == 'HC' and self.fecha_inicio.weekday() == 6 and self.fecha_fin.weekday() == 6:  # 6 representa domingo en Python
             self.horas *= 2
-
-            
         super().save(*args, **kwargs)
-
 
 
 
@@ -159,3 +196,5 @@ class AjusteVacaciones(models.Model):
 
     def __str__(self):
         return f"Ajuste de {self.dias_ajustados} días para {self.usuario} en el año {self.año}"
+
+

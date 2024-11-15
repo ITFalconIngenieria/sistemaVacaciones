@@ -25,4 +25,9 @@ urlpatterns = [
     path('ajuste-vacaciones/', views.ajuste_vacaciones, name='ajuste_vacaciones'),
 
 
+    path('reporte-horas-extra/',views.reporte_horas_extra, name='reporte_horas_extra'),
+    path('cerrar-quincena/', views.cerrar_quincena, name='cerrar_quincena'),
+    
+
+
 ]

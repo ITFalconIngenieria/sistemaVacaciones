@@ -14,9 +14,9 @@ from django.core.paginator import Paginator
 from datetime import date
 from .forms import AjusteVacacionesForm
 from django.db.models import Sum
-
-
-
+from django.utils.timezone import now
+from datetime import timedelta
+import logging
 @login_required
 def dashboard(request):
     usuario = request.user
@@ -488,6 +488,42 @@ def ajuste_vacaciones(request):
         'form': form,
     }
     return render(request, 'ajuste_vacaciones.html', context)
+
+
+
+@login_required
+def reporte_horas_extra(request):
+    registros = RegistroHoras.objects.filter(
+        tipo='HE',
+        estado='A',  # Solo registros aprobados
+        estado_pago='NP'  # Solo no pagados
+    ).order_by('fecha_inicio')
+
+    # Calcular el total de horas extra pendientes de pago
+    total_horas = registros.aggregate(total_horas=Sum('horas'))['total_horas'] or 0
+
+    context = {
+        'registros': registros,
+        'total_horas': total_horas,
+    }
+    return render(request, 'reporte_horas_extra.html', context)
+
+
+@login_required
+def cerrar_quincena(request):
+    # Seleccionar todos los registros de horas extra no pagadas y aprobadas
+    registros_a_pagar = RegistroHoras.objects.filter(
+        tipo='HE',
+        estado='A',
+        estado_pago='NP'
+    )
+
+    # Actualizar el estado de pago a 'Pagado' para estos registros
+    registros_actualizados = registros_a_pagar.update(estado_pago='PG')
+
+    # Mostrar un mensaje de éxito con el número de registros actualizados
+    messages.success(request, f"{registros_actualizados} registros de horas extra han sido marcados como pagados.")
+    return redirect('reporte_horas_extra')
 
 
 
