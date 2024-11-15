@@ -27,6 +27,9 @@ urlpatterns = [
 
     path('reporte-horas-extra/',views.reporte_horas_extra, name='reporte_horas_extra'),
     path('cerrar-quincena/', views.cerrar_quincena, name='cerrar_quincena'),
+
+    path('generar-pdf/', views.GenPdf.as_view(), name='generar_pdf'),
+    
     
 
 

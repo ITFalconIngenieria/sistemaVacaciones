@@ -2,21 +2,26 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import render, redirect,  redirect, get_object_or_404
 from django.urls import reverse_lazy
-from django.views.generic import CreateView, ListView, UpdateView
+from django.views.generic import CreateView, ListView, UpdateView, View
 from .models import Usuario, Solicitud, HistorialVacaciones, AjusteVacaciones
 from .forms import UsuarioCreationForm, SolicitudForm, RegistrarHorasForm,RegistroHorasFilterForm
 from django.contrib import messages
 from django.contrib.auth import logout
 from .models import RegistroHoras
-from django.core.exceptions import ValidationError
 from operator import attrgetter
 from django.core.paginator import Paginator
 from datetime import date
 from .forms import AjusteVacacionesForm
 from django.db.models import Sum
-from django.utils.timezone import now
-from datetime import timedelta
-import logging
+from xhtml2pdf import pisa
+from django.template.loader import get_template
+from io import BytesIO
+from django.http import HttpResponse
+from django.conf import settings
+import os
+from django.utils import timezone
+import locale
+from collections import defaultdict
 @login_required
 def dashboard(request):
     usuario = request.user
@@ -490,24 +495,33 @@ def ajuste_vacaciones(request):
     return render(request, 'ajuste_vacaciones.html', context)
 
 
-
 @login_required
 def reporte_horas_extra(request):
+    # Filtrar registros de horas extra aprobadas y no pagadas
     registros = RegistroHoras.objects.filter(
         tipo='HE',
         estado='A',  # Solo registros aprobados
         estado_pago='NP'  # Solo no pagados
-    ).order_by('fecha_inicio')
+    ).order_by('usuario', 'fecha_inicio')
 
-    # Calcular el total de horas extra pendientes de pago
-    total_horas = registros.aggregate(total_horas=Sum('horas'))['total_horas'] or 0
+    # Agrupar los registros por usuario y calcular horas totales por usuario
+    registros_por_usuario = {}
+    for registro in registros:
+        usuario = registro.usuario
+        if usuario not in registros_por_usuario:
+            registros_por_usuario[usuario] = {'registros': [], 'total_horas': 0}
+        
+        registros_por_usuario[usuario]['registros'].append(registro)
+        registros_por_usuario[usuario]['total_horas'] += registro.horas
+
+    # Calcular el total general de horas extra
+    total_horas = sum(user_data['total_horas'] for user_data in registros_por_usuario.values())
 
     context = {
-        'registros': registros,
+        'registros_por_usuario': registros_por_usuario,
         'total_horas': total_horas,
     }
     return render(request, 'reporte_horas_extra.html', context)
-
 
 @login_required
 def cerrar_quincena(request):
@@ -525,6 +539,62 @@ def cerrar_quincena(request):
     messages.success(request, f"{registros_actualizados} registros de horas extra han sido marcados como pagados.")
     return redirect('reporte_horas_extra')
 
+
+
+
+
+
+class GenPdf(View):
+    def get(self, request, *args, **kwargs):
+        try:
+            locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')
+        except:
+            try:
+                locale.setlocale(locale.LC_TIME, 'Spanish_Spain.1252')
+            except:
+                pass
+
+        # Obtener los registros y agruparlos por usuario
+        registros = RegistroHoras.objects.filter(
+            tipo='HE',
+            estado='A',
+            estado_pago='NP'
+        ).order_by('fecha_inicio')
+
+        # Agrupar registros por usuario y calcular total de horas por usuario
+        registros_por_usuario = {}
+        for registro in registros:
+            usuario_nombre = registro.usuario.get_full_name()
+            if usuario_nombre not in registros_por_usuario:
+                registros_por_usuario[usuario_nombre] = {
+                    'registros': [],
+                    'total_horas': 0,
+                }
+            registros_por_usuario[usuario_nombre]['registros'].append({
+                'numero_registro': registro.numero_registro,
+                'numero_proyecto': registro.numero_proyecto,
+                'fecha_inicio': registro.fecha_inicio.strftime("%#d de %B de %Y a las %H:%M"),
+                'fecha_fin': registro.fecha_fin.strftime("%#d de %B de %Y a las %H:%M"),
+                'horas': f"{registro.horas:.2f}",
+                'descripcion': registro.descripcion or ''
+            })
+            registros_por_usuario[usuario_nombre]['total_horas'] += float(registro.horas)
+
+        context = {
+            'registros_por_usuario': registros_por_usuario,
+            'year': timezone.now().year,
+        }
+
+        template = get_template('reporte_horas_extra_pdf.html')
+        html = template.render(context)
+
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="reporte_horas_extra.pdf"'
+        pisa_status = pisa.CreatePDF(html, dest=response, encoding='UTF-8')
+
+        if pisa_status.err:
+            return HttpResponse('Error al generar el PDF', status=400)
+        return response
 
 
 def logout_view(request):

@@ -19,24 +19,36 @@
             </tr>
         </thead>
         <tbody>
-            {% for registro in registros %}
-            <tr>
-                <td>{{ registro.usuario.get_full_name }}</td>
-                <td>{{ registro.numero_registro }}</td>
-                <td>{{ registro.numero_proyecto }}</td>
-                <td>{{ registro.fecha_inicio }}</td>
-                <td>{{ registro.fecha_fin }}</td>
-                <td>{{ registro.horas }}</td>
-                <td>{{ registro.descripcion }}</td>
-            </tr>
+            {% for usuario, data in registros_por_usuario.items %}
+                {% for registro in data.registros %}
+                <tr>
+                    <td>{{ usuario.get_full_name }}</td>
+                    <td>{{ registro.numero_registro }}</td>
+                    <td>{{ registro.numero_proyecto }}</td>
+                    <td>{{ registro.fecha_inicio }}</td>
+                    <td>{{ registro.fecha_fin }}</td>
+                    <td>{{ registro.horas }}</td>
+                    <td>{{ registro.descripcion }}</td>
+                </tr>
+                {% endfor %}
+                <!-- Mostrar el total de horas para este usuario -->
+                <tr>
+                    <th colspan="5">Total de Horas extra para {{ usuario.get_full_name }}</th>
+                    <td>{{ data.total_horas }}</td>
+                    <td></td> <!-- Celda vacía para alinear correctamente -->
+                </tr>
             {% empty %}
             <tr>
-                <td colspan="5">No hay registros de horas extra para esta quincena.</td>
+                <td colspan="7">No hay registros de horas extra para esta quincena.</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+     <!-- Botón para generar PDF y habilitar el botón "Cerrar Quincena" -->
+     <a href="{% url 'generar_pdf' %}" class="btn btn-success" id="generate-report-btn">Generar Reporte</a>
 
-    <a href="{% url 'cerrar_quincena' %}" class="btn btn-success">Cerrar Quincena</a>
+     <!-- Botón "Cerrar Quincena" inicialmente deshabilitado -->
+     <a href="{% url 'cerrar_quincena' %}" class="btn btn-success" id="close-quincena-btn" >Cerrar Quincena</a>
 </div>
+
 {% endblock %}
