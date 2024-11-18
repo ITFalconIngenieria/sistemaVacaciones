@@ -15,13 +15,10 @@ from .forms import AjusteVacacionesForm
 from django.db.models import Sum
 from xhtml2pdf import pisa
 from django.template.loader import get_template
-from io import BytesIO
 from django.http import HttpResponse
-from django.conf import settings
-import os
 from django.utils import timezone
 import locale
-from collections import defaultdict
+from django.contrib.auth.views import PasswordChangeView
 @login_required
 def dashboard(request):
     usuario = request.user
@@ -29,7 +26,6 @@ def dashboard(request):
     total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
     total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
     total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
-    # Calcula el total de días disponibles incluyendo los ajustes
     dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
     
     context = {
@@ -38,6 +34,31 @@ def dashboard(request):
 
     }
     return render(request, 'dashboard.html', context)
+
+
+def PerfilUsuario(request):
+    usuario = request.user
+    # Calcula el total de días asignados y tomados considerando todo el historial del usuario
+    total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
+    total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
+    total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
+    dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
+    
+    context = {
+    'user': usuario,
+    'dias_vacaciones_disponibles': dias_disponibles,
+
+    }
+    return render(request, 'mi_perfil.html', context)
+
+
+class CambiarContrasenaView(PasswordChangeView):
+    template_name = 'cambiar_contrasena.html' 
+    success_url = reverse_lazy('perfil_usuario')
+
+    def form_valid(self, form):
+        messages.success(self.request, '¡Tu contraseña ha sido cambiada exitosamente!')
+        return super().form_valid(form)
 
 
 class CrearUsuarioView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
@@ -523,23 +544,6 @@ def reporte_horas_extra(request):
     }
     return render(request, 'reporte_horas_extra.html', context)
 
-# @login_required
-# def cerrar_quincena(request):
-#     # Seleccionar todos los registros de horas extra no pagadas y aprobadas
-#     registro = RegistroHoras.objects.all()
-#     registros_a_pagar = RegistroHoras.objects.filter(
-#         tipo='HE',
-#         estado='A',
-#         estado_pago='NP'
-#     )
-
-#     # Actualizar el estado de pago a 'Pagado' para estos registros
-#     registros_actualizados = registros_a_pagar.update(estado_pago='PG')
-
-#     # Mostrar un mensaje de éxito con el número de registros actualizados
-#     messages.success(request, f"{registros_actualizados} registros de horas extra han sido marcados como pagados.")
-#     return redirect('reporte_horas_extra')
-
 
 @login_required
 def cerrar_quincena(request):
@@ -562,9 +566,6 @@ def cerrar_quincena(request):
     # Mostrar un mensaje de éxito con el número de registros actualizados
     messages.success(request, f"{registros_actualizados} registros de horas extra han sido marcados como pagados.")
     return redirect('reporte_horas_extra')
-
-
-
 
 
 

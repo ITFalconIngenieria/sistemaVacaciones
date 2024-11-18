@@ -11,7 +11,10 @@ urlpatterns = [
     # Usuarios
     path('crear-usuario/', views.CrearUsuarioView.as_view(), name='crear_usuario'),
 
-    # Solicitudes de vacaciones/horas extra/compensatorias
+    path('perfil-usuario/', views.PerfilUsuario, name='perfil_usuario'),
+    path('cambiar-contrasena/', views.CambiarContrasenaView.as_view(), name='cambiar_contrasena'),
+
+    #Solicitudes de vacaciones/horas extra/compensatorias
     path('crear-solicitud/', views.CrearSolicitudView.as_view(), name='crear_solicitud'),
     path('solicitudes/', views.ListaSolicitudesRegistrosPendientesView.as_view(), name='lista_solicitudes'),  # Ruta única para la lista de solicitudes
     path('solicitud/<int:pk>/aprobar-rechazar/', views.AprobarRechazarSolicitudView.as_view(), name='aprobar_rechazar_solicitud'),
