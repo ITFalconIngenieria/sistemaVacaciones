@@ -11,7 +11,7 @@ class UsuarioCreationForm(UserCreationForm):
     username = forms.CharField(
         max_length=150,
         required=True,
-        validators=[validate_username],  # Aplicar el validador de solo letras
+        validators=[validate_username],
         help_text="Solo letras, sin números ni caracteres especiales."
     )
     
@@ -56,7 +56,6 @@ class SolicitudForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Verificar si la instancia existe y si tiene un tipo
         if 'instance' in kwargs and kwargs['instance'] is not None:
             if kwargs['instance'].tipo == 'V':
                 self.fields['fecha_fin'].required = True  
@@ -66,12 +65,10 @@ class SolicitudForm(forms.ModelForm):
         fecha_inicio = cleaned_data.get('fecha_inicio')
         fecha_actual = timezone.now()
 
-        # Convertir ambas fechas a formato de solo fecha (sin hora)
         if fecha_inicio:
             fecha_inicio_date = fecha_inicio.date()
             fecha_actual_date = fecha_actual.date()
 
-            # Validar que la fecha de inicio no sea anterior a la fecha actual
             if fecha_inicio_date < fecha_actual_date:
                 raise ValidationError("La fecha de inicio no puede ser anterior a la fecha actual.")
         
@@ -124,7 +121,6 @@ class RegistrarHorasForm(forms.ModelForm):
         fecha_actual = timezone.now()
 
 
-         # Verificar si numero_proyecto está vacío o es 0 y si descripcion está vacío
         if (numero_proyecto is None or numero_proyecto == 0) and not descripcion:
             raise forms.ValidationError(
                 "Debe llenar la descripción porque el número de proyecto está vacío o es 0."
@@ -145,22 +141,17 @@ class RegistroHorasFilterForm(forms.Form):
         ('R', 'Rechazada'),
     )
 
-    # Campo para filtrar por estado
     estado = forms.ChoiceField(choices=[('', 'Todos')] + list(ESTADOS), required=False, label="Estado")
     
-    # Campo para filtrar por usuario (solo disponible para jefes)
     usuario = forms.ModelChoiceField(queryset=Usuario.objects.none(), required=False, label="Usuario")
 
     def __init__(self, *args, **kwargs):
-        # Obtener el usuario autenticado del formulario
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # Si el usuario es jefe, mostrar sus subordinados más él mismo
         if self.user and self.user.rol in ['GG', 'JI', 'JD']:
             self.fields['usuario'].queryset = Usuario.objects.filter(jefe=self.user) | Usuario.objects.filter(id=self.user.id)
         else:
-            # Si no es jefe, ocultar el campo de usuario (asignar su propio registro)
             del self.fields['usuario']
 
 

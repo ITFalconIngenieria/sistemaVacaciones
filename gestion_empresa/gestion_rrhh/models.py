@@ -16,11 +16,10 @@ class Usuario(AbstractUser):
         ('IN', 'Ingeniero'),
         ('TE', 'Técnico'),
     )
-    # Aplicar el validador personalizado al campo `username`
     username = models.CharField(
         max_length=150,
-        unique=True,  # Mantener la unicidad
-        validators=[validate_username],  # Agregar el validador de solo letras
+        unique=True,
+        validators=[validate_username],
         help_text="Solo letras, sin números ni caracteres especiales."
     )
     rol = models.CharField(max_length=2, choices=ROLES)
@@ -53,7 +52,6 @@ class Usuario(AbstractUser):
         else:
             dias_vacaciones = 20
         
-        # Obtener o crear el registro de vacaciones para el año actual
         historial, created = HistorialVacaciones.objects.get_or_create(usuario=self, año=año_actual)
         if created:
             historial.dias_asignados = dias_vacaciones
@@ -98,42 +96,6 @@ class Solicitud(models.Model):
         super().save(*args, **kwargs)
 
 
-
-# class RegistroHoras(models.Model):
-#     TIPOS_HORAS = (
-#         ('HE', 'Registro Horas Extra'),
-#         ('HC', 'Registro Horas Compensatorias'),
-#     )
-#     ESTADOS = (
-#         ('P', 'Pendiente'),
-#         ('A', 'Aprobado'),
-#         ('R', 'Rechazado'),
-#     )
-#     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)  # Usuario al que se le registran las horas
-#     tipo = models.CharField(max_length=2, choices=TIPOS_HORAS)
-#     numero_registro = models.CharField(max_length=10,unique=True, blank=True)  # Número de registro personalizado
-#     fecha_inicio = models.DateTimeField()
-#     fecha_fin = models.DateTimeField() 
-#     horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True) 
-#     numero_proyecto=models.IntegerField(null=True, blank=True)
-#     descripcion = models.TextField(null=True, blank=True) 
-#     estado = models.CharField(max_length=1, choices=ESTADOS, default='P') 
-#     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador_horas', null=True, blank=True, on_delete=models.SET_NULL)
-   
-#     def calcular_horas(self):
-#         """ Calcula las horas trabajadas a partir de la diferencia entre fecha_inicio y fecha_fin. """
-#         delta = self.fecha_fin - self.fecha_inicio
-#         horas = delta.total_seconds() / 3600  # Convierte segundos a horas
-#         return Decimal(horas).quantize(Decimal('0.01'))  # Convertir a decimal y redondear a dos decimales
-
-#     def save(self, *args, **kwargs):
-#         # Calcular las horas automáticamente antes de guardar
-#         self.horas = self.calcular_horas()
-#          # Multiplicar horas por 2 si es domingo y el tipo es compensatorias (HC)
-#         if self.tipo == 'HC' and self.fecha_inicio.weekday() == 6 and self.fecha_fin.weekday()== 6:  # 6 representa domingo en Python
-#             self.horas *= 2
-#         super().save(*args, **kwargs)
-
 class RegistroHoras(models.Model):
     TIPOS_HORAS = (
         ('HE', 'Registro Horas Extra'),
@@ -148,29 +110,27 @@ class RegistroHoras(models.Model):
         ('NP', 'No Pagado'),
         ('PG', 'Pagado'),
     )
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)  # Usuario al que se le registran las horas
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
     tipo = models.CharField(max_length=2, choices=TIPOS_HORAS)
-    numero_registro = models.CharField(max_length=10, unique=True, blank=True)  # Número de registro personalizado
+    numero_registro = models.CharField(max_length=10, unique=True, blank=True)
     fecha_inicio = models.DateTimeField()
     fecha_fin = models.DateTimeField() 
     horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True) 
     numero_proyecto = models.IntegerField(null=True, blank=True)
     descripcion = models.TextField(null=True, blank=True) 
     estado = models.CharField(max_length=1, choices=ESTADOS, default='P') 
-    estado_pago = models.CharField(max_length=2, choices=ESTADOS_PAGO, default='NP')  # Estado de pago
+    estado_pago = models.CharField(max_length=2, choices=ESTADOS_PAGO, default='NP')
     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador_horas', null=True, blank=True, on_delete=models.SET_NULL)
    
     def calcular_horas(self):
         """ Calcula las horas trabajadas a partir de la diferencia entre fecha_inicio y fecha_fin. """
         delta = self.fecha_fin - self.fecha_inicio
-        horas = delta.total_seconds() / 3600  # Convierte segundos a horas
-        return Decimal(horas).quantize(Decimal('0.01'))  # Convertir a decimal y redondear a dos decimales
+        horas = delta.total_seconds() / 3600
+        return Decimal(horas).quantize(Decimal('0.01'))
 
     def save(self, *args, **kwargs):
-        # Calcular las horas automáticamente antes de guardar
         self.horas = self.calcular_horas()
-         # Multiplicar horas por 2 si es domingo y el tipo es compensatorias (HC)
-        if self.tipo == 'HC' and self.fecha_inicio.weekday() == 6 and self.fecha_fin.weekday() == 6:  # 6 representa domingo en Python
+        if self.tipo == 'HC' and self.fecha_inicio.weekday() == 6 and self.fecha_fin.weekday() == 6:
             self.horas *= 2
         super().save(*args, **kwargs)
 
@@ -189,7 +149,7 @@ class HistorialVacaciones(models.Model):
 
 class AjusteVacaciones(models.Model):
     usuario = models.ForeignKey('Usuario', on_delete=models.CASCADE)
-    año = models.IntegerField()  # Agrega este campo
+    año = models.IntegerField()
     dias_ajustados = models.IntegerField(default=0)
     descripcion = models.TextField(null=True, blank=True)
     fecha_ajuste = models.DateField(auto_now_add=True)
