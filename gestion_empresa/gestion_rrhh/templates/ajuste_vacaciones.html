@@ -4,27 +4,45 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Ajuste de Vacaciones</h2>
-    <p>Solo disponible para jefes.</p>
-    
-    {% for item in usuarios_vacaciones %}
-    <div class="card mb-3">
-        <div class="card-body">
-            <h5 class="card-title">{{ item.usuario.get_full_name }}</h5>
-            <p><strong>Rol:</strong> {{ item.usuario.get_rol_display }}</p>
-            <p><strong>Días de vacaciones asignados:</strong> {{ item.dias_asignados }}</p>
-            <p><strong>Días de vacaciones tomados:</strong> {{ item.dias_tomados }}</p>
-            <p><strong>Días ajustados:</strong> {{ item.dias_ajustados }}</p>
-            <p><strong>Días de vacaciones disponibles:</strong> {{ item.dias_disponibles }}</p>
+    <h2 class="text-center mb-4">Ajuste de Vacaciones</h2>
+    <p class="text-muted text-center">Esta opción está disponible solo para jefes.</p>
 
-            <form method="post" action="{% url 'ajuste_vacaciones' %}">
-                {% csrf_token %}
-                {{ form.as_p }}
-                <input type="hidden" name="usuario_id" value="{{ item.usuario.id }}">
-                <button type="submit" class="btn btn-primary">Ajustar Vacaciones</button>
-            </form>
+    <div class="row">
+        {% for item in usuarios_vacaciones %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">{{ item.usuario.get_full_name }}</h5>
+                    <p class="text-secondary mb-1"><strong>Rol:</strong> {{ item.usuario.get_rol_display }}</p>
+                    <ul class="list-group list-group-flush mb-3">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Días Asignados
+                            <span class="badge bg-primary rounded-pill">{{ item.dias_asignados }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Días Tomados
+                            <span class="badge bg-warning rounded-pill">{{ item.dias_tomados }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Días Ajustados
+                            <span class="badge bg-info rounded-pill">{{ item.dias_ajustados }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Días Disponibles
+                            <span class="badge bg-success rounded-pill">{{ item.dias_disponibles }}</span>
+                        </li>
+                    </ul>
+
+                    <form method="post" action="{% url 'ajuste_vacaciones' %}">
+                        {% csrf_token %}
+                        {{ form.as_p }}
+                        <input type="hidden" name="usuario_id" value="{{ item.usuario.id }}">
+                        <button type="submit" class="btn btn-primary w-100">Ajustar Vacaciones</button>
+                    </form>
+                </div>
+            </div>
         </div>
+        {% endfor %}
     </div>
-    {% endfor %}
 </div>
 {% endblock %}

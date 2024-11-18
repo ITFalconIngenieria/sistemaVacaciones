@@ -71,8 +71,6 @@ class SolicitudForm(forms.ModelForm):
             fecha_inicio_date = fecha_inicio.date()
             fecha_actual_date = fecha_actual.date()
 
-            print("Fecha de inicio:", fecha_inicio_date, "Fecha actual:", fecha_actual_date)
-
             # Validar que la fecha de inicio no sea anterior a la fecha actual
             if fecha_inicio_date < fecha_actual_date:
                 raise ValidationError("La fecha de inicio no puede ser anterior a la fecha actual.")
@@ -123,6 +121,11 @@ class RegistrarHorasForm(forms.ModelForm):
         fecha_fin = cleaned_data.get('fecha_fin')
         numero_proyecto = cleaned_data.get('numero_proyecto')
         descripcion = cleaned_data.get('descripcion')
+        fecha_actual = timezone.now()
+
+        if fecha_inicio:
+            fecha_inicio_date = fecha_inicio.date()
+            fecha_actual_date = fecha_actual.date()
 
          # Verificar si numero_proyecto está vacío o es 0 y si descripcion está vacío
         if (numero_proyecto is None or numero_proyecto == 0) and not descripcion:
@@ -132,6 +135,9 @@ class RegistrarHorasForm(forms.ModelForm):
 
         if fecha_inicio and fecha_fin and fecha_fin <= fecha_inicio:
             raise forms.ValidationError("La fecha y hora de fin deben ser posteriores a la fecha y hora de inicio.")
+        
+        if fecha_inicio and fecha_fin and fecha_inicio > fecha_actual:
+            raise forms.ValidationError("Imposible registrar horas para el futuro. favor valide las fechas")
 
         return cleaned_data
     
@@ -170,4 +176,14 @@ class AjusteVacacionesForm(forms.ModelForm):
         labels = {
             'descripcion': 'Descripción del Ajuste',
             'dias_ajustados': 'Días de Vacaciones Ajustados',
+        }
+        widgets = {
+            'descripcion': forms.Textarea(attrs={
+                'rows': 3,  
+                'style': 'width: 100%; resize: none;',
+                'placeholder': 'Motivo del ajuste', 
+            }),
+            'dias_ajustados': forms.NumberInput(attrs={
+                'style': 'width: 50%;', 
+            })
         }

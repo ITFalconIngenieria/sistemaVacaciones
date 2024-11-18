@@ -270,7 +270,6 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
 
     def test_func(self):
         registro = self.get_object()
-        registro = self.get_object()
         return registro.usuario != self.request.user and self.request.user.rol in ['GG', 'JI', 'JD']
 
 
@@ -450,7 +449,8 @@ def ajuste_vacaciones(request):
         messages.error(request, "No tienes permiso para acceder a esta página.")
         return redirect('dashboard')  # Redirige a la página principal del dashboard
 
-    usuarios = Usuario.objects.all()
+    usuarios = Usuario.objects.filter(is_superuser=False)
+
     usuarios_vacaciones = []
 
     for usuario in usuarios:
@@ -523,6 +523,24 @@ def reporte_horas_extra(request):
     }
     return render(request, 'reporte_horas_extra.html', context)
 
+# @login_required
+# def cerrar_quincena(request):
+#     # Seleccionar todos los registros de horas extra no pagadas y aprobadas
+#     registro = RegistroHoras.objects.all()
+#     registros_a_pagar = RegistroHoras.objects.filter(
+#         tipo='HE',
+#         estado='A',
+#         estado_pago='NP'
+#     )
+
+#     # Actualizar el estado de pago a 'Pagado' para estos registros
+#     registros_actualizados = registros_a_pagar.update(estado_pago='PG')
+
+#     # Mostrar un mensaje de éxito con el número de registros actualizados
+#     messages.success(request, f"{registros_actualizados} registros de horas extra han sido marcados como pagados.")
+#     return redirect('reporte_horas_extra')
+
+
 @login_required
 def cerrar_quincena(request):
     # Seleccionar todos los registros de horas extra no pagadas y aprobadas
@@ -532,12 +550,19 @@ def cerrar_quincena(request):
         estado_pago='NP'
     )
 
+    # Iterar sobre los registros para actualizar las horas extra acumuladas por usuario
+    for registro in registros_a_pagar:
+        usuario = registro.usuario  # Obtener el usuario relacionado
+        usuario.horas_extra_acumuladas =0  # Descontar las horas del registro
+        usuario.save()  # Guardar los cambios en el usuario
+
     # Actualizar el estado de pago a 'Pagado' para estos registros
     registros_actualizados = registros_a_pagar.update(estado_pago='PG')
 
     # Mostrar un mensaje de éxito con el número de registros actualizados
     messages.success(request, f"{registros_actualizados} registros de horas extra han sido marcados como pagados.")
     return redirect('reporte_horas_extra')
+
 
 
 
