@@ -23,23 +23,6 @@ from django.utils.timezone import now, timedelta
 from .models import Solicitud
 import json
 
-# @login_required
-# def dashboard(request):
-#     usuario = request.user
-#     # Calcula el total de días asignados y tomados considerando todo el historial del usuario
-#     total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
-#     total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
-#     total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
-#     dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
-    
-#     context = {
-#     'user': usuario,
-#     'dias_vacaciones_disponibles': dias_disponibles,
-
-#     }
-#     return render(request, 'dashboard.html', context)
-
-
 
 @login_required
 def dashboard(request):
@@ -65,14 +48,14 @@ def dashboard(request):
         if solicitud['tipo'] == 'V':
             title = f"{nombre_completo} (Vacaciones)"
             description = f'Inicio: {solicitud["fecha_inicio"].strftime("%Y-%m-%d")} - Fin: {solicitud["fecha_fin"].strftime("%Y-%m-%d")}'
-            start = solicitud['fecha_inicio'].strftime("%Y-%m-%d")  # Solo fecha
-            end = (solicitud['fecha_fin'] + timedelta(days=1)).strftime("%Y-%m-%d")  # Sumar 1 día
+            start = solicitud['fecha_inicio'].strftime("%Y-%m-%d") 
+            end = (solicitud['fecha_fin'] + timedelta(days=1)).strftime("%Y-%m-%d") 
             color = "#e74c3c"
         else:  # Horas compensatorias
             title = f"{nombre_completo} (HC)"
             description = f"Inicio: {solicitud['fecha_inicio'].strftime('%H:%M')} - Fin: {solicitud['fecha_fin'].strftime('%H:%M')}"
-            start = solicitud['fecha_inicio'].strftime("%Y-%m-%d")  # Cambiar a solo fecha
-            end = solicitud['fecha_fin'].strftime("%Y-%m-%d")  # Cambiar a solo fecha
+            start = solicitud['fecha_inicio'].strftime("%Y-%m-%d") 
+            end = solicitud['fecha_fin'].strftime("%Y-%m-%d")
             color = "#f39c12"
 
 
@@ -86,7 +69,7 @@ def dashboard(request):
     context = {
         'user': usuario,
         'dias_vacaciones_disponibles': dias_disponibles,
-        'eventos': json.dumps(eventos),  # Convertimos los eventos a JSON
+        'eventos': json.dumps(eventos),
     }
     return render(request, 'dashboard.html', context)
 
@@ -95,7 +78,6 @@ def dashboard(request):
 
 def PerfilUsuario(request):
     usuario = request.user
-    # Calcula el total de días asignados y tomados considerando todo el historial del usuario
     total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
     total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
     total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
@@ -155,8 +137,18 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         fecha_fin = form.cleaned_data.get('fecha_fin')
 
 
-
         usuario = self.request.user
+        solicitudes_en_conflicto = Solicitud.objects.filter(
+            usuario=usuario,
+            fecha_inicio__lte=fecha_fin,
+            fecha_fin__gte=fecha_inicio
+        )
+        if solicitudes_en_conflicto.exists():
+            print("entraaa")
+            form.add_error(None, "Ya tienes una solicitud de horas que se solapa con este rango. Por favor, selecciona otro rango.")
+            return self.form_invalid(form)
+
+
         # Calcula el total de días asignados y tomados considerando todo el historial del usuario
         total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
         total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
@@ -198,6 +190,7 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
             form.instance.horas = horas_solicitadas
 
         form.instance.numero_solicitud = form.cleaned_data['numero_solicitud']
+        messages.success(self.request, 'Solicitud creada correctamente y pendiente de aprobación.')
         return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
@@ -308,7 +301,8 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
     model = RegistroHoras
     form_class = RegistrarHorasForm
     template_name = 'registrar_horas.html'
-    success_url = reverse_lazy('dashboard')
+    success_url = reverse_lazy('mis_solicitudes')
+
 
     def get_initial(self):
         initial = super().get_initial()
@@ -326,10 +320,23 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.usuario = self.request.user  # Asignar el usuario autenticado
         form.instance.estado = 'P'  # Estado pendiente por defecto
-
         # Validar según el rol del usuario
         rol_usuario = self.request.user.rol
         tipo_horas = form.cleaned_data.get('tipo')
+
+        fecha_inicio = form.cleaned_data.get('fecha_inicio')
+        fecha_fin = form.cleaned_data.get('fecha_fin')
+
+         # Verificar si el rango de horas ya está ocupado
+        usuario = self.request.user
+        registros_en_conflicto = RegistroHoras.objects.filter(
+            usuario=usuario,
+            fecha_inicio__lte=fecha_fin,  # Fecha de inicio del conflicto es menor o igual a la fecha de fin del registro actual
+            fecha_fin__gte=fecha_inicio  # Fecha de fin del conflicto es mayor o igual a la fecha de inicio del registro actual
+        )
+        if registros_en_conflicto.exists():
+            form.add_error(None, "Ya tienes un registro de horas que se solapa con este rango. Por favor, selecciona otro rango.")
+            return self.form_invalid(form)
 
         # Ingeniero (IN): Solo puede registrar horas compensatorias (HC)
         if rol_usuario == 'IN' and tipo_horas == 'HE':  # Horas Extra no permitidas para ingenieros
