@@ -1,22 +1,84 @@
 {% extends 'base.html' %}
-
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <div class="row justify-content-center">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Tus Datos</h4>
+                </div>
+                <div class="card-body">
+                    <p><strong>Días de vacaciones disponibles:</strong> {{ dias_vacaciones_disponibles }}</p>
+                    <p><strong>Horas Compensatorias disponibles:</strong> {{ user.horas_compensatorias_disponibles }}</p>
+                    <p><strong>Horas extra disponibles:</strong> {{ user.horas_extra_acumuladas }}</p>
+                </div>
+            </div>
+        </div>
+
         <div class="col-md-8">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Dashboard</h4>
+                    <h4 class="mb-0">Calendario de Ausencias</h4>
                 </div>
                 <div class="card-body">
-                        <p><strong>Días de vacaciones disponibles:</strong> {{ dias_vacaciones_disponibles}}</p>
-                        <p><strong>Horas Compensatorias disponibles:</strong> {{ user.horas_compensatorias_disponibles}}</p>
-                        <p><strong>Horas extra disponibles:</strong> {{ user.horas_extra_acumuladas}}</p>
+                    <div id="calendar"></div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Agregar FullCalendar -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const calendarEl = document.getElementById('calendar');
+        const eventos = JSON.parse('{{ eventos|escapejs }}'); // Convertir JSON seguro para JS
+    
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'es',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek',
+            },
+            events: eventos, // Cargar los eventos desde el contexto
+            eventMouseEnter: function (info) {
+                // Crear el tooltip
+                const tooltip = document.createElement('div');
+                tooltip.id = 'tooltip';
+                tooltip.innerHTML = `
+                    <strong>${info.event.title}</strong><br>
+                    ${info.event.extendedProps.description || 'Sin descripción'}
+                `;
+                tooltip.style.position = 'absolute';
+                tooltip.style.left = `${info.jsEvent.pageX + 10}px`;
+                tooltip.style.top = `${info.jsEvent.pageY + 10}px`;
+                tooltip.style.padding = '5px';
+                tooltip.style.border = '1px solid #ccc';
+                tooltip.style.backgroundColor = '#fff';
+                tooltip.style.borderRadius = '3px';
+                tooltip.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
+                tooltip.style.zIndex = '1000';
+                document.body.appendChild(tooltip);
+            },
+            eventMouseLeave: function () {
+                // Eliminar el tooltip
+                const tooltip = document.getElementById('tooltip');
+                if (tooltip) {
+                    tooltip.remove();
+                }
+            }
+        });
+    
+        calendar.render();
+    });
+    </script>
+    
+    
 {% endblock %}

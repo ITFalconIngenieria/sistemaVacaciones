@@ -19,21 +19,78 @@ from django.http import HttpResponse
 from django.utils import timezone
 import locale
 from django.contrib.auth.views import PasswordChangeView
+from django.utils.timezone import now, timedelta
+from .models import Solicitud
+import json
+
+# @login_required
+# def dashboard(request):
+#     usuario = request.user
+#     # Calcula el total de días asignados y tomados considerando todo el historial del usuario
+#     total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
+#     total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
+#     total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
+#     dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
+    
+#     context = {
+#     'user': usuario,
+#     'dias_vacaciones_disponibles': dias_disponibles,
+
+#     }
+#     return render(request, 'dashboard.html', context)
+
+
+
 @login_required
 def dashboard(request):
     usuario = request.user
-    # Calcula el total de días asignados y tomados considerando todo el historial del usuario
+    fecha_actual = now().date()
+    fecha_limite = fecha_actual + timedelta(days=10)
+
     total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
     total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
     total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
     dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
-    
-    context = {
-    'user': usuario,
-    'dias_vacaciones_disponibles': dias_disponibles,
 
+    solicitudes_aprobadas = Solicitud.objects.filter(
+        estado='A',
+        fecha_inicio__lte=fecha_limite,
+        fecha_fin__gte=fecha_actual
+    ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin', 'tipo')
+
+
+    eventos = []
+    for solicitud in solicitudes_aprobadas:
+        nombre_completo = f"{solicitud['usuario__first_name']} {solicitud['usuario__last_name']}"
+        if solicitud['tipo'] == 'V':
+            title = f"{nombre_completo} (Vacaciones)"
+            description = f'Inicio: {solicitud["fecha_inicio"].strftime("%Y-%m-%d")} - Fin: {solicitud["fecha_fin"].strftime("%Y-%m-%d")}'
+            start = solicitud['fecha_inicio'].strftime("%Y-%m-%d")  # Solo fecha
+            end = (solicitud['fecha_fin'] + timedelta(days=1)).strftime("%Y-%m-%d")  # Sumar 1 día
+            color = "#e74c3c"
+        else:  # Horas compensatorias
+            title = f"{nombre_completo} (HC)"
+            description = f"Inicio: {solicitud['fecha_inicio'].strftime('%H:%M')} - Fin: {solicitud['fecha_fin'].strftime('%H:%M')}"
+            start = solicitud['fecha_inicio'].strftime("%Y-%m-%d")  # Cambiar a solo fecha
+            end = solicitud['fecha_fin'].strftime("%Y-%m-%d")  # Cambiar a solo fecha
+            color = "#f39c12"
+
+
+        eventos.append({
+            "title": title,
+            "start": start,
+            "end": end,
+            "description": description,
+            "color": color
+        })
+    context = {
+        'user': usuario,
+        'dias_vacaciones_disponibles': dias_disponibles,
+        'eventos': json.dumps(eventos),  # Convertimos los eventos a JSON
     }
     return render(request, 'dashboard.html', context)
+
+
 
 
 def PerfilUsuario(request):
@@ -189,12 +246,17 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
 
     def form_valid(self, form):
         solicitud = self.get_object()
+        usuario = self.request.user
+        total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
+        total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
+        total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
+        # Calcula el total de días disponibles incluyendo los ajustes
         
         # Verificamos que el estado haya cambiado a 'Aprobada'
         if form.instance.estado == 'A':
             if solicitud.tipo == 'V':  # Vacaciones
                 # Calcular el total de días disponibles incluyendo todos los años y ajustes
-                dias_disponibles_totales = HistorialVacaciones.calcular_dias_disponibles_totales(solicitud.usuario)
+                dias_disponibles_totales = total_dias_asignados - total_dias_tomados + total_dias_ajustados
 
                 if solicitud.dias_solicitados > dias_disponibles_totales:
                     # Muestra una advertencia si el saldo será negativo
@@ -210,7 +272,7 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
                 historial_vacaciones = HistorialVacaciones.objects.filter(usuario=solicitud.usuario).order_by('año')
                 
                 for registro in historial_vacaciones:
-                    dias_disponibles = registro.dias_disponibles()
+                    dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
                     if dias_por_restar <= dias_disponibles:
                         registro.dias_tomados += dias_por_restar
                         registro.save()
