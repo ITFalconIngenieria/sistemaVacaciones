@@ -27,6 +27,10 @@
                             La cantidad de horas a registrar es: <span id="cantidad-horas">0</span> horas.
                         </div>
 
+                        <div class="alert alert-warning mb-3" id="mensaje-feriados" style="display: none;">
+                            Por tu trabajo en días feriados, se te sumarán 9 horas compensatorias por día si el registro es aprobado.
+                        </div>
+
                         <button type="submit" class="btn btn-success w-100">Registrar Horas</button>
                     </form>
                 </div>
@@ -42,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const tipoHorasInput = document.getElementById('id_tipo');
     const horasCalculadasDiv = document.getElementById('horas-calculadas');
     const cantidadHorasSpan = document.getElementById('cantidad-horas');
-
+    const mensajeFeriadosDiv = document.getElementById('mensaje-feriados');
     function calcularHoras() {
         const fechaInicio = new Date(fechaInicioInput.value);
         const fechaFin = new Date(fechaFinInput.value);
@@ -52,13 +56,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Verificar si la fecha de inicio es domingo (weekday 0) y si el tipo es compensatorias (HC)
             if (fechaInicio.getDay() === 0 && fechaFin.getDay() === 0 && tipoHorasInput.value === 'HC') {
-                horas *= 2;  // Duplicar las horas si es domingo y el tipo es HC
+                horas *= 2; 
+            }
+            
+            if(tipoHorasInput.value === 'HEF'){
+                mensajeFeriadosDiv.style.display = 'block';
+
             }
 
             // Mostrar las horas calculadas con 2 decimales
             cantidadHorasSpan.textContent = horas.toFixed(2);
             horasCalculadasDiv.style.display = 'block';
         } else {
+            mensajeFeriadosDiv.style.display = 'none';
             horasCalculadasDiv.style.display = 'none';
         }
     }

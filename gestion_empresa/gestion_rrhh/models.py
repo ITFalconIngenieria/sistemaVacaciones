@@ -29,7 +29,6 @@ class Usuario(AbstractUser):
     horas_extra_acumuladas = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     horas_compensatorias_disponibles = models.DecimalField(max_digits=5, decimal_places=2, default=0)  
     mostrar_en_dashboard = models.BooleanField(default=True, help_text="Determina si el usuario aparecerá en el dashboard.")
-    
     def asignar_vacaciones_anuales(self):
         """Asigna días de vacaciones al usuario según los años trabajados."""
         if not self.fecha_entrada:
@@ -99,6 +98,7 @@ class RegistroHoras(models.Model):
     TIPOS_HORAS = (
         ('HE', 'Registro Horas Extra'),
         ('HC', 'Registro Horas Compensatorias'),
+        ('HEF', 'Registro Horas Dia Feriado'),
     )
     ESTADOS = (
         ('P', 'Pendiente'),
@@ -110,7 +110,7 @@ class RegistroHoras(models.Model):
         ('PG', 'Pagado'),
     )
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
-    tipo = models.CharField(max_length=2, choices=TIPOS_HORAS)
+    tipo = models.CharField(max_length=3, choices=TIPOS_HORAS)
     numero_registro = models.CharField(max_length=10, unique=True, blank=True)
     fecha_inicio = models.DateTimeField()
     fecha_fin = models.DateTimeField() 

@@ -205,7 +205,7 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                 return self.form_invalid(form)
             
             form.instance.horas = horas_solicitadas
-
+        
         form.instance.numero_solicitud = form.cleaned_data['numero_solicitud']
         messages.success(self.request, 'Solicitud creada correctamente y pendiente de aprobación.')
         return super().form_valid(form)
@@ -345,6 +345,10 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         if rol_usuario == 'IN' and tipo_horas == 'HE':
             form.add_error(None, "Los ingenieros no pueden registrar horas extra.")
             return self.form_invalid(form)
+        
+        if rol_usuario == 'TE' and tipo_horas == 'HEF':
+            form.add_error(None, "Los Técnicos no pueden registrar horas extra para dias feriados.")
+            return self.form_invalid(form)
 
         elif rol_usuario in ['GG', 'JI', 'JD'] and tipo_horas == 'HE':
             form.add_error(None, "Los gerentes o jefes no pueden registrar horas extra.")
@@ -368,6 +372,10 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
     def form_valid(self, form):
         registro = self.get_object()
 
+        # Calcular la diferencia de días
+        diferencia_dias = (registro.fecha_fin.date() - registro.fecha_inicio.date()).days + 1
+        print(f"Diferencia de días: {diferencia_dias} días")
+
         if form.instance.estado == 'A':  
             if registro.tipo == 'HE':
                 registro.usuario.horas_extra_acumuladas += registro.horas
@@ -375,6 +383,9 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
             elif registro.tipo == 'HC':
                 registro.usuario.horas_compensatorias_disponibles += registro.horas
                 print(f"Horas compensatorias después: {registro.usuario.horas_compensatorias_disponibles}")
+            elif registro.tipo =='HEF':
+                registro.usuario.horas_extra_acumuladas+=registro.horas
+                registro.usuario.horas_compensatorias_disponibles = registro.usuario.horas_compensatorias_disponibles + 9 * diferencia_dias
             registro.usuario.save()
 
         form.instance.aprobado_por = self.request.user
