@@ -54,6 +54,8 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'gestion_empresa.urls'
+MEDIA_URL = '/media/'  # URL base para archivos
+MEDIA_ROOT = BASE_DIR / 'media'  # Carpeta donde se guardan los archivos subidos
 
 TEMPLATES = [
     {

@@ -2,9 +2,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from datetime import date
 from decimal import Decimal  # Importar Decimal
-from django.contrib.auth import get_user_model
 from .validators import validate_username
-
+from django.conf import settings
 
 
 class Usuario(AbstractUser):
@@ -158,3 +157,21 @@ class AjusteVacaciones(models.Model):
         return f"Ajuste de {self.dias_ajustados} días para {self.usuario} en el año {self.año}"
 
 
+class Incapacidad(models.Model):
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE,
+        related_name='incapacidades'
+    )
+    fecha_inicio = models.DateField()
+    fecha_fin = models.DateField()
+    archivo_adjunto = models.FileField(
+        upload_to='incapacidades/',
+        blank=False,
+        null=False
+    )
+    descripcion = models.TextField(blank=True, null=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Incapacidad de {self.usuario.get_full_name()} del {self.fecha_inicio} al {self.fecha_fin}"

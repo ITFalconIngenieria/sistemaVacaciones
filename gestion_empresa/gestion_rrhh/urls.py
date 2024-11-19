@@ -1,7 +1,8 @@
 from django.urls import path
 from django.contrib.auth.views import LoginView
 from . import views
-
+from django.conf.urls.static import static
+from django.conf import settings
 urlpatterns = [
     # Dashboard y autenticación
     path('', views.dashboard, name='dashboard'),
@@ -32,8 +33,14 @@ urlpatterns = [
     path('cerrar-quincena/', views.cerrar_quincena, name='cerrar_quincena'),
 
     path('generar-pdf/', views.GenPdf.as_view(), name='generar_pdf'),
+
+
+
+
+    path('incapacidades/crear/', views.CrearIncapacidadView.as_view(), name='crear_incapacidad'),
+    path('incapacidades/', views.ListaIncapacidadesView.as_view(), name='lista_incapacidades'),
     
     
 
 
-]
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

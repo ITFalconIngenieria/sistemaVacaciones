@@ -22,7 +22,8 @@ from django.contrib.auth.views import PasswordChangeView
 from django.utils.timezone import now, timedelta
 from .models import Solicitud
 import json
-
+from .models import Incapacidad
+from .forms import IncapacidadForm
 
 @login_required
 def dashboard(request):
@@ -30,34 +31,43 @@ def dashboard(request):
     fecha_actual = now().date()
     fecha_limite = fecha_actual + timedelta(days=10)
 
+    # Calcular días disponibles
     total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
     total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
     total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
     dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
 
+    # Consultar solicitudes aprobadas (Vacaciones y Horas Compensatorias)
     solicitudes_aprobadas = Solicitud.objects.filter(
         estado='A',
         fecha_inicio__lte=fecha_limite,
         fecha_fin__gte=fecha_actual
     ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin', 'tipo')
 
+    # Consultar incapacidades aprobadas en el rango de fechas
+    incapacidades_aprobadas = Incapacidad.objects.filter(
+       
+        fecha_inicio__lte=fecha_limite,
+        fecha_fin__gte=fecha_actual
+    ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin')
 
     eventos = []
+
+    # Agregar eventos de solicitudes
     for solicitud in solicitudes_aprobadas:
         nombre_completo = f"{solicitud['usuario__first_name']} {solicitud['usuario__last_name']}"
         if solicitud['tipo'] == 'V':
             title = f"{nombre_completo} (Vacaciones)"
             description = f'Inicio: {solicitud["fecha_inicio"].strftime("%Y-%m-%d")} - Fin: {solicitud["fecha_fin"].strftime("%Y-%m-%d")}'
             start = solicitud['fecha_inicio'].strftime("%Y-%m-%d") 
-            end = (solicitud['fecha_fin'] + timedelta(days=1)).strftime("%Y-%m-%d") 
-            color = "#e74c3c"
+            end = (solicitud['fecha_fin'] + timedelta(days=1)).strftime("%Y-%m-%d")
+            color = "#e74c3c"  # Rojo para vacaciones
         else:  # Horas compensatorias
             title = f"{nombre_completo} (HC)"
             description = f"Inicio: {solicitud['fecha_inicio'].strftime('%H:%M')} - Fin: {solicitud['fecha_fin'].strftime('%H:%M')}"
-            start = solicitud['fecha_inicio'].strftime("%Y-%m-%d") 
+            start = solicitud['fecha_inicio'].strftime("%Y-%m-%d")
             end = solicitud['fecha_fin'].strftime("%Y-%m-%d")
-            color = "#f39c12"
-
+            color = "#f39c12"  # Naranja para HC
 
         eventos.append({
             "title": title,
@@ -66,13 +76,30 @@ def dashboard(request):
             "description": description,
             "color": color
         })
+
+    # Agregar eventos de incapacidades
+    for incapacidad in incapacidades_aprobadas:
+        nombre_completo = f"{incapacidad['usuario__first_name']} {incapacidad['usuario__last_name']}"
+        title = f"{nombre_completo} (Incapacidad)"
+        description = f'Inicio: {incapacidad["fecha_inicio"].strftime("%Y-%m-%d")} - Fin: {incapacidad["fecha_fin"].strftime("%Y-%m-%d")}'
+        start = incapacidad['fecha_inicio'].strftime("%Y-%m-%d")
+        end = (incapacidad['fecha_fin'] + timedelta(days=1)).strftime("%Y-%m-%d")
+        color = "#9b9b9b"  # Rojo oscuro para incapacidad
+
+        eventos.append({
+            "title": title,
+            "start": start,
+            "end": end,
+            "description": description,
+            "color": color
+        })
+
     context = {
         'user': usuario,
         'dias_vacaciones_disponibles': dias_disponibles,
         'eventos': json.dumps(eventos),
     }
     return render(request, 'dashboard.html', context)
-
 
 
 
@@ -574,7 +601,6 @@ def cerrar_quincena(request):
 
 
 
-
 class GenPdf(View):
     def get(self, request, *args, **kwargs):
         try:
@@ -624,6 +650,53 @@ class GenPdf(View):
         if pisa_status.err:
             return HttpResponse('Error al generar el PDF', status=400)
         return response
+
+
+
+class CrearIncapacidadView(LoginRequiredMixin, CreateView):
+    model = Incapacidad
+    form_class = IncapacidadForm
+    template_name = 'crear_incapacidad.html'
+    success_url = reverse_lazy('lista_incapacidades')
+
+    def form_valid(self, form):
+        form.instance.usuario = self.request.user
+         # Verificar fechas conflictivas
+        fecha_inicio = form.cleaned_data.get('fecha_inicio')
+        fecha_fin = form.cleaned_data.get('fecha_fin')
+        usuario = self.request.user
+
+
+        # Verificar fechas conflictivas
+        conflictos = Incapacidad.objects.filter(
+            usuario=usuario,
+            fecha_inicio__lte=fecha_fin,
+            fecha_fin__gte=fecha_inicio
+        )
+        if conflictos.exists():
+            form.add_error(None, "Ya tienes una incapacidad registrada para este rango de fechas.")
+            return self.form_invalid(form)
+        
+        # Verificar si el archivo fue adjuntado
+        if not form.cleaned_data.get('archivo_adjunto'):
+            form.add_error('archivo', "Debes adjuntar un archivo.")
+            return self.form_invalid(form)
+        return super().form_valid(form)
+
+
+class ListaIncapacidadesView(LoginRequiredMixin, ListView):
+    model = Incapacidad
+    template_name = 'lista_incapacidades.html'
+    context_object_name = 'incapacidades'
+
+    def get_queryset(self):
+        # Mostrar las incapacidades solo para el jefe
+        if self.request.user.rol in ['GG', 'JI', 'JD']:
+            return Incapacidad.objects.filter(usuario__jefe=self.request.user)
+        return Incapacidad.objects.filter(usuario=self.request.user)
+
+
+
 
 
 def logout_view(request):

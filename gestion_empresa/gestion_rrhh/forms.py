@@ -5,8 +5,7 @@ from .validators import validate_username
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django import forms
-
-
+from .models import Incapacidad
 class UsuarioCreationForm(UserCreationForm):
     username = forms.CharField(
         max_length=150,
@@ -175,3 +174,29 @@ class AjusteVacacionesForm(forms.ModelForm):
                 'style': 'width: 50%;', 
             })
         }
+
+class IncapacidadForm(forms.ModelForm):
+    class Meta:
+        model = Incapacidad
+        fields = ['fecha_inicio', 'fecha_fin', 'archivo_adjunto', 'descripcion']
+        widgets = {
+            'fecha_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'fecha_fin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'archivo_adjunto': forms.FileInput(attrs={'class': 'form-control'}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_inicio = cleaned_data.get('fecha_inicio')
+        fecha_fin = cleaned_data.get('fecha_fin')
+
+        if not fecha_inicio or not fecha_fin:
+            raise forms.ValidationError("Ambas fechas son obligatorias.")
+
+        # Validar que las fechas estén en días completos y en el rango permitido
+        diferencia_dias = (fecha_fin - fecha_inicio).days + 1
+        if diferencia_dias < 1 or diferencia_dias > 3:
+            raise forms.ValidationError("El rango de días debe ser entre 1 y 3 días completos.")
+
+        return cleaned_data
