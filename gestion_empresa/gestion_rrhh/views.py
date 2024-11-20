@@ -24,7 +24,7 @@ from .models import Solicitud
 import json
 from .models import Incapacidad
 from .forms import IncapacidadForm
-
+from django.db.models import Q
 @login_required
 def dashboard(request):
     usuario = request.user
@@ -569,7 +569,7 @@ def ajuste_vacaciones(request):
 @login_required
 def reporte_horas_extra(request):
     registros = RegistroHoras.objects.filter(
-        tipo='HE',
+        Q(tipo='HE') | Q(tipo='HEF'),
         estado='A',
         estado_pago='NP'
     ).order_by('usuario', 'fecha_inicio')
