@@ -169,7 +169,6 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
             fecha_fin__gte=fecha_inicio
         )
         if solicitudes_en_conflicto.exists():
-            print("entraaa")
             form.add_error(None, "Ya tienes una solicitud de horas que se solapa con este rango. Por favor, selecciona otro rango.")
             return self.form_invalid(form)
 
@@ -288,14 +287,6 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
                     solicitud.usuario.save()  
                 else:
                     messages.error(self.request, "No se puede aprobar. El usuario no tiene suficientes horas compensatorias.")
-                    return self.form_invalid(form)
-
-            elif solicitud.tipo == 'HE':  # Horas Extra
-                if solicitud.usuario.horas_extra_acumuladas >= solicitud.horas:
-                    solicitud.usuario.horas_extra_acumuladas -= solicitud.horas
-                    solicitud.usuario.save()
-                else:
-                    messages.error(self.request, "No se puede aprobar. El usuario no tiene suficientes horas extra.")
                     return self.form_invalid(form)
 
         # Asignar el aprobador
@@ -583,11 +574,14 @@ def reporte_horas_extra(request):
         registros_por_usuario[usuario]['registros'].append(registro)
         registros_por_usuario[usuario]['total_horas'] += registro.horas
 
-    total_horas = sum(user_data['total_horas'] for user_data in registros_por_usuario.values())
+    # Usar Paginator para dividir los datos
+    paginator = Paginator(list(registros_por_usuario.items()), 5)  # Cambia 5 por el número de usuarios por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
     context = {
-        'registros_por_usuario': registros_por_usuario,
-        'total_horas': total_horas,
+        'registros_por_usuario': page_obj,  # Pasar solo la página actual
+        'total_horas': sum(user_data['total_horas'] for user_data in registros_por_usuario.values()),
     }
     return render(request, 'reporte_horas_extra.html', context)
 
@@ -695,19 +689,19 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class ListaIncapacidadesView(LoginRequiredMixin, ListView):
-    model = Incapacidad
-    template_name = 'lista_incapacidades.html'
-    context_object_name = 'incapacidades'
 
-    def get_queryset(self):
-        # Mostrar las incapacidades solo para el jefe
-        if self.request.user.rol in ['GG', 'JI', 'JD']:
-            return Incapacidad.objects.filter(usuario__jefe=self.request.user)
-        return Incapacidad.objects.filter(usuario=self.request.user)
+@login_required
+def lista_incapacidades(request):
+    incapacidades = Incapacidad.objects.all().order_by('-fecha_inicio')  # Obtén todos los registros de Incapacidad
 
+    # Configuración del paginador
+    paginator = Paginator(incapacidades, 8) 
+    page_number = request.GET.get('page')  
+    page_obj = paginator.get_page(page_number)  
 
-
+    return render(request, 'lista_incapacidades.html', {
+        'page_obj': page_obj, 
+    })
 
 
 def logout_view(request):

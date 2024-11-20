@@ -38,7 +38,8 @@ urlpatterns = [
 
 
     path('incapacidades/crear/', views.CrearIncapacidadView.as_view(), name='crear_incapacidad'),
-    path('incapacidades/', views.ListaIncapacidadesView.as_view(), name='lista_incapacidades'),
+    # path('incapacidades/', views.ListaIncapacidadesView.as_view(), name='lista_incapacidades'),
+    path('incapacidades/', views.lista_incapacidades, name='lista_incapacidades'),
     
     
 
