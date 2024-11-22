@@ -43,11 +43,12 @@ urlpatterns = [
 
 
 
-     path('solicitud/editar/<int:pk>/', views.EditarSolicitudView.as_view(), name='editar_solicitud'),
-    path('registro/editar/<int:pk>/', views.EditarRegistroHorasView.as_view(), name='editar_registro_horas'),
+    path('solicitud/editar/<int:pk>/', views.EditarSolicitudView.as_view(), name='editar_solicitud'),
     path('solicitud/eliminar/<int:pk>/', views.EliminarSolicitudView.as_view(), name='eliminar_solicitud'),
+    path('registro/editar/<int:pk>/', views.EditarRegistroHorasView.as_view(), name='editar_registro_horas'),
     path('registro/eliminar/<int:pk>/', views.EliminarRegistroHorasView.as_view(), name='eliminar_registro_horas'),
-    
+
+
     
 
 
