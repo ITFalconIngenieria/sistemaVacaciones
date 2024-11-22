@@ -26,8 +26,8 @@ class Usuario(AbstractUser):
     jefe = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, related_name='subordinados')
     fecha_entrada = models.DateField(null=True, blank=True)
     fecha_salida= models.DateField(null=True, blank=True)
-    horas_extra_acumuladas = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    horas_compensatorias_disponibles = models.DecimalField(max_digits=5, decimal_places=2, default=0)  
+    # horas_extra_acumuladas = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    # horas_compensatorias_disponibles = models.DecimalField(max_digits=5, decimal_places=2, default=0)  
     mostrar_en_dashboard = models.BooleanField(default=True, help_text="Determina si el usuario aparecerá en el dashboard.")
     def asignar_vacaciones_anuales(self):
         """Asigna días de vacaciones al usuario según los años trabajados."""
@@ -114,7 +114,8 @@ class RegistroHoras(models.Model):
     numero_registro = models.CharField(max_length=10, unique=True, blank=True)
     fecha_inicio = models.DateTimeField()
     fecha_fin = models.DateTimeField() 
-    horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True) 
+    horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    horas_compensatorias_feriado = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     numero_proyecto = models.IntegerField(null=True, blank=True)
     descripcion = models.TextField(null=True, blank=True) 
     estado = models.CharField(max_length=1, choices=ESTADOS, default='P') 
@@ -131,6 +132,10 @@ class RegistroHoras(models.Model):
         self.horas = self.calcular_horas()
         if self.tipo == 'HC' and self.fecha_inicio.weekday() == 6 and self.fecha_fin.weekday() == 6:
             self.horas *= 2
+
+        if self.tipo == 'HEF':
+            diferencia_dias = (self.fecha_fin.date() - self.fecha_inicio.date()).days + 1
+            self.horas_compensatorias_feriado = 9 * diferencia_dias
         super().save(*args, **kwargs)
 
 

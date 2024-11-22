@@ -11,19 +11,16 @@
                     <h4 class="mb-0">Crear Solicitud</h4>
                 </div>
                 <div class="card-body">
-                    <!-- Información relevante del usuario -->
                     <div class="mb-3">
                         <p><strong>Días de vacaciones disponibles:</strong> {{ dias_vacaciones }}</p>
-                        <p><strong>Horas extra acumuladas:</strong> {{ usuario.horas_extra_acumuladas }}</p>
-                        <p><strong>Horas compensatorias disponibles:</strong> {{ usuario.horas_compensatorias_disponibles }}</p>
+                        <p><strong>Horas compensatorias disponibles:</strong> {{ horas_compensatorias }}</p>
+                        <p><strong>Horas extra acumuladas:</strong> {{ horas_extra }}</p>
                     </div>
 
-                    <!-- Formulario para crear la solicitud -->
                     <form method="post">
                         {% csrf_token %}
                         {{ form|crispy }}
 
-                        <!-- Nota que muestra la cantidad de días solicitados -->
                         <div class="alert alert-info" id="dias-solicitados">
                             La cantidad de días solicitados es:  días.
                         </div>

@@ -13,16 +13,14 @@
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <p><strong>Horas extra acumuladas:</strong> {{ user.horas_extra_acumuladas }}</p>
-                        <p><strong>Horas compensatorias disponibles:</strong> {{ user.horas_compensatorias_disponibles }}</p>
+                        <p><strong>Horas compensatorias disponibles:</strong> {{horas_compensatorias }}</p>
+                        <p><strong>Horas extra acumuladas:</strong> {{ horas_extra }}</p>
                     </div>
 
-                    <!-- Formulario para registrar horas -->
                     <form method="post">
                         {% csrf_token %}
                         {{ form|crispy }}
 
-                        <!-- Alerta para mostrar las horas calculadas -->
                         <div class="alert alert-info mb-3" id="horas-calculadas" style="display: none;">
                             La cantidad de horas a registrar es: <span id="cantidad-horas">0</span> horas.
                         </div>

@@ -25,17 +25,64 @@ import json
 from .models import Incapacidad
 from .forms import IncapacidadForm
 from django.db.models import Q
+
+def calcular_dias_disponibles(usuario):
+    total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
+    total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
+    total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
+    dias_disponibles = total_dias_asignados + total_dias_ajustados - total_dias_tomados 
+
+    return {
+        'total_asignados': total_dias_asignados,
+        'total_tomados': total_dias_tomados,
+        'total_ajustados': total_dias_ajustados,
+        'dias_disponibles': dias_disponibles
+    }
+
+def calcular_horas_individuales(usuario):
+    tipos = ['HE', 'HC']  # Trabajamos con HE y HC base
+    horas_por_tipo = {'HE': 0, 'HC': 0}
+
+    for tipo in tipos:
+        total_horas = RegistroHoras.objects.filter(
+            usuario=usuario,
+            tipo=tipo,
+            estado='A'
+        ).aggregate(Sum('horas'))['horas__sum'] or 0
+        horas_por_tipo[tipo] = total_horas
+
+    # Manejar HEF
+    horas_hef = RegistroHoras.objects.filter(
+        usuario=usuario,
+        tipo='HEF',
+        estado='A'
+    ).aggregate(
+        total_horas=Sum('horas'),
+        horas_compensatorias_feriado=Sum('horas_compensatorias_feriado')
+    )
+
+    # Sumar horas de HEF a HE
+    horas_por_tipo['HE'] += horas_hef['total_horas'] or 0
+
+    # Sumar horas compensatorias feriado de HEF a HC
+    horas_por_tipo['HC'] += horas_hef['horas_compensatorias_feriado'] or 0
+
+    return horas_por_tipo
+
+
+
+
 @login_required
 def dashboard(request):
     usuario = request.user
     fecha_actual = now().date()
     fecha_limite = fecha_actual + timedelta(days=10)
+    dias_data = calcular_dias_disponibles(usuario)
+    dias_disponibles = dias_data['dias_disponibles']
 
-    # Calcular días disponibles
-    total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
-    total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
-    total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
-    dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
+    horas_data = calcular_horas_individuales(usuario)
+    horas_extra = horas_data['HE']
+    horas_compensatorias = horas_data['HC']
 
     # Consultar solicitudes aprobadas (Vacaciones y Horas Compensatorias)
     solicitudes_aprobadas = Solicitud.objects.filter(
@@ -84,7 +131,7 @@ def dashboard(request):
         description = f'Inicio: {incapacidad["fecha_inicio"].strftime("%Y-%m-%d")} - Fin: {incapacidad["fecha_fin"].strftime("%Y-%m-%d")}'
         start = incapacidad['fecha_inicio'].strftime("%Y-%m-%d")
         end = (incapacidad['fecha_fin'] + timedelta(days=1)).strftime("%Y-%m-%d")
-        color = "#9b9b9b"  # Rojo oscuro para incapacidad
+        color = "#9b9b9b"
 
         eventos.append({
             "title": title,
@@ -97,18 +144,16 @@ def dashboard(request):
     context = {
         'user': usuario,
         'dias_vacaciones_disponibles': dias_disponibles,
+        'horas_extra':horas_extra,
+        'horas_compensatorias':horas_compensatorias,
         'eventos': json.dumps(eventos),
     }
     return render(request, 'dashboard.html', context)
 
-
-
 def PerfilUsuario(request):
     usuario = request.user
-    total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
-    total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
-    total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
-    dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
+    dias_data = calcular_dias_disponibles(usuario)
+    dias_disponibles = dias_data['dias_disponibles']
     
     context = {
     'user': usuario,
@@ -116,7 +161,6 @@ def PerfilUsuario(request):
 
     }
     return render(request, 'mi_perfil.html', context)
-
 
 class CambiarContrasenaView(PasswordChangeView):
     template_name = 'cambiar_contrasena.html' 
@@ -135,6 +179,7 @@ class CrearUsuarioView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 
     def test_func(self):
         return self.request.user.is_superuser or self.request.user.rol in ['GG', 'JI', 'JD']
+    
     
 class CrearSolicitudView(LoginRequiredMixin, CreateView):
     model = Solicitud
@@ -160,36 +205,32 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         tipo_solicitud = form.cleaned_data.get('tipo')
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
-
-
         usuario = self.request.user
+        fecha_inicio_date = fecha_inicio.date()
+        fecha_fin_date = fecha_fin.date()
+        dias_data = calcular_dias_disponibles(usuario)
+        dias_disponibles = dias_data['dias_disponibles']
+
         solicitudes_en_conflicto = Solicitud.objects.filter(
             usuario=usuario,
-            fecha_inicio__lte=fecha_fin,
-            fecha_fin__gte=fecha_inicio
+            fecha_inicio=fecha_inicio_date,
+            fecha_fin=fecha_fin_date
         )
         if solicitudes_en_conflicto.exists():
             form.add_error(None, "Ya tienes una solicitud de horas que se solapa con este rango. Por favor, selecciona otro rango.")
             return self.form_invalid(form)
-
-        total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
-        total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
-        total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
-        # Calcula el total de días disponibles incluyendo los ajustes
-        dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
-    
+        
+        
         
         if tipo_solicitud == 'V':
-            dias_solicitados = (fecha_fin.date() - fecha_inicio.date()).days + 1
+            dias_solicitados = (fecha_fin.date() - fecha_inicio.date()).days +1
             form.instance.dias_solicitados = dias_solicitados
-            
-            dias_disponibles_totales = dias_disponibles
-            if dias_solicitados > dias_disponibles_totales:
+
+            if dias_solicitados > dias_disponibles:
                 messages.warning(
                     self.request,
-                    f"Advertencia: estás solicitando {dias_solicitados} días, pero solo tienes {dias_disponibles_totales} días disponibles."
+                    f"Advertencia: estás solicitando {dias_solicitados} días, pero solo tienes {dias_disponibles} días disponibles."
                 )
-                return self.form_invalid(form)
 
         elif tipo_solicitud == 'HC':
             diferencia = fecha_fin - fecha_inicio
@@ -213,17 +254,18 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
         usuario = self.request.user
 
-        total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
-        total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
-        total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
-        # Calcula el total de días disponibles incluyendo los ajustes
-        dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
+        dias_data = calcular_dias_disponibles(usuario)
+        dias_disponibles = dias_data['dias_disponibles']
+        horas_data = calcular_horas_individuales(usuario)
 
-        dias_vacaciones = dias_disponibles
+        horas_extra = horas_data['HE']
+        horas_compensatorias = horas_data['HC']
 
         context.update({
             'usuario': usuario,
-            'dias_vacaciones': dias_vacaciones,
+            'dias_vacaciones': dias_disponibles,
+            'horas_extra':horas_extra,
+            'horas_compensatorias':horas_compensatorias
         })
         return context
     
@@ -251,35 +293,25 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
 
     def form_valid(self, form):
         solicitud = self.get_object()
-        usuario = self.request.user
-        total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
-        total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
-        total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
+        dias_data = calcular_dias_disponibles(solicitud.usuario)
+        dias_disponibles = dias_data['dias_disponibles']
+        año_actual = now().year
         
         if form.instance.estado == 'A':
             if solicitud.tipo == 'V':
-                dias_disponibles_totales = total_dias_asignados - total_dias_tomados + total_dias_ajustados
 
-                if solicitud.dias_solicitados > dias_disponibles_totales:
-                    dias_faltantes = solicitud.dias_solicitados - dias_disponibles_totales
+                if solicitud.dias_solicitados > dias_disponibles:
+                    dias_faltantes = solicitud.dias_solicitados - dias_disponibles
                     messages.warning(
                         self.request, 
                         f"Advertencia: Al aprobar esta solicitud, el saldo de días de vacaciones será negativo en {dias_faltantes} días."
                     )
-                    return self.form_invalid(form)
-                dias_por_restar = solicitud.dias_solicitados
-                historial_vacaciones = HistorialVacaciones.objects.filter(usuario=solicitud.usuario).order_by('año')
+                dias_solicitados = solicitud.dias_solicitados
+                historial_vacaciones = HistorialVacaciones.objects.filter(usuario=solicitud.usuario, año=año_actual)
                 
                 for registro in historial_vacaciones:
-                    dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
-                    if dias_por_restar <= dias_disponibles:
-                        registro.dias_tomados += dias_por_restar
-                        registro.save()
-                        break
-                    else:
-                        registro.dias_tomados += dias_disponibles
-                        dias_por_restar -= dias_disponibles
-                        registro.save()
+                    registro.dias_tomados += dias_solicitados
+                    registro.save()
 
             elif solicitud.tipo == 'HC':
                 if solicitud.usuario.horas_compensatorias_disponibles >= solicitud.horas:
@@ -289,7 +321,6 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
                     messages.error(self.request, "No se puede aprobar. El usuario no tiene suficientes horas compensatorias.")
                     return self.form_invalid(form)
 
-        # Asignar el aprobador
         form.instance.aprobado_por = self.request.user
         messages.success(self.request, 'La solicitud ha sido procesada exitosamente.')
         return super().form_valid(form)
@@ -337,9 +368,9 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
             form.add_error(None, "Los ingenieros no pueden registrar horas extra.")
             return self.form_invalid(form)
         
-        if rol_usuario == 'TE' and tipo_horas == 'HEF':
-            form.add_error(None, "Los Técnicos no pueden registrar horas extra para dias feriados.")
-            return self.form_invalid(form)
+        # if rol_usuario == 'TE' and tipo_horas == 'HEF':
+        #     form.add_error(None, "Los Técnicos no pueden registrar horas extra para dias feriados.")
+        #     return self.form_invalid(form)
 
         elif rol_usuario in ['GG', 'JI', 'JD'] and tipo_horas == 'HE':
             form.add_error(None, "Los gerentes o jefes no pueden registrar horas extra.")
@@ -347,6 +378,22 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         form.instance.numero_registro = form.cleaned_data['numero_registro']
         messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
         return super().form_valid(form)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        usuario = self.request.user
+
+        horas_data = calcular_horas_individuales(usuario)
+
+        horas_extra = horas_data['HE']
+        horas_compensatorias = horas_data['HC']
+
+        context.update({
+            'usuario': usuario,
+            'horas_extra':horas_extra,
+            'horas_compensatorias':horas_compensatorias
+        })
+        return context
 
 
 class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
@@ -368,19 +415,18 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         print(f"Diferencia de días: {diferencia_dias} días")
 
         if form.instance.estado == 'A':  
-            if registro.tipo == 'HE':
-                registro.usuario.horas_extra_acumuladas += registro.horas
-                print(f"Horas extra después: {registro.usuario.horas_extra_acumuladas}")
-            elif registro.tipo == 'HC':
-                registro.usuario.horas_compensatorias_disponibles += registro.horas
-                print(f"Horas compensatorias después: {registro.usuario.horas_compensatorias_disponibles}")
-            elif registro.tipo =='HEF':
-                registro.usuario.horas_extra_acumuladas+=registro.horas
-                registro.usuario.horas_compensatorias_disponibles = registro.usuario.horas_compensatorias_disponibles + 9 * diferencia_dias
-            registro.usuario.save()
+            if registro.tipo =='HEF':
+                registro.save()
+            form.instance.aprobado_por = self.request.user
+            messages.success(self.request, 'El registro de horas ha sido procesado exitosamente.')
+        
+        elif form.instance.estado == 'R':
+            messages.warning(
+                self.request,
+                f"El registro de horas con el número {registro.numero_registro} ha sido rechazado."
+            )
 
-        form.instance.aprobado_por = self.request.user
-        messages.success(self.request, 'El registro de horas ha sido procesado exitosamente.')
+        
         return super().form_valid(form)
 
 
@@ -520,12 +566,12 @@ def ajuste_vacaciones(request):
     usuarios_vacaciones = []
 
     for usuario in usuarios:
-        total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
-        total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
-        total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
+        dias_data = calcular_dias_disponibles(usuario)
+        dias_disponibles = dias_data['dias_disponibles']
+        total_dias_asignados=dias_data['total_asignados']
+        total_dias_tomados=dias_data['total_tomados']
+        total_dias_ajustados=dias_data['total_ajustados']
 
-        dias_disponibles = total_dias_asignados - total_dias_tomados + total_dias_ajustados
-        
         usuarios_vacaciones.append({
             'usuario': usuario,
             'dias_asignados': total_dias_asignados,
@@ -692,7 +738,7 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
 
 @login_required
 def lista_incapacidades(request):
-    incapacidades = Incapacidad.objects.all().order_by('-fecha_inicio')  # Obtén todos los registros de Incapacidad
+    incapacidades = Incapacidad.objects.all().order_by('-fecha_inicio')
 
     # Configuración del paginador
     paginator = Paginator(incapacidades, 8) 
