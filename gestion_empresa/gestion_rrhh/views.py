@@ -39,10 +39,13 @@ def calcular_dias_disponibles(usuario):
         'dias_disponibles': dias_disponibles
     }
 
+
 def calcular_horas_individuales(usuario):
+    # Inicialización de los tipos
     tipos = ['HE', 'HC']  # Trabajamos con HE y HC base
     horas_por_tipo = {'HE': 0, 'HC': 0}
 
+    # Calcular horas de HE y HC del modelo RegistroHoras
     for tipo in tipos:
         total_horas = RegistroHoras.objects.filter(
             usuario=usuario,
@@ -51,7 +54,7 @@ def calcular_horas_individuales(usuario):
         ).aggregate(Sum('horas'))['horas__sum'] or 0
         horas_por_tipo[tipo] = total_horas
 
-    # Manejar HEF
+    # Manejar HEF (sumar a HE y HC según corresponda)
     horas_hef = RegistroHoras.objects.filter(
         usuario=usuario,
         tipo='HEF',
@@ -66,6 +69,16 @@ def calcular_horas_individuales(usuario):
 
     # Sumar horas compensatorias feriado de HEF a HC
     horas_por_tipo['HC'] += horas_hef['horas_compensatorias_feriado'] or 0
+
+    # Restar horas de solicitudes aprobadas de tipo HC
+    horas_solicitudes_hc = Solicitud.objects.filter(
+        usuario=usuario,
+        tipo='HC',
+        estado='A'  # Solo solicitudes aprobadas
+    ).aggregate(Sum('horas'))['horas__sum'] or 0
+
+    # Restar las horas aprobadas del modelo Solicitud
+    horas_por_tipo['HC'] -= horas_solicitudes_hc
 
     return horas_por_tipo
 
@@ -246,7 +259,7 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                 return self.form_invalid(form)
             
             if horas_solicitadas > horas_compensatorias:
-                form.add_error(None, f"No tienes suficientes horas compensatorias disponibles (horas disponibles: {self.request.user.horas_compensatorias_disponibles}).")
+                form.add_error(None, f"No tienes suficientes horas compensatorias disponibles (horas disponibles: {horas_compensatorias}).")
                 return self.form_invalid(form)
             
             form.instance.horas = horas_solicitadas
@@ -280,6 +293,8 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
     template_name = 'aprobar_rechazar_solicitud.html'
     success_url = reverse_lazy('lista_solicitudes')
 
+    
+
     def test_func(self):
         solicitud = self.get_object()
 
@@ -300,6 +315,8 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
         dias_data = calcular_dias_disponibles(solicitud.usuario)
         dias_disponibles = dias_data['dias_disponibles']
         año_actual = now().year
+        horas_data = calcular_horas_individuales(solicitud.usuario)
+        horas_compensatorias = horas_data['HC']
         
         if form.instance.estado == 'A':
             if solicitud.tipo == 'V':
@@ -318,8 +335,7 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
                     registro.save()
 
             elif solicitud.tipo == 'HC':
-                if solicitud.usuario.horas_compensatorias_disponibles >= solicitud.horas:
-                    solicitud.usuario.horas_compensatorias_disponibles -= solicitud.horas
+                if horas_compensatorias >= solicitud.horas:
                     solicitud.usuario.save()  
                 else:
                     messages.error(self.request, "No se puede aprobar. El usuario no tiene suficientes horas compensatorias.")
@@ -461,16 +477,18 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
 
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
-
         usuario = self.request.user
+
         registros_en_conflicto = RegistroHoras.objects.filter(
             usuario=usuario,
-            fecha_inicio__lte=fecha_fin, 
-            fecha_fin__gte=fecha_inicio 
+            fecha_inicio__date=fecha_inicio.date(),
         )
-        if registros_en_conflicto.exists():
-            form.add_error(None, "Ya tienes un registro de horas que se solapa con este rango. Por favor, selecciona otro rango.")
-            return self.form_invalid(form)
+        for registro in registros_en_conflicto:
+            print(f"Conflicto con sel registro: ID {registro.id}, Inicio {registro.fecha_inicio}, Fin {registro.fecha_fin}")
+            if not (fecha_fin <= registro.fecha_inicio or fecha_inicio >= registro.fecha_fin):
+                form.add_error(None, "Ya tienes un registro de horas que se solapa con este rango. Por favor, selecciona otro rango")
+                return self.form_invalid(form)
+
 
         if rol_usuario == 'IN' and tipo_horas == 'HE':
             form.add_error(None, "Los ingenieros no pueden registrar horas extra.")
@@ -479,6 +497,8 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         # if rol_usuario == 'TE' and tipo_horas == 'HEF':
         #     form.add_error(None, "Los Técnicos no pueden registrar horas extra para dias feriados.")
         #     return self.form_invalid(form)
+
+        
 
         elif rol_usuario in ['GG', 'JI', 'JD'] and tipo_horas == 'HE':
             form.add_error(None, "Los gerentes o jefes no pueden registrar horas extra.")
@@ -538,33 +558,51 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         return super().form_valid(form)
 
 
-class EditarRegistroHorasView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+class EditarRegistroHorasView(LoginRequiredMixin, UpdateView):
     model = RegistroHoras
     form_class = RegistrarHorasForm
     template_name = 'editar_registro_horas.html'
     success_url = reverse_lazy('mis_solicitudes')
 
-    def test_func(self):
-        registro = self.get_object()
-        # Solo permite la edición si el registro pertenece al usuario actual y está pendiente
-        return registro.usuario == self.request.user and registro.estado == 'P'
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        usuario = self.request.user
+
+        # Agregar información adicional al contexto
+        horas_data = calcular_horas_individuales(usuario)
+        context.update({
+            'horas_extra': horas_data['HE'],
+            'horas_compensatorias': horas_data['HC'],
+        })
+        return context
 
     def form_valid(self, form):
-        messages.success(self.request, "Registro de horas actualizado correctamente.")
+        registro = self.get_object()
+        fecha_inicio = form.cleaned_data.get('fecha_inicio')
+        fecha_fin = form.cleaned_data.get('fecha_fin')
+
+        # Verificar conflictos de fechas
+        registros_en_conflicto = RegistroHoras.objects.filter(
+            usuario=registro.usuario,
+            fecha_inicio__date=fecha_inicio.date(),
+        ).exclude(id=registro.id)
+
+        for r in registros_en_conflicto:
+            if not (fecha_fin <= r.fecha_inicio or fecha_inicio >= r.fecha_fin):
+                form.add_error(None, "Ya existe un registro en este rango de fechas y horas.")
+                return self.form_invalid(form)
+
+        messages.success(self.request, f"El registro de horas {registro.numero_registro} ha sido actualizado.")
         return super().form_valid(form)
 
-class EliminarRegistroHorasView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+class EliminarRegistroHorasView(LoginRequiredMixin, DeleteView):
     model = RegistroHoras
-    template_name = 'confirmar_eliminar.html'
+    template_name = 'confirmar_eliminar_registro.html'
     success_url = reverse_lazy('mis_solicitudes')
 
-    def test_func(self):
-        registro = self.get_object()
-        # Solo permite la eliminación si el registro pertenece al usuario actual y está pendiente
-        return registro.usuario == self.request.user and registro.estado == 'P'
-
     def delete(self, request, *args, **kwargs):
-        messages.success(request, "Registro de horas eliminado correctamente.")
+        registro = self.get_object()
+        messages.success(request, f"El registro de horas {registro.numero_registro} ha sido eliminado exitosamente.")
         return super().delete(request, *args, **kwargs)
 
 
