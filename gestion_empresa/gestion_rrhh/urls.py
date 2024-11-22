@@ -40,6 +40,13 @@ urlpatterns = [
     path('incapacidades/crear/', views.CrearIncapacidadView.as_view(), name='crear_incapacidad'),
     # path('incapacidades/', views.ListaIncapacidadesView.as_view(), name='lista_incapacidades'),
     path('incapacidades/', views.lista_incapacidades, name='lista_incapacidades'),
+
+
+
+     path('solicitud/editar/<int:pk>/', views.EditarSolicitudView.as_view(), name='editar_solicitud'),
+    path('registro/editar/<int:pk>/', views.EditarRegistroHorasView.as_view(), name='editar_registro_horas'),
+    path('solicitud/eliminar/<int:pk>/', views.EliminarSolicitudView.as_view(), name='eliminar_solicitud'),
+    path('registro/eliminar/<int:pk>/', views.EliminarRegistroHorasView.as_view(), name='eliminar_registro_horas'),
     
     
 

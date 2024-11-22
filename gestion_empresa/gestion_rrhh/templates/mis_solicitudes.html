@@ -22,76 +22,81 @@
 </form>
 
 <table class="table">
-    <thead>
-        <tr>
-            <th>Usuario</th>
-            <th>Nº Solicitud</th>
-            <th>Nº Proyecto</th>
-            <th>Tipo</th>
-            <th>Fecha Inicio</th>
-            <th>Fecha Fin</th>
-            <th>Horas</th>
-            <th>Dias</th>
-            <th>Descripción</th>
-            <th>Estado</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for item in solicitudes_y_registros %}
-        <tr>
-            <td>{{ item.usuario.get_full_name }}</td>
-            
-            <td>
-                {% if item.tipo_objeto == 'registro' %}
-                {{ item.numero_registro}}
-            {% endif %}
-
-            {% if item.tipo_objeto == 'solicitud' %}
-                {{ item.numero_solicitud}}
-            {% endif %}
-            </td>
-            <td>
-                {% if item.tipo_objeto == 'registro' %}
-                    {{ item.numero_proyecto}}
-                {%else%}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Usuario</th>
+                <th>Nº Solicitud</th>
+                <th>Nº Proyecto</th>
+                <th>Tipo</th>
+                <th>Fecha Inicio</th>
+                <th>Fecha Fin</th>
+                <th>Horas</th>
+                <th>Días</th>
+                <th>Descripción</th>
+                <th>Estado</th>
+                <th>Acciones</th> <!-- Nueva columna -->
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in solicitudes_y_registros %}
+            <tr>
+                <td>{{ item.usuario.get_full_name }}</td>
+                
+                <td>
+                    {% if item.tipo_objeto == 'registro' %}
+                    {{ item.numero_registro }}
+                    {% else %}
+                    {{ item.numero_solicitud }}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if item.tipo_objeto == 'registro' %}
+                    {{ item.numero_proyecto }}
+                    {% else %}
                     ND
-                {% endif %}
-            </td>
-            <td>
-                {% if item.tipo_objeto == 'solicitud' %}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if item.tipo_objeto == 'solicitud' %}
                     {{ item.get_tipo_display }}
-                {% endif %}
-
-                {% if item.tipo_objeto == 'registro' %}
+                    {% else %}
                     {{ item.get_tipo_display }}
-                {% endif %}
-            </td>
-            <td>{{ item.fecha_inicio }}</td>
-            <td>{{ item.fecha_fin }}</td>
-            <td>{{ item.horas }}</td>
-            <td>
-                {% if item.tipo_objeto == 'solicitud' %}
+                    {% endif %}
+                </td>
+                <td>{{ item.fecha_inicio }}</td>
+                <td>{{ item.fecha_fin }}</td>
+                <td>{{ item.horas }}</td>
+                <td>
+                    {% if item.tipo_objeto == 'solicitud' %}
                     {{ item.dias_solicitados }}
-                {% else %}
+                    {% else %}
                     0
-                {% endif %}
-            </td>
-            <td>
-                {% if item.tipo_objeto == 'registro' %}
-                    {{ item.descripcion}}
-                {%else%}
+                    {% endif %}
+                </td>
+                <td>
+                    {% if item.tipo_objeto == 'registro' %}
+                    {{ item.descripcion }}
+                    {% else %}
                     ND
-                {% endif %}
-            </td>
-            <td>{{ item.get_estado_display }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="7">No hay solicitudes ni registros de horas en el historial.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+                    {% endif %}
+                </td>
+                <td>{{ item.get_estado_display }}</td>
+                <td>
+                    {% if item.estado == 'P' %}
+                    <a href="{% if item.tipo_objeto == 'solicitud' %}{% url 'editar_solicitud' item.id %}{% else %}{% url 'editar_registro_horas' item.id %}{% endif %}" class="btn btn-warning btn-sm">Editar</a>
+                    <a href="{% if item.tipo_objeto == 'solicitud' %}{% url 'eliminar_solicitud' item.id %}{% else %}{% url 'eliminar_registro_horas' item.id %}{% endif %}" class="btn btn-danger btn-sm">Eliminar</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="11">No hay solicitudes ni registros de horas en el historial.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
 
 <!-- Controles de Paginación -->
 <nav aria-label="Page navigation">

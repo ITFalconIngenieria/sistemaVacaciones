@@ -90,6 +90,9 @@ class Solicitud(models.Model):
     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador', null=True, blank=True, on_delete=models.SET_NULL)
 
     def save(self, *args, **kwargs):
+        if self.tipo == 'V':
+            self.fecha_inicio = self.fecha_inicio.replace(hour=0, minute=0, second=0, microsecond=0)
+            self.fecha_fin = self.fecha_fin.replace(hour=0, minute=0, second=0, microsecond=0)
         self.full_clean()
         super().save(*args, **kwargs)
 

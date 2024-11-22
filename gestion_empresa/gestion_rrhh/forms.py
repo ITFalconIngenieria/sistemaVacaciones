@@ -29,49 +29,65 @@ class UsuarioChangeForm(UserChangeForm):
 class SolicitudForm(forms.ModelForm):
     class Meta:
         model = Solicitud
-        fields = ['numero_solicitud','tipo', 'fecha_inicio', 'fecha_fin']
+        fields = ['numero_solicitud', 'tipo', 'fecha_inicio', 'fecha_fin']
         widgets = {
-             'numero_solicitud': forms.TextInput(attrs={
+            'numero_solicitud': forms.TextInput(attrs={
                 'class': 'form-control',
-                'readonly': 'readonly'  # Campo solo lectura
+                'readonly': 'readonly'
             }),
-            'fecha_inicio': forms.DateTimeInput(
-                attrs={
-                    'type': 'datetime-local',
-                    'class': 'form-control',
-                    'required': 'required'
-                }
-            ),
-            'fecha_fin': forms.DateTimeInput(
-                attrs={
-                    'type': 'datetime-local',
-                    'class': 'form-control',
-                    'required': 'required'
-                }
-            )
+            'tipo': forms.Select(attrs={
+                'class': 'form-control'
+            }),
+            'fecha_inicio': forms.DateTimeInput(attrs={
+                'type': 'datetime-local',
+                'class': 'form-control',
+                'required': 'required'
+            }),
+            'fecha_fin': forms.DateTimeInput(attrs={
+                'type': 'datetime-local',
+                'class': 'form-control',
+                'required': 'required'
+            }),
         }
         exclude = ['estado', 'aprobado_por']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if 'instance' in kwargs and kwargs['instance'] is not None:
-            if kwargs['instance'].tipo == 'V':
-                self.fields['fecha_fin'].required = True  
+        # Si el formulario tiene una instancia existente (editar solicitud)
+        if self.instance and self.instance.pk:
+            self.fields['tipo'].widget.attrs['readonly'] = True  
+            self.fields['tipo'].widget.attrs['style'] = 'pointer-events: none;'
+
+              # Preformatear fechas para que el widget DateTimeInput las cargue correctamente
+            if self.instance.fecha_inicio:
+                self.initial['fecha_inicio'] = self.instance.fecha_inicio.strftime('%Y-%m-%dT%H:%M')
+            if self.instance.fecha_fin:
+                self.initial['fecha_fin'] = self.instance.fecha_fin.strftime('%Y-%m-%dT%H:%M')
+
+        
 
     def clean(self):
         cleaned_data = super().clean()
         fecha_inicio = cleaned_data.get('fecha_inicio')
+        fecha_fin = cleaned_data.get('fecha_fin')
+
+        # Validar que las fechas estén presentes
+        if not fecha_inicio or not fecha_fin:
+            raise ValidationError("Las fechas de inicio y fin son obligatorias.")
+
+        # Validar que la fecha de inicio no sea posterior a la fecha de fin
+        if fecha_inicio > fecha_fin:
+            raise ValidationError("La fecha de inicio no puede ser posterior a la fecha de fin.")
+
+        # Validar que la fecha de inicio no sea anterior a la fecha actual
         fecha_actual = timezone.now()
+        if fecha_inicio.date() < fecha_actual.date():
+            raise ValidationError("La fecha de inicio no puede ser anterior a la fecha actual.")
 
-        if fecha_inicio:
-            fecha_inicio_date = fecha_inicio.date()
-            fecha_actual_date = fecha_actual.date()
-
-            if fecha_inicio_date < fecha_actual_date:
-                raise ValidationError("La fecha de inicio no puede ser anterior a la fecha actual.")
-        
         return cleaned_data
+
+
 
 class RegistrarHorasForm(forms.ModelForm):
     class Meta:
