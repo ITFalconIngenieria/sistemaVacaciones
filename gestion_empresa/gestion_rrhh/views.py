@@ -83,8 +83,6 @@ def calcular_horas_individuales(usuario):
     return horas_por_tipo
 
 
-
-
 @login_required
 def dashboard(request):
     usuario = request.user
@@ -92,7 +90,6 @@ def dashboard(request):
     fecha_limite = fecha_actual + timedelta(days=10)
     dias_data = calcular_dias_disponibles(usuario)
     dias_disponibles = dias_data['dias_disponibles']
-
     horas_data = calcular_horas_individuales(usuario)
     horas_extra = horas_data['HE']
     horas_compensatorias = horas_data['HC']
@@ -208,7 +205,6 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
 
     def get_initial(self):
         initial = super().get_initial()
-        
         last_record = Solicitud.objects.order_by('id').last()
         if last_record:
             numero_solicitud = last_record.id + 1 
@@ -225,14 +221,10 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
-       
         dias_data = calcular_dias_disponibles(usuario)
         dias_disponibles = dias_data['dias_disponibles']
-
-
         horas_data = calcular_horas_individuales(usuario)
         horas_compensatorias = horas_data['HC']
-
 
         solicitudes_en_conflicto = Solicitud.objects.filter(
             usuario=usuario,
@@ -279,7 +271,6 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         usuario = self.request.user
         dias_data = calcular_dias_disponibles(usuario)
         dias_disponibles = dias_data['dias_disponibles']
-
         horas_data = calcular_horas_individuales(usuario)
         horas_extra = horas_data['HE']
         horas_compensatorias = horas_data['HC']
@@ -298,8 +289,6 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
     fields = ['estado']
     template_name = 'aprobar_rechazar_solicitud.html'
     success_url = reverse_lazy('lista_solicitudes')
-
-    
 
     def test_func(self):
         solicitud = self.get_object()
@@ -351,9 +340,7 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
         messages.success(self.request, 'La solicitud ha sido procesada exitosamente.')
         return super().form_valid(form)
 
-
-
-class EditarSolicitudView(LoginRequiredMixin, UpdateView):
+class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
     model = Solicitud
     form_class = SolicitudForm
     template_name = 'editar_solicitud.html'
@@ -372,15 +359,11 @@ class EditarSolicitudView(LoginRequiredMixin, UpdateView):
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
-
         dias_data = calcular_dias_disponibles(usuario)
         dias_disponibles = dias_data['dias_disponibles']
-
         horas_data = calcular_horas_individuales(usuario)
         horas_compensatorias = horas_data['HC']
-
         
-    
         solicitudes_en_conflicto = Solicitud.objects.filter(
             usuario=usuario,
             fecha_inicio__date=fecha_inicio.date(),
@@ -439,8 +422,7 @@ class EditarSolicitudView(LoginRequiredMixin, UpdateView):
         return context
 
 
-
-class EliminarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+class EliminarMiSolicitudView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = Solicitud
     template_name = 'confirmar_eliminar.html'
     success_url = reverse_lazy('mis_solicitudes')
@@ -549,7 +531,7 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
             if registro.tipo =='HEF':
                 registro.save()
             form.instance.aprobado_por = self.request.user
-            messages.success(self.request, 'El registro de horas ha sido procesado exitosamente.')
+            messages.success(self.request, 'El registro de horas ha sido procesado Aprobado exitosamente.')
         
         elif form.instance.estado == 'R':
             messages.warning(
@@ -557,11 +539,15 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
                 f"El registro de horas con el número {registro.numero_registro} ha sido rechazado."
             )
 
-        
+        elif form.instance.estado == 'P':
+            messages.warning(
+                self.request,
+                f"El registro de horas con el número {registro.numero_registro} ha sido marcado como pendiente."
+            )
         return super().form_valid(form)
 
 
-class EditarRegistroHorasView(LoginRequiredMixin, UpdateView):
+class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
     model = RegistroHoras
     form_class = RegistrarHorasForm
     template_name = 'editar_registro_horas.html'
@@ -598,7 +584,7 @@ class EditarRegistroHorasView(LoginRequiredMixin, UpdateView):
         messages.success(self.request, f"El registro de horas {registro.numero_registro} ha sido actualizado.")
         return super().form_valid(form)
 
-class EliminarRegistroHorasView(LoginRequiredMixin, DeleteView):
+class EliminarMiRegistroHorasView(LoginRequiredMixin, DeleteView):
     model = RegistroHoras
     template_name = 'confirmar_eliminar_registro.html'
     success_url = reverse_lazy('mis_solicitudes')
@@ -676,7 +662,6 @@ class HistorialCombinadoView(ListView):
             registros_queryset = registros_queryset.filter(usuario_id=usuario_id)
             solicitudes_queryset = solicitudes_queryset.filter(usuario_id=usuario_id)
 
-        # Combinar ambos querysets en una lista
         registros_y_solicitudes = list(registros_queryset) + list(solicitudes_queryset)
 
         estado_prioridad = {'P': 1, 'R': 2, 'A': 3}
@@ -692,9 +677,11 @@ class HistorialCombinadoView(ListView):
 
         context['registros_y_solicitudes'] = page_obj
         context['page_obj'] = page_obj
+        context['subordinados'] = user.subordinados.all()
         context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=user)
 
         return context
+
 
 
 class MiSolicitudYRegistroView(ListView):
@@ -895,8 +882,6 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
-
-
         # Verificar fechas conflictivas
         conflictos = Incapacidad.objects.filter(
             usuario=usuario,
