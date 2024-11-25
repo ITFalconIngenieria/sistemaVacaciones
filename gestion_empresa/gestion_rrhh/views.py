@@ -817,7 +817,6 @@ def cerrar_quincena(request):
         usuario.save()
 
     registros_actualizados = registros_a_pagar.update(estado_pago='PG')
-
     messages.success(request, f"{registros_actualizados} registros de horas extra han sido marcados como pagados.")
     return redirect('reporte_horas_extra')
 
@@ -886,15 +885,11 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
         
-
         incapacidades_conflicto = Incapacidad.objects.filter(
             usuario=usuario
         )
 
-        # Verificar solapamiento de fechas
         for incapacidad in incapacidades_conflicto:
-            # Hay solapamiento si la fecha inicio está entre las fechas de una incapacidad existente
-            # o si la fecha fin está entre las fechas de una incapacidad existente
             if (incapacidad.fecha_inicio <= fecha_inicio <= incapacidad.fecha_fin) or \
                (incapacidad.fecha_inicio <= fecha_fin <= incapacidad.fecha_fin) or \
                (fecha_inicio <= incapacidad.fecha_inicio and fecha_fin >= incapacidad.fecha_fin):
@@ -912,7 +907,6 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
 def lista_incapacidades(request):
     incapacidades = Incapacidad.objects.all().order_by('-fecha_inicio')
 
-    # Configuración del paginador
     paginator = Paginator(incapacidades, 8) 
     page_number = request.GET.get('page')  
     page_obj = paginator.get_page(page_number)  
@@ -959,16 +953,12 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
 
-
-        # Verificar conflictos excluyendo la incapacidad actual
         incapacidades_conflicto = Incapacidad.objects.filter(
             usuario=usuario
         ).exclude(pk=self.object.pk)
 
-        # Verificar solapamiento de fechas
         for incapacidad in incapacidades_conflicto:
-            # Hay solapamiento si la fecha inicio está entre las fechas de una incapacidad existente
-            # o si la fecha fin está entre las fechas de una incapacidad existente
+
             if (incapacidad.fecha_inicio <= fecha_inicio <= incapacidad.fecha_fin) or \
                (incapacidad.fecha_inicio <= fecha_fin <= incapacidad.fecha_fin) or \
                (fecha_inicio <= incapacidad.fecha_inicio and fecha_fin >= incapacidad.fecha_fin):
