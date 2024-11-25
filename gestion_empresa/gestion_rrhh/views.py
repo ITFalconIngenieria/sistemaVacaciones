@@ -167,10 +167,16 @@ def PerfilUsuario(request):
     usuario = request.user
     dias_data = calcular_dias_disponibles(usuario)
     dias_disponibles = dias_data['dias_disponibles']
+
+    horas_data = calcular_horas_individuales(usuario)
+    horas_compensatorias = horas_data['HC']
+    horas_extra = horas_data['HE']
     
     context = {
     'user': usuario,
     'dias_vacaciones_disponibles': dias_disponibles,
+    'horas_compensatorias': horas_compensatorias,
+    'horas_extra': horas_extra
 
     }
     return render(request, 'mi_perfil.html', context)
@@ -494,15 +500,14 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
             form.add_error(None, "Los ingenieros no pueden registrar horas extra.")
             return self.form_invalid(form)
         
-        # if rol_usuario == 'TE' and tipo_horas == 'HEF':
-        #     form.add_error(None, "Los Técnicos no pueden registrar horas extra para dias feriados.")
-        #     return self.form_invalid(form)
-
-        
+        if rol_usuario == 'TE' and tipo_horas == 'HEF':
+            form.add_error(None, "Los Técnicos no pueden registrar horas extra para dias feriados.")
+            return self.form_invalid(form)
 
         elif rol_usuario in ['GG', 'JI', 'JD'] and tipo_horas == 'HE':
             form.add_error(None, "Los gerentes o jefes no pueden registrar horas extra.")
             return self.form_invalid(form)
+        
         form.instance.numero_registro = form.cleaned_data['numero_registro']
         messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
         return super().form_valid(form)
@@ -510,9 +515,7 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         usuario = self.request.user
-
         horas_data = calcular_horas_individuales(usuario)
-
         horas_extra = horas_data['HE']
         horas_compensatorias = horas_data['HC']
 
