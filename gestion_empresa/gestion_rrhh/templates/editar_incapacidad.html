@@ -5,12 +5,99 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Editar Incapacidad</h2>
+    <div class="card-header bg-warning text-white">
+        <h4 class="mb-0">Editar Incapacidad</h4>
+    </div>
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
-        {{ form|crispy }}        
-        <button type="submit" class="btn btn-success w-100">Guardar Cambios</button>
-        <a href="{% url 'mis_incapacidades' %}" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+        
+        {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+            {% for error in form.non_field_errors %}
+                {{ error }}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="mb-3">
+            <label for="{{ form.fecha_inicio.id_for_label }}" class="form-label">Fecha de inicio</label>
+            {{ form.fecha_inicio }}
+            {% if form.fecha_inicio.errors %}
+            <div class="text-danger">
+                {{ form.fecha_inicio.errors }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.fecha_fin.id_for_label }}" class="form-label">Fecha de fin</label>
+            {{ form.fecha_fin }}
+            {% if form.fecha_fin.errors %}
+            <div class="text-danger">
+                {{ form.fecha_fin.errors }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.descripcion.id_for_label }}" class="form-label">Descripción</label>
+            {{ form.descripcion }}
+            {% if form.descripcion.errors %}
+            <div class="text-danger">
+                {{ form.descripcion.errors }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label for="{{ form.archivo_adjunto.id_for_label }}" class="form-label">Archivo adjunto</label>
+            {{ form.archivo_adjunto }}
+            {% if form.archivo_adjunto.errors %}
+            <div class="text-danger">
+                {{ form.archivo_adjunto.errors }}
+            </div>
+            {% endif %}
+            {% if object.archivo_adjunto %}
+            <p class="mt-2">Archivo actual: <a href="{{ object.archivo_adjunto.url }}" target="_blank">Ver archivo</a></p>
+            {% endif %}
+        </div>
+
+         <!-- Información Dinámica -->
+         <div class="alert alert-info" id="dias-calculados">
+            Los días calculados de incapacidad son: <span id="cantidad-dias">0</span> días.
+        </div>
+
+        <button type="submit" class="btn btn-primary">Guardar cambios</button>
+        <a href="{% url 'mis_incapacidades' %}" class="btn btn-secondary">Cancelar</a>
     </form>
 </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const fechaInicioInput = document.getElementById('id_fecha_inicio');
+        const fechaFinInput = document.getElementById('id_fecha_fin');
+        const diasCalculadosDiv = document.getElementById('dias-calculados');
+        const cantidadDiasSpan = document.getElementById('cantidad-dias');
+    
+        function calcularDias() {
+            const fechaInicio = new Date(fechaInicioInput.value);
+            const fechaFin = new Date(fechaFinInput.value);
+    
+            if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
+                const diferenciaTiempo = fechaFin - fechaInicio;
+                const dias = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24)) + 1;
+                cantidadDiasSpan.textContent = dias;
+                diasCalculadosDiv.style.display = 'block';
+            } else {
+                cantidadDiasSpan.textContent = 0;
+                diasCalculadosDiv.style.display = 'none';
+            }
+        }
+    
+        fechaInicioInput.addEventListener('change', calcularDias);
+        fechaFinInput.addEventListener('change', calcularDias);
+    
+        // Llamar al cálculo inicial si ya hay valores prellenados
+        calcularDias();
+    });
+    </script>
 {% endblock %}

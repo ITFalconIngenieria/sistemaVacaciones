@@ -239,15 +239,43 @@ class IncapacidadForm(forms.ModelForm):
         model = Incapacidad
         fields = ['fecha_inicio', 'fecha_fin', 'archivo_adjunto', 'descripcion']
         widgets = {
-            'fecha_inicio': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'fecha_fin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'archivo_adjunto': forms.FileInput(attrs={'class': 'form-control'}),
+            'fecha_inicio': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'fecha_fin': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'descripcion': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3
+            }),
+            'archivo_adjunto': forms.FileInput(attrs={
+                'class': 'form-control'
+            }),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.instance and self.instance.pk:  # Verificar si es edición
-            self.fields['fecha_inicio'].initial = self.instance.fecha_inicio
-            self.fields['fecha_fin'].initial = self.instance.fecha_fin
-            self.fields['descripcion'].initial = self.instance.descripcion
+        if self.instance and self.instance.pk:
+            # Convertir las fechas al formato correcto para el input type="date"
+            if self.instance.fecha_inicio:
+                self.initial['fecha_inicio'] = self.instance.fecha_inicio.strftime('%Y-%m-%d')
+            if self.instance.fecha_fin:
+                self.initial['fecha_fin'] = self.instance.fecha_fin.strftime('%Y-%m-%d')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_inicio = cleaned_data.get('fecha_inicio')
+        fecha_fin = cleaned_data.get('fecha_fin')
+
+        if not fecha_inicio or not fecha_fin:
+            raise forms.ValidationError("Ambas fechas son obligatorias.")
+
+        # Validar que las fechas estén en días completos y en el rango permitido
+        diferencia_dias = (fecha_fin - fecha_inicio).days + 1
+        if diferencia_dias < 1 or diferencia_dias > 3:
+            raise forms.ValidationError("El rango de días debe ser entre 1 y 3 días completos.")
+
+        return cleaned_data

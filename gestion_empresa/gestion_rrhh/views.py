@@ -25,6 +25,8 @@ import json
 from .models import Incapacidad
 from .forms import IncapacidadForm
 from django.db.models import Q
+from django.core.exceptions import PermissionDenied
+import datetime
 
 def calcular_dias_disponibles(usuario):
     total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
@@ -687,7 +689,6 @@ class HistorialCombinadoView(ListView):
         return context
 
 
-
 class MiSolicitudYRegistroView(ListView):
     template_name = 'mis_solicitudes.html'
     context_object_name = 'solicitudes_y_registros'
@@ -872,8 +873,6 @@ class GenPdf(View):
             return HttpResponse('Error al generar el PDF', status=400)
         return response
 
-
-
 class CrearIncapacidadView(LoginRequiredMixin, CreateView):
     model = Incapacidad
     form_class = IncapacidadForm
@@ -886,23 +885,28 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
-        # Verificar fechas conflictivas
-        conflictos = Incapacidad.objects.filter(
-            usuario=usuario,
-            fecha_inicio__lte=fecha_fin,
-            fecha_fin__gte=fecha_inicio
+        
+
+        incapacidades_conflicto = Incapacidad.objects.filter(
+            usuario=usuario
         )
-        if conflictos.exists():
-            form.add_error(None, "Ya tienes una incapacidad registrada para este rango de fechas.")
-            return self.form_invalid(form)
+
+        # Verificar solapamiento de fechas
+        for incapacidad in incapacidades_conflicto:
+            # Hay solapamiento si la fecha inicio está entre las fechas de una incapacidad existente
+            # o si la fecha fin está entre las fechas de una incapacidad existente
+            if (incapacidad.fecha_inicio <= fecha_inicio <= incapacidad.fecha_fin) or \
+               (incapacidad.fecha_inicio <= fecha_fin <= incapacidad.fecha_fin) or \
+               (fecha_inicio <= incapacidad.fecha_inicio and fecha_fin >= incapacidad.fecha_fin):
+                print(f"Conflicto con registro: ID {incapacidad.id}, Inicio {incapacidad.fecha_inicio}, Fin {incapacidad.fecha_fin}")
+                form.add_error(None, "Ya tienes una incapacidad registrada que se solapa con este rango. Por favor, selecciona otro rango")
+                return self.form_invalid(form)
         
         # Verificar si el archivo fue adjuntado
         if not form.cleaned_data.get('archivo_adjunto'):
             form.add_error('archivo', "Debes adjuntar un archivo.")
             return self.form_invalid(form)
         return super().form_valid(form)
-
-
 
 @login_required
 def lista_incapacidades(request):
@@ -938,61 +942,42 @@ class MisIncapacidadesView(LoginRequiredMixin, ListView):
         context['page_obj'] = page_obj
         return context
     
-# class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
-#     model = Incapacidad
-#     form_class = IncapacidadForm
-#     template_name = 'editar_incapacidad.html'
-#     success_url = reverse_lazy('mis_incapacidades')
-
-#     def form_valid(self, form):
-#         # Validación adicional
-#         fecha_inicio = form.cleaned_data.get('fecha_inicio')
-#         fecha_fin = form.cleaned_data.get('fecha_fin')
-#         usuario = self.request.user
-
-#         conflictos = Incapacidad.objects.filter(
-#             usuario=usuario,
-#             fecha_inicio__lte=fecha_fin,
-#             fecha_fin__gte=fecha_inicio
-#         ).exclude(pk=self.object.pk)
-
-#         if conflictos.exists():
-#             form.add_error(None, "Ya tienes una incapacidad registrada para este rango de fechas.")
-#             return self.form_invalid(form)
-
-#         return super().form_valid(form)
-
-class CrearEditarIncapacidadView(LoginRequiredMixin, UpdateView):
+class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
     model = Incapacidad
     form_class = IncapacidadForm
     template_name = 'editar_incapacidad.html'
     success_url = reverse_lazy('mis_incapacidades')
 
     def get_object(self, queryset=None):
-        if 'pk' in self.kwargs:
-            return super().get_object(queryset)
-        return None  # Para creación de una nueva incapacidad
+        obj = super().get_object(queryset)
+        if obj.usuario != self.request.user:
+            raise PermissionDenied
+        return obj
 
     def form_valid(self, form):
-        # Agregar validaciones personalizadas para conflictos de fechas
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
 
-        conflictos = Incapacidad.objects.filter(
-            usuario=usuario,
-            fecha_inicio__lte=fecha_fin,
-            fecha_fin__gte=fecha_inicio
-        ).exclude(pk=self.object.pk if self.object else None)
 
-        if conflictos.exists():
-            form.add_error(None, "Ya tienes una incapacidad registrada para este rango de fechas.")
-            return self.form_invalid(form)
+        # Verificar conflictos excluyendo la incapacidad actual
+        incapacidades_conflicto = Incapacidad.objects.filter(
+            usuario=usuario
+        ).exclude(pk=self.object.pk)
 
-        form.instance.usuario = self.request.user  # Asociar la incapacidad al usuario actual
+        # Verificar solapamiento de fechas
+        for incapacidad in incapacidades_conflicto:
+            # Hay solapamiento si la fecha inicio está entre las fechas de una incapacidad existente
+            # o si la fecha fin está entre las fechas de una incapacidad existente
+            if (incapacidad.fecha_inicio <= fecha_inicio <= incapacidad.fecha_fin) or \
+               (incapacidad.fecha_inicio <= fecha_fin <= incapacidad.fecha_fin) or \
+               (fecha_inicio <= incapacidad.fecha_inicio and fecha_fin >= incapacidad.fecha_fin):
+                print(f"Conflicto con registro: ID {incapacidad.id}, Inicio {incapacidad.fecha_inicio}, Fin {incapacidad.fecha_fin}")
+                form.add_error(None, "Ya tienes una incapacidad registrada que se solapa con este rango. Por favor, selecciona otro rango")
+                return self.form_invalid(form)
+
+        form.instance.usuario = self.request.user
         return super().form_valid(form)
-
-
 
 
 def logout_view(request):
