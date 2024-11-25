@@ -50,7 +50,8 @@ def calcular_horas_individuales(usuario):
         total_horas = RegistroHoras.objects.filter(
             usuario=usuario,
             tipo=tipo,
-            estado='A'
+            estado='A',
+            estado_pago='NP'
         ).aggregate(Sum('horas'))['horas__sum'] or 0
         horas_por_tipo[tipo] = total_horas
 
@@ -58,7 +59,9 @@ def calcular_horas_individuales(usuario):
     horas_hef = RegistroHoras.objects.filter(
         usuario=usuario,
         tipo='HEF',
-        estado='A'
+        estado='A',
+        estado_pago='NP'
+        
     ).aggregate(
         total_horas=Sum('horas'),
         horas_compensatorias_feriado=Sum('horas_compensatorias_feriado')
@@ -70,11 +73,12 @@ def calcular_horas_individuales(usuario):
     # Sumar horas compensatorias feriado de HEF a HC
     horas_por_tipo['HC'] += horas_hef['horas_compensatorias_feriado'] or 0
 
+
     # Restar horas de solicitudes aprobadas de tipo HC
     horas_solicitudes_hc = Solicitud.objects.filter(
         usuario=usuario,
         tipo='HC',
-        estado='A'  # Solo solicitudes aprobadas
+        estado='A'
     ).aggregate(Sum('horas'))['horas__sum'] or 0
 
     # Restar las horas aprobadas del modelo Solicitud
@@ -801,7 +805,7 @@ def reporte_horas_extra(request):
 @login_required
 def cerrar_quincena(request):
     registros_a_pagar = RegistroHoras.objects.filter(
-        tipo='HE',
+        Q(tipo='HE') | Q(tipo='HEF'),
         estado='A',
         estado_pago='NP'
     )
@@ -829,7 +833,7 @@ class GenPdf(View):
                 pass
 
         registros = RegistroHoras.objects.filter(
-            tipo='HE',
+            Q(tipo='HE') | Q(tipo='HEF'),
             estado='A',
             estado_pago='NP'
         ).order_by('fecha_inicio')
@@ -912,6 +916,83 @@ def lista_incapacidades(request):
     return render(request, 'lista_incapacidades.html', {
         'page_obj': page_obj, 
     })
+
+
+class MisIncapacidadesView(LoginRequiredMixin, ListView):
+    model = Incapacidad
+    template_name = 'mis_incapacidades.html'
+    context_object_name = 'mis_incapacidades'
+
+    def get_queryset(self):
+        return Incapacidad.objects.filter(usuario=self.request.user).order_by('-fecha_inicio')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Configuración de la paginación
+        incapacidades = self.get_queryset()
+        paginator = Paginator(incapacidades, 8)
+        page_number = self.request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
+        context['page_obj'] = page_obj
+        return context
+    
+# class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
+#     model = Incapacidad
+#     form_class = IncapacidadForm
+#     template_name = 'editar_incapacidad.html'
+#     success_url = reverse_lazy('mis_incapacidades')
+
+#     def form_valid(self, form):
+#         # Validación adicional
+#         fecha_inicio = form.cleaned_data.get('fecha_inicio')
+#         fecha_fin = form.cleaned_data.get('fecha_fin')
+#         usuario = self.request.user
+
+#         conflictos = Incapacidad.objects.filter(
+#             usuario=usuario,
+#             fecha_inicio__lte=fecha_fin,
+#             fecha_fin__gte=fecha_inicio
+#         ).exclude(pk=self.object.pk)
+
+#         if conflictos.exists():
+#             form.add_error(None, "Ya tienes una incapacidad registrada para este rango de fechas.")
+#             return self.form_invalid(form)
+
+#         return super().form_valid(form)
+
+class CrearEditarIncapacidadView(LoginRequiredMixin, UpdateView):
+    model = Incapacidad
+    form_class = IncapacidadForm
+    template_name = 'editar_incapacidad.html'
+    success_url = reverse_lazy('mis_incapacidades')
+
+    def get_object(self, queryset=None):
+        if 'pk' in self.kwargs:
+            return super().get_object(queryset)
+        return None  # Para creación de una nueva incapacidad
+
+    def form_valid(self, form):
+        # Agregar validaciones personalizadas para conflictos de fechas
+        fecha_inicio = form.cleaned_data.get('fecha_inicio')
+        fecha_fin = form.cleaned_data.get('fecha_fin')
+        usuario = self.request.user
+
+        conflictos = Incapacidad.objects.filter(
+            usuario=usuario,
+            fecha_inicio__lte=fecha_fin,
+            fecha_fin__gte=fecha_inicio
+        ).exclude(pk=self.object.pk if self.object else None)
+
+        if conflictos.exists():
+            form.add_error(None, "Ya tienes una incapacidad registrada para este rango de fechas.")
+            return self.form_invalid(form)
+
+        form.instance.usuario = self.request.user  # Asociar la incapacidad al usuario actual
+        return super().form_valid(form)
+
+
 
 
 def logout_view(request):

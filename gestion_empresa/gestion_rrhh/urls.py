@@ -49,7 +49,7 @@ urlpatterns = [
     path('registro/eliminar/<int:pk>/', views.EliminarMiRegistroHorasView.as_view(), name='eliminar_registro_horas'),
 
 
-    
-
+    path('mis_incapacidades/', views.MisIncapacidadesView.as_view(), name='mis_incapacidades'),
+    path('incapacidad/editar/<int:pk>/', views.CrearEditarIncapacidadView.as_view(), name='editar_incapacidad'),
 
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

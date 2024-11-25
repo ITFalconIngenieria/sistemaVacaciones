@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
-{% block title %}Registrar Incapacidad{% endblock %}
+
+{% block title %}{{ form.instance.pk|yesno:"Editar Incapacidad,Registrar Incapacidad" }}{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -8,17 +9,54 @@
         <div class="col-md-8">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
-                    <h4>Registrar Incapacidad</h4>
+                    <h4 class="mb-0">{{ form.instance.pk|yesno:"Editar Incapacidad,Registrar Incapacidad" }}</h4>
                 </div>
                 <div class="card-body">
                     <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
                         {{ form|crispy }}
-                        <button type="submit" class="btn btn-success w-100">Registrar</button>
+
+                        <!-- Información Dinámica -->
+                        <div class="alert alert-info" id="dias-calculados">
+                            Los días calculados de incapacidad son: <span id="cantidad-dias">0</span> días.
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">Guardar Cambios</button>
+                        <a href="{% url 'mis_incapacidades' %}" class="btn btn-secondary w-100 mt-2">Cancelar</a>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const fechaInicioInput = document.getElementById('id_fecha_inicio');
+    const fechaFinInput = document.getElementById('id_fecha_fin');
+    const diasCalculadosDiv = document.getElementById('dias-calculados');
+    const cantidadDiasSpan = document.getElementById('cantidad-dias');
+
+    function calcularDias() {
+        const fechaInicio = new Date(fechaInicioInput.value);
+        const fechaFin = new Date(fechaFinInput.value);
+
+        if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
+            const diferenciaTiempo = fechaFin - fechaInicio;
+            const dias = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24)) + 1;
+            cantidadDiasSpan.textContent = dias;
+            diasCalculadosDiv.style.display = 'block';
+        } else {
+            cantidadDiasSpan.textContent = 0;
+            diasCalculadosDiv.style.display = 'none';
+        }
+    }
+
+    fechaInicioInput.addEventListener('change', calcularDias);
+    fechaFinInput.addEventListener('change', calcularDias);
+
+    // Llamar al cálculo inicial si ya hay valores prellenados
+    calcularDias();
+});
+</script>
 {% endblock %}
