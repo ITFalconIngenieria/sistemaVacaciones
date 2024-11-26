@@ -180,6 +180,7 @@ class Incapacidad(models.Model):
     )
     descripcion = models.TextField(blank=True, null=True)
     dias_incapacidad = models.IntegerField(default=0)
+    revisado = models.BooleanField(default=False)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     def es_eliminable(self):

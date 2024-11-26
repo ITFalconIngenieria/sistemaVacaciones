@@ -27,6 +27,10 @@ from .forms import IncapacidadForm
 from django.db.models import Q
 from django.core.exceptions import PermissionDenied
 import datetime
+from django.contrib.auth.decorators import user_passes_test
+
+def es_jefe(user):
+    return user.rol in ['GG', 'JI', 'JD']
 
 def calcular_dias_disponibles(usuario):
     total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
@@ -602,8 +606,15 @@ class EliminarMiRegistroHorasView(LoginRequiredMixin, DeleteView):
 
 
 class ListaSolicitudesRegistrosPendientesView(ListView):
+    
     template_name = 'lista_solicitudes.html'
     context_object_name = 'pendientes'
+
+    def dispatch(self, request, *args, **kwargs):
+        # Validar si el usuario tiene el rol permitido
+        if request.user.rol not in ['GG', 'JI', 'JD']:
+            raise PermissionDenied("No tienes permiso para acceder a esta página.")
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
         return []
@@ -644,6 +655,12 @@ class ListaSolicitudesRegistrosPendientesView(ListView):
 class HistorialCombinadoView(ListView):
     template_name = 'historial_solicitudes.html'
     context_object_name = 'registros_y_solicitudes'
+
+    def dispatch(self, request, *args, **kwargs):
+        # Validar si el usuario tiene el rol permitido
+        if request.user.rol not in ['GG', 'JI', 'JD']:
+            raise PermissionDenied("No tienes permiso para acceder a esta página.")
+        return super().dispatch(request, *args, **kwargs)
     
     def get_queryset(self):
         return []
@@ -776,6 +793,8 @@ def ajuste_vacaciones(request):
 
 @login_required
 def reporte_horas_extra(request):
+    if request.user.rol not in ['GG', 'JI', 'JD']:
+        raise PermissionDenied("No tienes permiso para acceder a esta página.")
     registros = RegistroHoras.objects.filter(
         Q(tipo='HE') | Q(tipo='HEF'),
         estado='A',
@@ -871,12 +890,13 @@ class GenPdf(View):
         if pisa_status.err:
             return HttpResponse('Error al generar el PDF', status=400)
         return response
+    
 
 class CrearIncapacidadView(LoginRequiredMixin, CreateView):
     model = Incapacidad
     form_class = IncapacidadForm
     template_name = 'crear_incapacidad.html'
-    success_url = reverse_lazy('lista_incapacidades')
+    success_url = reverse_lazy('mis_incapacidades')
 
     def form_valid(self, form):
         form.instance.usuario = self.request.user
@@ -903,16 +923,79 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
             return self.form_invalid(form)
         return super().form_valid(form)
 
+
+class GenerarReporteIncapacidadesView(View):
+    def get(self, request, *args, **kwargs):
+        # Obtener incapacidades revisadas
+        incapacidades = Incapacidad.objects.filter(revisado=True).order_by('fecha_inicio')
+
+        incapacidades_por_usuario = {}
+        for incapacidad in incapacidades:
+            usuario_nombre = incapacidad.usuario.get_full_name()
+            if usuario_nombre not in incapacidades_por_usuario:
+                incapacidades_por_usuario[usuario_nombre] = {
+                    'incapacidades': [],
+                    'total_dias': 0,
+                }
+            incapacidades_por_usuario[usuario_nombre]['incapacidades'].append({
+                'fecha_inicio': incapacidad.fecha_inicio,
+                'fecha_fin': incapacidad.fecha_fin,
+                'dias_incapacidad': incapacidad.dias_incapacidad,
+                'descripcion': incapacidad.descripcion or '',
+            })
+            incapacidades_por_usuario[usuario_nombre]['total_dias'] += incapacidad.dias_incapacidad
+
+        # Renderizar el contexto en el template
+        context = {
+            'incapacidades_por_usuario': incapacidades_por_usuario,
+            'fecha_reporte': timezone.now().year,
+        }
+        template = get_template('reporte_incapacidades_pdf.html')
+        html = template.render(context)
+
+        # Generar el PDF
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="reporte_incapacidades.pdf"'
+        pisa_status = pisa.CreatePDF(html, dest=response, encoding='UTF-8')
+
+        if pisa_status.err:
+            return HttpResponse('Error al generar el PDF', status=400)
+        return response
+
+
 @login_required
 def lista_incapacidades(request):
-    incapacidades = Incapacidad.objects.all().order_by('-fecha_inicio')
+    if request.user.rol not in ['GG', 'JI', 'JD']:
+        raise PermissionDenied("No tienes permiso para acceder a esta página.")
+    
+    incapacidades = Incapacidad.objects.all().order_by('usuario', '-fecha_inicio')
+    if request.method == "POST":
+        seleccionados = request.POST.getlist('seleccionados')
+        if 'marcar_revisado' in request.POST:
+            Incapacidad.objects.filter(id__in=seleccionados).update(revisado=True)
+        elif 'generar_reporte' in request.POST:
+            request.session['reporte_incapacidades'] = seleccionados
+            return redirect('generar_reporte_incapacidades')
 
-    paginator = Paginator(incapacidades, 8) 
-    page_number = request.GET.get('page')  
-    page_obj = paginator.get_page(page_number)  
+    # Agrupar incapacidades por usuario
+    incapacidades_por_usuario = {}
+    for incapacidad in incapacidades:
+        usuario = incapacidad.usuario
+        if usuario not in incapacidades_por_usuario:
+            incapacidades_por_usuario[usuario] = {
+                'incapacidades': [],
+                'total_dias': 0
+            }
+        incapacidades_por_usuario[usuario]['incapacidades'].append(incapacidad)
+        incapacidades_por_usuario[usuario]['total_dias'] += incapacidad.dias_incapacidad
+
+    # Paginación
+    paginator = Paginator(list(incapacidades_por_usuario.items()), 5)  # Cambiar tamaño de página si es necesario
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
     return render(request, 'lista_incapacidades.html', {
-        'page_obj': page_obj, 
+        'page_obj': page_obj,
     })
 
 
@@ -927,7 +1010,6 @@ class MisIncapacidadesView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Configuración de la paginación
         incapacidades = self.get_queryset()
         paginator = Paginator(incapacidades, 8)
         page_number = self.request.GET.get('page')
@@ -942,17 +1024,10 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
     template_name = 'editar_incapacidad.html'
     success_url = reverse_lazy('mis_incapacidades')
 
-    # def get_object(self, queryset=None):
-    #     obj = super().get_object(queryset)
-    #     if obj.usuario != self.request.user:
-    #         raise PermissionDenied
-    #     return obj
-
     def get_object(self, queryset=None):
         obj = super().get_object(queryset)
         if obj.usuario != self.request.user:
             raise PermissionDenied
-        # Verificar si la incapacidad es editable
         if not obj.es_eliminable():
             raise PermissionDenied("No puedes editar esta incapacidad porque la fecha de inicio ya pasó.")
         return obj
@@ -985,7 +1060,6 @@ class EliminarIncapacidadView(LoginRequiredMixin, DeleteView):
 
     def get_object(self, queryset=None):
         obj = super().get_object(queryset)
-        # Solo permitir eliminar si es el propietario y es eliminable
         if obj.usuario != self.request.user or not obj.es_eliminable():
             raise PermissionDenied("No puedes eliminar esta incapacidad por que la fecha de la incapacidad ya inició.")
         return obj

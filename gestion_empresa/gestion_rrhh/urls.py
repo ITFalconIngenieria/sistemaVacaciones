@@ -52,5 +52,5 @@ urlpatterns = [
     path('mis_incapacidades/', views.MisIncapacidadesView.as_view(), name='mis_incapacidades'),
     path('incapacidad/editar/<int:pk>/', views.EditarIncapacidadView.as_view(), name='editar_incapacidad'),
     path('incapacidad/eliminar/<int:pk>/', views.EliminarIncapacidadView.as_view(), name='eliminar_incapacidad'),
-
+    path('incapacidades/reporte/', views.GenerarReporteIncapacidadesView.as_view(), name='generar_reporte_incapacidades'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
