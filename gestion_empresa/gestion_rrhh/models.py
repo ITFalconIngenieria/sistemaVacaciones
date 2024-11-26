@@ -26,8 +26,6 @@ class Usuario(AbstractUser):
     jefe = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, related_name='subordinados')
     fecha_entrada = models.DateField(null=True, blank=True)
     fecha_salida= models.DateField(null=True, blank=True)
-    # horas_extra_acumuladas = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    # horas_compensatorias_disponibles = models.DecimalField(max_digits=5, decimal_places=2, default=0)  
     mostrar_en_dashboard = models.BooleanField(default=True, help_text="Determina si el usuario aparecerá en el dashboard.")
     def asignar_vacaciones_anuales(self):
         """Asigna días de vacaciones al usuario según los años trabajados."""
@@ -141,8 +139,6 @@ class RegistroHoras(models.Model):
             self.horas_compensatorias_feriado = 9 * diferencia_dias
         super().save(*args, **kwargs)
 
-
-
 class HistorialVacaciones(models.Model):
     usuario = models.ForeignKey('Usuario', on_delete=models.CASCADE)
     año = models.IntegerField()
@@ -151,8 +147,6 @@ class HistorialVacaciones(models.Model):
 
     class Meta:
         unique_together = ('usuario', 'año')
-
-
 
 class AjusteVacaciones(models.Model):
     usuario = models.ForeignKey('Usuario', on_delete=models.CASCADE)
@@ -184,11 +178,9 @@ class Incapacidad(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     def es_eliminable(self):
-        """Devuelve True si la fecha actual es menor que la fecha de inicio."""
         return date.today() < self.fecha_inicio
 
     def save(self, *args, **kwargs):
-        # Calcular la cantidad de días de incapacidad
         if self.fecha_inicio and self.fecha_fin:
             self.dias_incapacidad = (self.fecha_fin - self.fecha_inicio).days + 1
         else:

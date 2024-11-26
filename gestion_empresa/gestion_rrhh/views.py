@@ -37,7 +37,6 @@ def calcular_dias_disponibles(usuario):
     total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
     total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
     dias_disponibles = total_dias_asignados + total_dias_ajustados - total_dias_tomados 
-
     return {
         'total_asignados': total_dias_asignados,
         'total_tomados': total_dias_tomados,
@@ -45,13 +44,9 @@ def calcular_dias_disponibles(usuario):
         'dias_disponibles': dias_disponibles
     }
 
-
 def calcular_horas_individuales(usuario):
-    # Inicialización de los tipos
     tipos = ['HE', 'HC']  # Trabajamos con HE y HC base
     horas_por_tipo = {'HE': 0, 'HC': 0}
-
-    # Calcular horas de HE y HC del modelo RegistroHoras
     for tipo in tipos:
         total_horas = RegistroHoras.objects.filter(
             usuario=usuario,
@@ -60,38 +55,24 @@ def calcular_horas_individuales(usuario):
             estado_pago='NP'
         ).aggregate(Sum('horas'))['horas__sum'] or 0
         horas_por_tipo[tipo] = total_horas
-
-    # Manejar HEF (sumar a HE y HC según corresponda)
     horas_hef = RegistroHoras.objects.filter(
         usuario=usuario,
         tipo='HEF',
         estado='A',
-        estado_pago='NP'
-        
+        estado_pago='NP'  
     ).aggregate(
         total_horas=Sum('horas'),
         horas_compensatorias_feriado=Sum('horas_compensatorias_feriado')
     )
-
-    # Sumar horas de HEF a HE
     horas_por_tipo['HE'] += horas_hef['total_horas'] or 0
-
-    # Sumar horas compensatorias feriado de HEF a HC
     horas_por_tipo['HC'] += horas_hef['horas_compensatorias_feriado'] or 0
-
-
-    # Restar horas de solicitudes aprobadas de tipo HC
     horas_solicitudes_hc = Solicitud.objects.filter(
         usuario=usuario,
         tipo='HC',
         estado='A'
     ).aggregate(Sum('horas'))['horas__sum'] or 0
-
-    # Restar las horas aprobadas del modelo Solicitud
     horas_por_tipo['HC'] -= horas_solicitudes_hc
-
     return horas_por_tipo
-
 
 @login_required
 def dashboard(request):
@@ -103,24 +84,16 @@ def dashboard(request):
     horas_data = calcular_horas_individuales(usuario)
     horas_extra = horas_data['HE']
     horas_compensatorias = horas_data['HC']
-
-    # Consultar solicitudes aprobadas (Vacaciones y Horas Compensatorias)
     solicitudes_aprobadas = Solicitud.objects.filter(
         estado='A',
         fecha_inicio__lte=fecha_limite,
         fecha_fin__gte=fecha_actual
     ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin', 'tipo')
-
-    # Consultar incapacidades aprobadas en el rango de fechas
     incapacidades_aprobadas = Incapacidad.objects.filter(
-       
         fecha_inicio__lte=fecha_limite,
         fecha_fin__gte=fecha_actual
     ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin')
-
     eventos = []
-
-    # Agregar eventos de solicitudes
     for solicitud in solicitudes_aprobadas:
         nombre_completo = f"{solicitud['usuario__first_name']} {solicitud['usuario__last_name']}"
         if solicitud['tipo'] == 'V':
@@ -128,14 +101,13 @@ def dashboard(request):
             description = f'Inicio: {solicitud["fecha_inicio"].strftime("%Y-%m-%d")} - Fin: {solicitud["fecha_fin"].strftime("%Y-%m-%d")}'
             start = solicitud['fecha_inicio'].strftime("%Y-%m-%d") 
             end = (solicitud['fecha_fin'] + timedelta(days=1)).strftime("%Y-%m-%d")
-            color = "#e74c3c"  # Rojo para vacaciones
-        else:  # Horas compensatorias
+            color = "#e74c3c"
+        else:
             title = f"{nombre_completo} (HC)"
             description = f"Inicio: {solicitud['fecha_inicio'].strftime('%H:%M')} - Fin: {solicitud['fecha_fin'].strftime('%H:%M')}"
             start = solicitud['fecha_inicio'].strftime("%Y-%m-%d")
             end = solicitud['fecha_fin'].strftime("%Y-%m-%d")
-            color = "#f39c12"  # Naranja para HC
-
+            color = "#f39c12"
         eventos.append({
             "title": title,
             "start": start,
@@ -144,7 +116,6 @@ def dashboard(request):
             "color": color
         })
 
-    # Agregar eventos de incapacidades
     for incapacidad in incapacidades_aprobadas:
         nombre_completo = f"{incapacidad['usuario__first_name']} {incapacidad['usuario__last_name']}"
         title = f"{nombre_completo} (Incapacidad)"
@@ -205,7 +176,6 @@ class CrearUsuarioView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 
     def test_func(self):
         return self.request.user.is_superuser or self.request.user.rol in ['GG', 'JI', 'JD']
-    
     
 class CrearSolicitudView(LoginRequiredMixin, CreateView):
     model = Solicitud
@@ -358,14 +328,13 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
 
     def get_initial(self):
         initial = super().get_initial()
-        # Cargar las horas actuales si existen
         if self.object.horas:
             initial['horas'] = self.object.horas
         return initial
 
     def form_valid(self, form):
         form.instance.usuario = self.request.user
-        tipo_solicitud = self.object.tipo  # El tipo ya está definido en el registro
+        tipo_solicitud = self.object.tipo
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
@@ -377,7 +346,7 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
         solicitudes_en_conflicto = Solicitud.objects.filter(
             usuario=usuario,
             fecha_inicio__date=fecha_inicio.date(),
-        ).exclude(id=self.object.id)  # Excluir la misma solicitud si es una edición
+        ).exclude(id=self.object.id)
         for solicitud in solicitudes_en_conflicto:
             print(f"Conflicto con solicitud: ID {solicitud.id}, Inicio {solicitud.fecha_inicio}, Fin {solicitud.fecha_fin}")
             if not (fecha_fin <= solicitud.fecha_inicio or fecha_inicio >= solicitud.fecha_fin):
@@ -439,7 +408,6 @@ class EliminarMiSolicitudView(LoginRequiredMixin, UserPassesTestMixin, DeleteVie
 
     def test_func(self):
         solicitud = self.get_object()
-        # Solo permite la eliminación si la solicitud pertenece al usuario actual y está pendiente
         return solicitud.usuario == self.request.user and solicitud.estado == 'P'
 
     def delete(self, request, *args, **kwargs):
@@ -447,13 +415,11 @@ class EliminarMiSolicitudView(LoginRequiredMixin, UserPassesTestMixin, DeleteVie
         return super().delete(request, *args, **kwargs)
 
 
-
 class RegistrarHorasView(LoginRequiredMixin, CreateView):
     model = RegistroHoras
     form_class = RegistrarHorasForm
     template_name = 'registrar_horas.html'
     success_url = reverse_lazy('mis_solicitudes')
-
 
     def get_initial(self):
         initial = super().get_initial()
@@ -472,7 +438,6 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         form.instance.estado = 'P'
         rol_usuario = self.request.user.rol
         tipo_horas = form.cleaned_data.get('tipo')
-
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
@@ -486,7 +451,6 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
             if not (fecha_fin <= registro.fecha_inicio or fecha_inicio >= registro.fecha_fin):
                 form.add_error(None, "Ya tienes un registro de horas que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
-
 
         if rol_usuario == 'IN' and tipo_horas == 'HE':
             form.add_error(None, "Los ingenieros no pueden registrar horas extra.")
@@ -518,7 +482,6 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         })
         return context
 
-
 class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
     model = RegistroHoras
     fields = ['estado']
@@ -529,11 +492,9 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         registro = self.get_object()
         return registro.usuario != self.request.user and self.request.user.rol in ['GG', 'JI', 'JD']
 
-
     def form_valid(self, form):
         registro = self.get_object()
 
-        # Calcular la diferencia de días
         diferencia_dias = (registro.fecha_fin.date() - registro.fecha_inicio.date()).days + 1
         print(f"Diferencia de días: {diferencia_dias} días")
 
@@ -566,8 +527,6 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         usuario = self.request.user
-
-        # Agregar información adicional al contexto
         horas_data = calcular_horas_individuales(usuario)
         context.update({
             'horas_extra': horas_data['HE'],
@@ -579,8 +538,6 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
         registro = self.get_object()
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
-
-        # Verificar conflictos de fechas
         registros_en_conflicto = RegistroHoras.objects.filter(
             usuario=registro.usuario,
             fecha_inicio__date=fecha_inicio.date(),
@@ -606,10 +563,8 @@ class EliminarMiRegistroHorasView(LoginRequiredMixin, DeleteView):
 
 
 class ListaSolicitudesRegistrosPendientesView(ListView):
-    
     template_name = 'lista_solicitudes.html'
     context_object_name = 'pendientes'
-
     def dispatch(self, request, *args, **kwargs):
         # Validar si el usuario tiene el rol permitido
         if request.user.rol not in ['GG', 'JI', 'JD']:
@@ -641,7 +596,6 @@ class ListaSolicitudesRegistrosPendientesView(ListView):
             item.estado_orden = estado_prioridad.get(item.estado, 4)
 
         pendientes = sorted(pendientes, key=attrgetter('estado_orden', 'fecha_inicio'))
-
         paginator = Paginator(pendientes,8)
         page_number = self.request.GET.get('page')
         page_obj = paginator.get_page(page_number)
@@ -655,9 +609,7 @@ class ListaSolicitudesRegistrosPendientesView(ListView):
 class HistorialCombinadoView(ListView):
     template_name = 'historial_solicitudes.html'
     context_object_name = 'registros_y_solicitudes'
-
     def dispatch(self, request, *args, **kwargs):
-        # Validar si el usuario tiene el rol permitido
         if request.user.rol not in ['GG', 'JI', 'JD']:
             raise PermissionDenied("No tienes permiso para acceder a esta página.")
         return super().dispatch(request, *args, **kwargs)
@@ -668,11 +620,9 @@ class HistorialCombinadoView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-
         estado = self.request.GET.get('estado')
         tipo = self.request.GET.get('tipo')
         usuario_id = self.request.GET.get('usuario')
-
         registros_queryset = RegistroHoras.objects.filter(usuario__in=user.subordinados.all())
         solicitudes_queryset = Solicitud.objects.filter(usuario__in=user.subordinados.all())
 
@@ -693,31 +643,25 @@ class HistorialCombinadoView(ListView):
             item.estado_orden = estado_prioridad.get(item.estado, 4)
 
         registros_y_solicitudes = sorted(registros_y_solicitudes, key=attrgetter('estado_orden', 'fecha_inicio'))
-
         paginator = Paginator(registros_y_solicitudes, 8)
         page_number = self.request.GET.get('page')
         page_obj = paginator.get_page(page_number)
-
         context['registros_y_solicitudes'] = page_obj
         context['page_obj'] = page_obj
         context['subordinados'] = user.subordinados.all()
         context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=user)
-
         return context
     
+
 @login_required
 def reporte_solicitudes(request):
-    # Validar si el usuario tiene el rol permitido
     if request.user.rol not in ['GG', 'JI', 'JD']:
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
-    
-    # Filtrar solicitudes con EstadoCierre = 0 y estado = 'A'
     solicitudes = Solicitud.objects.filter(
         estado_cierre=0,
         estado='A'
     ).order_by('usuario', 'fecha_inicio')
 
-    # Agrupar solicitudes por usuario
     solicitudes_por_usuario = {}
     for solicitud in solicitudes:
         usuario = solicitud.usuario
@@ -727,22 +671,17 @@ def reporte_solicitudes(request):
         solicitudes_por_usuario[usuario]['solicitudes'].append(solicitud)
         solicitudes_por_usuario[usuario]['total_dias'] += solicitud.dias_solicitados or 0
 
-    # Verificar si hay solicitudes pendientes
     hay_solicitudes_pendientes = solicitudes.exists()
 
-    # Manejar acciones del formulario
     if request.method == "POST":
-        seleccionados = request.POST.getlist('seleccionados')  # Lista de IDs seleccionados
+        seleccionados = request.POST.getlist('seleccionados')
         if 'marcar_cerrado' in request.POST:
-            # Marcar como cerrado las solicitudes seleccionadas
             Solicitud.objects.filter(id__in=seleccionados).update(estado_cierre=1)
         elif 'generar_reporte' in request.POST:
-            # Guardar IDs seleccionados en sesión y redirigir a generación de reporte
             request.session['reporte_solicitudes'] = seleccionados
             return redirect('generar_reporte_solicitudes_pdf')
 
-    # Paginación
-    paginator = Paginator(list(solicitudes_por_usuario.items()), 5)  # 5 usuarios por página
+    paginator = Paginator(list(solicitudes_por_usuario.items()), 5) 
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -753,14 +692,9 @@ def reporte_solicitudes(request):
 
 @login_required
 def generar_reporte_solicitudes_pdf(request):
-    # Validar que el usuario tiene el rol permitido
     if request.user.rol not in ['GG', 'JI', 'JD']:
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
-    
-    # Filtrar solicitudes que están en estado 'A' y EstadoCierre=0
     solicitudes = Solicitud.objects.filter(estado='A', estado_cierre=False).order_by('usuario', 'fecha_inicio')
-    
-    # Agrupar las solicitudes por usuario
     solicitudes_por_usuario = {}
     for solicitud in solicitudes:
         usuario = solicitud.usuario
@@ -771,24 +705,19 @@ def generar_reporte_solicitudes_pdf(request):
                 'total_horas': 0,
             }
         solicitudes_por_usuario[usuario]['solicitudes'].append(solicitud)
-        
-        # Sumar días y horas según el tipo de solicitud
         if solicitud.dias_solicitados:
             solicitudes_por_usuario[usuario]['total_dias'] += solicitud.dias_solicitados
         if solicitud.horas:
             solicitudes_por_usuario[usuario]['total_horas'] += solicitud.horas
 
-    # Preparar el contexto para la plantilla
     context = {
         'solicitudes_por_usuario': solicitudes_por_usuario,
         'fecha_reporte': now(),
     }
 
-    # Renderizar la plantilla
     template = get_template('reporte_solicitudes_pdf.html')
     html = template.render(context)
 
-    # Generar el PDF
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="reporte_solicitudes.pdf"'
     pisa_status = pisa.CreatePDF(html, dest=response, encoding='UTF-8')
@@ -833,7 +762,6 @@ class MiSolicitudYRegistroView(ListView):
         context['solicitudes_y_registros'] = page_obj
         context['page_obj'] = page_obj
         context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=user)
-
         return context
 
 
@@ -888,7 +816,6 @@ def reporte_horas_extra_html(request):
     if request.user.rol not in ['GG', 'JI', 'JD']:
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
     
-    # Filtrar registros no pagados y agruparlos por usuario
     registros = RegistroHoras.objects.filter(
         Q(tipo='HE') | Q(tipo='HEF'),
         estado='A',
@@ -904,21 +831,16 @@ def reporte_horas_extra_html(request):
         registros_por_usuario[usuario]['registros'].append(registro)
         registros_por_usuario[usuario]['total_horas'] += registro.horas
 
-    # Verificar si hay registros pendientes
     hay_registros_pendientes = registros.exists()
 
-    # Manejar acciones del formulario
     if request.method == "POST":
         seleccionados = request.POST.getlist('seleccionados')  # Lista de IDs seleccionados
         if 'marcar_pagado' in request.POST:
-            # Marcar como pagado los registros seleccionados
             RegistroHoras.objects.filter(id__in=seleccionados).update(estado_pago='PG')
         elif 'generar_reporte' in request.POST:
-            # Redirigir a la generación de reporte con los seleccionados
             request.session['reporte_horas_extra'] = seleccionados
             return redirect('generar_pdf')
 
-    # Paginación para dividir los datos por usuario
     paginator = Paginator(list(registros_por_usuario.items()), 5)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -1007,7 +929,6 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
 
     def form_valid(self, form):
         form.instance.usuario = self.request.user
-         # Verificar fechas conflictivas
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
@@ -1024,7 +945,6 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
                 form.add_error(None, "Ya tienes una incapacidad registrada que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
         
-        # Verificar si el archivo fue adjuntado
         if not form.cleaned_data.get('archivo_adjunto'):
             form.add_error('archivo', "Debes adjuntar un archivo.")
             return self.form_invalid(form)
@@ -1033,7 +953,6 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
 
 class GenerarReporteIncapacidadesView(View):
     def get(self, request, *args, **kwargs):
-        # Obtener incapacidades revisadas
         incapacidades = Incapacidad.objects.filter(revisado=False).order_by('fecha_inicio')
 
         incapacidades_por_usuario = {}
@@ -1052,7 +971,6 @@ class GenerarReporteIncapacidadesView(View):
             })
             incapacidades_por_usuario[usuario_nombre]['total_dias'] += incapacidad.dias_incapacidad
 
-        # Renderizar el contexto en el template
         context = {
             'incapacidades_por_usuario': incapacidades_por_usuario,
             'fecha_reporte': timezone.now().year,
@@ -1060,7 +978,6 @@ class GenerarReporteIncapacidadesView(View):
         template = get_template('reporte_incapacidades_pdf.html')
         html = template.render(context)
 
-        # Generar el PDF
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = 'attachment; filename="reporte_incapacidades.pdf"'
         pisa_status = pisa.CreatePDF(html, dest=response, encoding='UTF-8')
@@ -1076,7 +993,6 @@ def lista_incapacidades(request):
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
     
     incapacidades = Incapacidad.objects.filter(revisado=False).order_by('usuario', '-fecha_inicio')
-    # Agrupar incapacidades por usuario
     incapacidades_por_usuario = {}
     for incapacidad in incapacidades:
         usuario = incapacidad.usuario
@@ -1085,10 +1001,8 @@ def lista_incapacidades(request):
         incapacidades_por_usuario[usuario]['incapacidades'].append(incapacidad)
         incapacidades_por_usuario[usuario]['total_dias'] += incapacidad.dias_incapacidad
 
-    # Verificar si hay incapacidades pendientes (revisado=False)
     hay_incapacidades_pendientes = Incapacidad.objects.filter(revisado=False).exists()
 
-    # Manejo de acciones del formulario
     if request.method == "POST":
         seleccionados = request.POST.getlist('seleccionados')
         if 'marcar_revisado' in request.POST:
@@ -1097,7 +1011,6 @@ def lista_incapacidades(request):
             request.session['reporte_incapacidades'] = seleccionados
             return redirect('generar_reporte_incapacidades')
 
-    # Paginación
     paginator = Paginator(list(incapacidades_por_usuario.items()), 5)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
