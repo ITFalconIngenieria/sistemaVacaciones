@@ -795,6 +795,8 @@ def ajuste_vacaciones(request):
 def reporte_horas_extra(request):
     if request.user.rol not in ['GG', 'JI', 'JD']:
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
+    
+    # Filtrar registros no pagados y agruparlos por usuario
     registros = RegistroHoras.objects.filter(
         Q(tipo='HE') | Q(tipo='HEF'),
         estado='A',
@@ -810,16 +812,30 @@ def reporte_horas_extra(request):
         registros_por_usuario[usuario]['registros'].append(registro)
         registros_por_usuario[usuario]['total_horas'] += registro.horas
 
-    # Usar Paginator para dividir los datos
-    paginator = Paginator(list(registros_por_usuario.items()), 5) 
+    # Verificar si hay registros pendientes
+    hay_registros_pendientes = registros.exists()
+
+    # Manejar acciones del formulario
+    if request.method == "POST":
+        seleccionados = request.POST.getlist('seleccionados')  # Lista de IDs seleccionados
+        if 'marcar_pagado' in request.POST:
+            # Marcar como pagado los registros seleccionados
+            RegistroHoras.objects.filter(id__in=seleccionados).update(estado_pago='PG')
+        elif 'generar_reporte' in request.POST:
+            # Redirigir a la generación de reporte con los seleccionados
+            request.session['reporte_horas_extra'] = seleccionados
+            return redirect('generar_pdf')
+
+    # Paginación para dividir los datos por usuario
+    paginator = Paginator(list(registros_por_usuario.items()), 5)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    context = {
-        'registros_por_usuario': page_obj,  # Pasar solo la página actual
-        'total_horas': sum(user_data['total_horas'] for user_data in registros_por_usuario.values()),
-    }
-    return render(request, 'reporte_horas_extra.html', context)
+    return render(request, 'reporte_horas_extra.html', {
+        'page_obj': page_obj,
+        'hay_registros_pendientes': hay_registros_pendientes,
+    })
+
 
 
 @login_required
@@ -832,12 +848,13 @@ def cerrar_quincena(request):
 
     for registro in registros_a_pagar:
         usuario = registro.usuario  
-        usuario.horas_extra_acumuladas =0 
+        usuario.horas_extra_acumuladas = 0 
         usuario.save()
 
     registros_actualizados = registros_a_pagar.update(estado_pago='PG')
     messages.success(request, f"{registros_actualizados} registros de horas extra han sido marcados como pagados.")
     return redirect('reporte_horas_extra')
+
 
 
 
@@ -927,7 +944,7 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
 class GenerarReporteIncapacidadesView(View):
     def get(self, request, *args, **kwargs):
         # Obtener incapacidades revisadas
-        incapacidades = Incapacidad.objects.filter(revisado=True).order_by('fecha_inicio')
+        incapacidades = Incapacidad.objects.filter(revisado=False).order_by('fecha_inicio')
 
         incapacidades_por_usuario = {}
         for incapacidad in incapacidades:
@@ -968,7 +985,20 @@ def lista_incapacidades(request):
     if request.user.rol not in ['GG', 'JI', 'JD']:
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
     
-    incapacidades = Incapacidad.objects.all().order_by('usuario', '-fecha_inicio')
+    incapacidades = Incapacidad.objects.filter(revisado=False).order_by('usuario', '-fecha_inicio')
+    # Agrupar incapacidades por usuario
+    incapacidades_por_usuario = {}
+    for incapacidad in incapacidades:
+        usuario = incapacidad.usuario
+        if usuario not in incapacidades_por_usuario:
+            incapacidades_por_usuario[usuario] = {'incapacidades': [], 'total_dias': 0}
+        incapacidades_por_usuario[usuario]['incapacidades'].append(incapacidad)
+        incapacidades_por_usuario[usuario]['total_dias'] += incapacidad.dias_incapacidad
+
+    # Verificar si hay incapacidades pendientes (revisado=False)
+    hay_incapacidades_pendientes = Incapacidad.objects.filter(revisado=False).exists()
+
+    # Manejo de acciones del formulario
     if request.method == "POST":
         seleccionados = request.POST.getlist('seleccionados')
         if 'marcar_revisado' in request.POST:
@@ -977,27 +1007,15 @@ def lista_incapacidades(request):
             request.session['reporte_incapacidades'] = seleccionados
             return redirect('generar_reporte_incapacidades')
 
-    # Agrupar incapacidades por usuario
-    incapacidades_por_usuario = {}
-    for incapacidad in incapacidades:
-        usuario = incapacidad.usuario
-        if usuario not in incapacidades_por_usuario:
-            incapacidades_por_usuario[usuario] = {
-                'incapacidades': [],
-                'total_dias': 0
-            }
-        incapacidades_por_usuario[usuario]['incapacidades'].append(incapacidad)
-        incapacidades_por_usuario[usuario]['total_dias'] += incapacidad.dias_incapacidad
-
     # Paginación
-    paginator = Paginator(list(incapacidades_por_usuario.items()), 5)  # Cambiar tamaño de página si es necesario
+    paginator = Paginator(list(incapacidades_por_usuario.items()), 5)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     return render(request, 'lista_incapacidades.html', {
         'page_obj': page_obj,
+        'hay_incapacidades_pendientes': hay_incapacidades_pendientes,
     })
-
 
 class MisIncapacidadesView(LoginRequiredMixin, ListView):
     model = Incapacidad

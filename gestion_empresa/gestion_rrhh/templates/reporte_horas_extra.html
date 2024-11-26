@@ -5,46 +5,56 @@
 {% block content %}
 <div class="container mt-4">
     <h2>Reporte de Horas Extra</h2>
-
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Usuario</th>
-                <th>Nº Registro</th>
-                <th>Nº Proyecto</th>
-                <th>Fecha Inicio</th>
-                <th>Fecha Fin</th>
-                <th>Horas</th>
-                <th>Descripción</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for usuario, data in registros_por_usuario %}
-                {% for registro in data.registros %}
+    <form method="post">
+        {% csrf_token %}
+        <table class="table table-striped">
+            <thead>
                 <tr>
-                    <td>{{ usuario.get_full_name }}</td>
-                    <td>{{ registro.numero_registro }}</td>
-                    <td>{{ registro.numero_proyecto }}</td>
-                    <td>{{ registro.fecha_inicio }}</td>
-                    <td>{{ registro.fecha_fin }}</td>
-                    <td>{{ registro.horas }}</td>
-                    <td>{{ registro.descripcion }}</td>
+                    <th>
+                        <input type="checkbox" id="seleccionar_todos">
+                    </th>
+                    <th>Usuario</th>
+                    <th>Nº Registro</th>
+                    <th>Nº Proyecto</th>
+                    <th>Fecha Inicio</th>
+                    <th>Fecha Fin</th>
+                    <th>Horas</th>
+                    <th>Descripción</th>
                 </tr>
+            </thead>
+            <tbody>
+                {% for usuario, data in page_obj %}
+                    <tr>
+                        <td colspan="8"><strong>{{ usuario.get_full_name }}</strong></td>
+                    </tr>
+                    {% for registro in data.registros %}
+                    <tr>
+                        <td>
+                            <input type="checkbox" name="seleccionados" value="{{ registro.id }}">
+                        </td>
+                        <td></td>
+                        <td>{{ registro.numero_registro }}</td>
+                        <td>{{ registro.numero_proyecto }}</td>
+                        <td>{{ registro.fecha_inicio }}</td>
+                        <td>{{ registro.fecha_fin }}</td>
+                        <td>{{ registro.horas }}</td>
+                        <td>{{ registro.descripcion }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr>
+                        <th colspan="6">Total horas para {{ usuario.get_full_name }}</th>
+                        <td colspan="2">{{ data.total_horas }}</td>
+                    </tr>
                 {% endfor %}
-                <tr>
-                    <th colspan="5">Total de Horas extra para {{ usuario.get_full_name }}</th>
-                    <td>{{ data.total_horas }}</td>
-                    <td></td>
-                </tr>
-            {% empty %}
-            <tr>
-                <td colspan="7">No hay registros de horas extra para esta quincena.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </tbody>
+        </table>
 
-    <!-- Navegación de paginación -->
+        <!-- Botones de acción -->
+        <button type="submit" name="generar_reporte" class="btn btn-secondary" id="boton_generar_reporte" {% if not hay_registros_pendientes %}disabled{% endif %}>Generar Reporte</button>
+        <button type="submit" name="marcar_pagado" class="btn btn-primary" id="boton_marcar_pagado" disabled>Marcar como Pagado</button>
+    </form>
+
+    <!-- Barra de navegación de la paginación -->
     <nav aria-label="Page navigation">
         <ul class="pagination">
             <!-- Botón Primera -->
@@ -115,11 +125,29 @@
             {% endif %}
         </ul>
     </nav>
-    
-    
-
-    <!-- Botones -->
-    <a href="{% url 'generar_pdf' %}" class="btn btn-success" id="generate-report-btn">Generar Reporte</a>
-    <a href="{% url 'cerrar_quincena' %}" class="btn btn-success" id="close-quincena-btn">Cerrar Quincena</a>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const checkboxes = document.querySelectorAll('input[name="seleccionados"]');
+        const botonMarcarPagado = document.getElementById('boton_marcar_pagado');
+        const seleccionarTodos = document.getElementById('seleccionar_todos');
+
+        function actualizarEstadoBotones() {
+            const haySeleccionados = Array.from(checkboxes).some(checkbox => checkbox.checked);
+            botonMarcarPagado.disabled = !haySeleccionados;
+        }
+
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', actualizarEstadoBotones);
+        });
+
+        seleccionarTodos.addEventListener('change', function () {
+            checkboxes.forEach(checkbox => checkbox.checked = seleccionarTodos.checked);
+            actualizarEstadoBotones();
+        });
+
+        actualizarEstadoBotones();
+    });
+</script>
 {% endblock %}
