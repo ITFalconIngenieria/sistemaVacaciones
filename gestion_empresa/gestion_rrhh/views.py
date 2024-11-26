@@ -792,7 +792,7 @@ def ajuste_vacaciones(request):
 
 
 @login_required
-def reporte_horas_extra(request):
+def reporte_horas_extra_html(request):
     if request.user.rol not in ['GG', 'JI', 'JD']:
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
     
@@ -858,7 +858,7 @@ def cerrar_quincena(request):
 
 
 
-class GenPdf(View):
+class reporte_horas_extra_PDF(View):
     def get(self, request, *args, **kwargs):
         try:
             locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')

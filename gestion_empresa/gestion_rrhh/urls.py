@@ -21,36 +21,26 @@ urlpatterns = [
     path('solicitud/<int:pk>/aprobar-rechazar/', views.AprobarRechazarSolicitudView.as_view(), name='aprobar_rechazar_solicitud'),
     path('historial-solicitudes/', views.HistorialCombinadoView.as_view(), name='historial_solicitudes'),
     path('mis-solicitudes/', views.MiSolicitudYRegistroView.as_view(), name='mis_solicitudes'),
-
+    path('solicitud/editar/<int:pk>/', views.EditarMiSolicitudView.as_view(), name='editar_solicitud'),
+    path('solicitud/eliminar/<int:pk>/', views.EliminarMiSolicitudView.as_view(), name='eliminar_solicitud'),
+    
     # Registro de horas y aprobación
     path('registrar-horas/', views.RegistrarHorasView.as_view(), name='registrar_horas'),
+    path('registro/editar/<int:pk>/', views.EditarMiRegistroHorasView.as_view(), name='editar_registro_horas'),
+    path('registro/eliminar/<int:pk>/', views.EliminarMiRegistroHorasView.as_view(), name='eliminar_registro_horas'),
     path('aprobar-rechazar-horas/<int:pk>/', views.AprobarRechazarHorasView.as_view(), name='aprobar_rechazar_horas'),
 
     path('ajuste-vacaciones/', views.ajuste_vacaciones, name='ajuste_vacaciones'),
 
-
-    path('reporte-horas-extra/',views.reporte_horas_extra, name='reporte_horas_extra'),
+    path('reporte-horas-extra/',views.reporte_horas_extra_html, name='reporte_horas_extra'),
     path('cerrar-quincena/', views.cerrar_quincena, name='cerrar_quincena'),
-
-    path('generar-pdf/', views.GenPdf.as_view(), name='generar_pdf'),
-
-
-
+    path('generar-pdf/', views.reporte_horas_extra_PDF.as_view(), name='generar_pdf'),
 
     path('incapacidades/crear/', views.CrearIncapacidadView.as_view(), name='crear_incapacidad'),
-    # path('incapacidades/', views.ListaIncapacidadesView.as_view(), name='lista_incapacidades'),
     path('incapacidades/', views.lista_incapacidades, name='lista_incapacidades'),
-
-
-
-    path('solicitud/editar/<int:pk>/', views.EditarMiSolicitudView.as_view(), name='editar_solicitud'),
-    path('solicitud/eliminar/<int:pk>/', views.EliminarMiSolicitudView.as_view(), name='eliminar_solicitud'),
-    path('registro/editar/<int:pk>/', views.EditarMiRegistroHorasView.as_view(), name='editar_registro_horas'),
-    path('registro/eliminar/<int:pk>/', views.EliminarMiRegistroHorasView.as_view(), name='eliminar_registro_horas'),
-
-
     path('mis_incapacidades/', views.MisIncapacidadesView.as_view(), name='mis_incapacidades'),
     path('incapacidad/editar/<int:pk>/', views.EditarIncapacidadView.as_view(), name='editar_incapacidad'),
     path('incapacidad/eliminar/<int:pk>/', views.EliminarIncapacidadView.as_view(), name='eliminar_incapacidad'),
     path('incapacidades/reporte/', views.GenerarReporteIncapacidadesView.as_view(), name='generar_reporte_incapacidades'),
+
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
