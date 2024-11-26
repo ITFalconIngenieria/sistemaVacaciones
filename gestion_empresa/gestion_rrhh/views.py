@@ -792,7 +792,7 @@ def reporte_horas_extra(request):
         registros_por_usuario[usuario]['total_horas'] += registro.horas
 
     # Usar Paginator para dividir los datos
-    paginator = Paginator(list(registros_por_usuario.items()), 5)  # Cambia 5 por el número de usuarios por página
+    paginator = Paginator(list(registros_por_usuario.items()), 5) 
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -942,10 +942,19 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
     template_name = 'editar_incapacidad.html'
     success_url = reverse_lazy('mis_incapacidades')
 
+    # def get_object(self, queryset=None):
+    #     obj = super().get_object(queryset)
+    #     if obj.usuario != self.request.user:
+    #         raise PermissionDenied
+    #     return obj
+
     def get_object(self, queryset=None):
         obj = super().get_object(queryset)
         if obj.usuario != self.request.user:
             raise PermissionDenied
+        # Verificar si la incapacidad es editable
+        if not obj.es_eliminable():
+            raise PermissionDenied("No puedes editar esta incapacidad porque la fecha de inicio ya pasó.")
         return obj
 
     def form_valid(self, form):
@@ -969,7 +978,18 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
         form.instance.usuario = self.request.user
         return super().form_valid(form)
 
+class EliminarIncapacidadView(LoginRequiredMixin, DeleteView):
+    model = Incapacidad
+    template_name = 'confirmar_eliminar_incapacidad.html'
+    success_url = reverse_lazy('mis_incapacidades')
 
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset)
+        # Solo permitir eliminar si es el propietario y es eliminable
+        if obj.usuario != self.request.user or not obj.es_eliminable():
+            raise PermissionDenied("No puedes eliminar esta incapacidad por que la fecha de la incapacidad ya inició.")
+        return obj
+    
 def logout_view(request):
     logout(request)
     return redirect('login')

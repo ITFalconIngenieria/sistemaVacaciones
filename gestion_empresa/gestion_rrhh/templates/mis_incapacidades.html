@@ -10,6 +10,7 @@
             <tr>
                 <th>Fecha Inicio</th>
                 <th>Fecha Fin</th>
+                <th>Días de Incapacidad</th>
                 <th>Descripción</th>
                 <th>Archivo</th>
                 <th>Acciones</th>
@@ -20,6 +21,7 @@
             <tr>
                 <td>{{ incapacidad.fecha_inicio }}</td>
                 <td>{{ incapacidad.fecha_fin }}</td>
+                <td>{{ incapacidad.dias_incapacidad }}</td>
                 <td>{{ incapacidad.descripcion }}</td>
                 <td>
                     {% if incapacidad.archivo_adjunto %}
@@ -29,7 +31,16 @@
                     {% endif %}
                 </td>
                 <td>
+                    {% if incapacidad.es_eliminable %}
                     <a href="{% url 'editar_incapacidad' incapacidad.id %}" class="btn btn-warning btn-sm">Editar</a>
+                    {% else %}
+                    <span class="text-muted">No editable</span>
+                    {% endif %}
+                    {% if incapacidad.es_eliminable %}
+                    <a href="{% url 'eliminar_incapacidad' incapacidad.id %}" class="btn btn-danger btn-sm">Eliminar</a>
+                    {% else %}
+                    <span class="text-muted">No eliminable</span>
+                    {% endif %}
                 </td>
             </tr>
             {% empty %}
@@ -60,28 +71,28 @@
             {% endif %}
 
             {% for num in page_obj.paginator.page_range %}
-            {% if num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
-            <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+            {% if num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %} <li
+                class="page-item {% if page_obj.number == num %}active{% endif %}">
                 <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-            </li>
-            {% endif %}
-            {% endfor %}
+                </li>
+                {% endif %}
+                {% endfor %}
 
-            {% if page_obj.has_next %}
-            <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
-            </li>
-            <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
-            </li>
-            {% else %}
-            <li class="page-item disabled">
-                <a class="page-link" href="#">Siguiente</a>
-            </li>
-            <li class="page-item disabled">
-                <a class="page-link" href="#">Última</a>
-            </li>
-            {% endif %}
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#">Siguiente</a>
+                </li>
+                <li class="page-item disabled">
+                    <a class="page-link" href="#">Última</a>
+                </li>
+                {% endif %}
         </ul>
     </nav>
 </div>
