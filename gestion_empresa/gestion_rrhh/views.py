@@ -704,7 +704,99 @@ class HistorialCombinadoView(ListView):
         context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=user)
 
         return context
+    
+@login_required
+def reporte_solicitudes(request):
+    # Validar si el usuario tiene el rol permitido
+    if request.user.rol not in ['GG', 'JI', 'JD']:
+        raise PermissionDenied("No tienes permiso para acceder a esta página.")
+    
+    # Filtrar solicitudes con EstadoCierre = 0 y estado = 'A'
+    solicitudes = Solicitud.objects.filter(
+        estado_cierre=0,
+        estado='A'
+    ).order_by('usuario', 'fecha_inicio')
 
+    # Agrupar solicitudes por usuario
+    solicitudes_por_usuario = {}
+    for solicitud in solicitudes:
+        usuario = solicitud.usuario
+        if usuario not in solicitudes_por_usuario:
+            solicitudes_por_usuario[usuario] = {'solicitudes': [], 'total_dias': 0}
+        
+        solicitudes_por_usuario[usuario]['solicitudes'].append(solicitud)
+        solicitudes_por_usuario[usuario]['total_dias'] += solicitud.dias_solicitados or 0
+
+    # Verificar si hay solicitudes pendientes
+    hay_solicitudes_pendientes = solicitudes.exists()
+
+    # Manejar acciones del formulario
+    if request.method == "POST":
+        seleccionados = request.POST.getlist('seleccionados')  # Lista de IDs seleccionados
+        if 'marcar_cerrado' in request.POST:
+            # Marcar como cerrado las solicitudes seleccionadas
+            Solicitud.objects.filter(id__in=seleccionados).update(estado_cierre=1)
+        elif 'generar_reporte' in request.POST:
+            # Guardar IDs seleccionados en sesión y redirigir a generación de reporte
+            request.session['reporte_solicitudes'] = seleccionados
+            return redirect('generar_reporte_solicitudes_pdf')
+
+    # Paginación
+    paginator = Paginator(list(solicitudes_por_usuario.items()), 5)  # 5 usuarios por página
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'reporte_solicitudes.html', {
+        'page_obj': page_obj,
+        'hay_solicitudes_pendientes': hay_solicitudes_pendientes,
+    })
+
+@login_required
+def generar_reporte_solicitudes_pdf(request):
+    # Validar que el usuario tiene el rol permitido
+    if request.user.rol not in ['GG', 'JI', 'JD']:
+        raise PermissionDenied("No tienes permiso para acceder a esta página.")
+    
+    # Filtrar solicitudes que están en estado 'A' y EstadoCierre=0
+    solicitudes = Solicitud.objects.filter(estado='A', estado_cierre=False).order_by('usuario', 'fecha_inicio')
+    
+    # Agrupar las solicitudes por usuario
+    solicitudes_por_usuario = {}
+    for solicitud in solicitudes:
+        usuario = solicitud.usuario
+        if usuario not in solicitudes_por_usuario:
+            solicitudes_por_usuario[usuario] = {
+                'solicitudes': [],
+                'total_dias': 0,
+                'total_horas': 0,
+            }
+        solicitudes_por_usuario[usuario]['solicitudes'].append(solicitud)
+        
+        # Sumar días y horas según el tipo de solicitud
+        if solicitud.dias_solicitados:
+            solicitudes_por_usuario[usuario]['total_dias'] += solicitud.dias_solicitados
+        if solicitud.horas:
+            solicitudes_por_usuario[usuario]['total_horas'] += solicitud.horas
+
+    # Preparar el contexto para la plantilla
+    context = {
+        'solicitudes_por_usuario': solicitudes_por_usuario,
+        'fecha_reporte': now(),
+    }
+
+    # Renderizar la plantilla
+    template = get_template('reporte_solicitudes_pdf.html')
+    html = template.render(context)
+
+    # Generar el PDF
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="reporte_solicitudes.pdf"'
+    pisa_status = pisa.CreatePDF(html, dest=response, encoding='UTF-8')
+
+    if pisa_status.err:
+        return HttpResponse('Error al generar el PDF', status=400)
+
+    return response
 
 class MiSolicitudYRegistroView(ListView):
     template_name = 'mis_solicitudes.html'
@@ -854,8 +946,6 @@ def cerrar_quincena(request):
     registros_actualizados = registros_a_pagar.update(estado_pago='PG')
     messages.success(request, f"{registros_actualizados} registros de horas extra han sido marcados como pagados.")
     return redirect('reporte_horas_extra')
-
-
 
 
 class reporte_horas_extra_PDF(View):

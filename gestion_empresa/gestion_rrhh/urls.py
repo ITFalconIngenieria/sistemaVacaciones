@@ -23,7 +23,8 @@ urlpatterns = [
     path('mis-solicitudes/', views.MiSolicitudYRegistroView.as_view(), name='mis_solicitudes'),
     path('solicitud/editar/<int:pk>/', views.EditarMiSolicitudView.as_view(), name='editar_solicitud'),
     path('solicitud/eliminar/<int:pk>/', views.EliminarMiSolicitudView.as_view(), name='eliminar_solicitud'),
-    
+    path('reporte-solicitudes/', views.reporte_solicitudes, name='reporte_solicitudes'),
+    path('reporte_solicitudes/pdf/', views.generar_reporte_solicitudes_pdf, name='generar_reporte_solicitudes_pdf'),
     # Registro de horas y aprobación
     path('registrar-horas/', views.RegistrarHorasView.as_view(), name='registrar_horas'),
     path('registro/editar/<int:pk>/', views.EditarMiRegistroHorasView.as_view(), name='editar_registro_horas'),

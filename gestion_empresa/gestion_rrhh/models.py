@@ -88,7 +88,7 @@ class Solicitud(models.Model):
     dias_solicitados = models.IntegerField(null=True, blank=True)
     estado = models.CharField(max_length=1, choices=ESTADOS, default='P')
     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador', null=True, blank=True, on_delete=models.SET_NULL)
-
+    estado_cierre = models.BooleanField(default=False)
     def save(self, *args, **kwargs):
         if self.tipo == 'V':
             self.fecha_inicio = self.fecha_inicio.replace(hour=0, minute=0, second=0, microsecond=0)
