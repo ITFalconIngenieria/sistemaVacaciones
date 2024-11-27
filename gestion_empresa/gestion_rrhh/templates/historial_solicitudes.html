@@ -3,7 +3,6 @@
 {% block content %}
 
 <h2>Historial de Solicitudes y Registros de Horas</h2>
-<!-- Formulario para filtrar solicitudes por estado, usuario y tipo -->
 <form method="get" class="mb-3">
     <div class="row">
         <div class="col-md-3">
@@ -74,11 +73,7 @@
             {% endif %}
             </td>
             <td>
-                {% if item.tipo_objeto == 'registro' %}
-                    {{ item.numero_proyecto}}
-                {%else%}
-                    ND
-                {% endif %}
+                {{ item.numero_proyecto | default:'NA'}}
             </td>
             <td>
                 {% if item.tipo_objeto == 'solicitud' %}
@@ -93,18 +88,10 @@
             <td>{{ item.fecha_fin }}</td>
             <td>{{ item.horas }}</td>
             <td>
-                {% if item.tipo_objeto == 'solicitud' %}
-                    {{ item.dias_solicitados }}
-                {% else %}
-                    0
-                {% endif %}
+                {{ item.dias_solicitados | default:0}}
             </td>
             <td>
-                {% if item.tipo_objeto == 'registro' %}
-                    {{ item.descripcion}}
-                {%else%}
-                    ND
-                {% endif %}
+                {{ item.descripcion | default:'-'}}
             </td>
             <td>{{ item.get_estado_display }}</td>
             <td>
