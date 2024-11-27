@@ -19,13 +19,15 @@
                     <th>Fecha Inicio</th>
                     <th>Fecha Fin</th>
                     <th>Días Solicitados</th>
+                    <th>Horas Solicitadas</th>
+                    <th>Descripción</th>
                     <th>Estado</th>
                 </tr>
             </thead>
             <tbody>
                 {% for usuario, data in page_obj %}
                     <tr>
-                        <td colspan="8"><strong>{{ usuario.get_full_name }}</strong></td>
+                        <td colspan="10"><strong>{{ usuario.get_full_name }}</strong></td>
                     </tr>
                     {% for solicitud in data.solicitudes %}
                     <tr>
@@ -37,7 +39,9 @@
                         <td>{{ solicitud.get_tipo_display }}</td>
                         <td>{{ solicitud.fecha_inicio }}</td>
                         <td>{{ solicitud.fecha_fin }}</td>
-                        <td>{{ solicitud.dias_solicitados }}</td>
+                        <td>{{ solicitud.dias_solicitados|default:0 }}</td>
+                        <td>{{ solicitud.horas|default:0 }}</td>
+                        <td>{{ solicitud.descripcion|default:"-" }}</td>
                         <td>
                             <span class="badge bg-success">Aprobado</span>
                         </td>
