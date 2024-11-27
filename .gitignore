@@ -17,3 +17,4 @@ __pycache__/
 !**/migrations/__init__.py
 
 media
+.env
