@@ -212,6 +212,18 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
             if not (fecha_fin <= solicitud.fecha_inicio or fecha_inicio >= solicitud.fecha_fin):
                 form.add_error(None, "Ya tienes una solicitud que se solapa con este rango de horas.")
                 return self.form_invalid(form)
+            
+        incapacidades_conflicto = Incapacidad.objects.filter(
+            usuario=usuario
+        )
+
+        for incapacidad in incapacidades_conflicto:
+            if (incapacidad.fecha_inicio <= fecha_inicio.date() <= incapacidad.fecha_fin) or \
+               (incapacidad.fecha_inicio <= fecha_fin.date() <= incapacidad.fecha_fin) or \
+               (fecha_inicio.date() <= incapacidad.fecha_inicio and fecha_fin.date() >= incapacidad.fecha_fin):
+                print(f"Conflicto con registro: ID {incapacidad.id}, Inicio {incapacidad.fecha_inicio}, Fin {incapacidad.fecha_fin}")
+                form.add_error(None, "Ya tienes una incapacidad registrada que se solapa con este rango. Por favor, selecciona otro rango")
+                return self.form_invalid(form)
 
         
         if tipo_solicitud == 'V':
@@ -408,6 +420,18 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
             print(f"Conflicto con solicitud: ID {solicitud.id}, Inicio {solicitud.fecha_inicio}, Fin {solicitud.fecha_fin}")
             if not (fecha_fin <= solicitud.fecha_inicio or fecha_inicio >= solicitud.fecha_fin):
                 form.add_error(None, "Ya tienes una solicitud que se solapa con este rango de horas.")
+                return self.form_invalid(form)
+            
+        incapacidades_conflicto = Incapacidad.objects.filter(
+            usuario=usuario
+        )
+
+        for incapacidad in incapacidades_conflicto:
+            if (incapacidad.fecha_inicio <= fecha_inicio.date() <= incapacidad.fecha_fin) or \
+               (incapacidad.fecha_inicio <= fecha_fin.date() <= incapacidad.fecha_fin) or \
+               (fecha_inicio.date() <= incapacidad.fecha_inicio and fecha_fin.date() >= incapacidad.fecha_fin):
+                print(f"Conflicto con registro: ID {incapacidad.id}, Inicio {incapacidad.fecha_inicio}, Fin {incapacidad.fecha_fin}")
+                form.add_error(None, "Ya tienes una incapacidad registrada que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
 
         if tipo_solicitud == 'V':
@@ -723,7 +747,7 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
                 )
             except Exception as e:
                 print(f"Error al enviar correo al jefe {jefe.email}: {e}")
-        
+
         
         return super().form_valid(form)
 
