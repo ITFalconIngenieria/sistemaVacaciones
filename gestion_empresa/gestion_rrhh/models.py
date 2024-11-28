@@ -178,7 +178,7 @@ class Incapacidad(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     def es_eliminable(self):
-        return date.today() < self.fecha_inicio
+        return date.today() == self.fecha_inicio and self.revisado==0
 
     def save(self, *args, **kwargs):
         if self.fecha_inicio and self.fecha_fin:
