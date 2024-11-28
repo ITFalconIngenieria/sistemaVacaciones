@@ -33,6 +33,13 @@
         const horasCalculadasDiv = document.getElementById('horas-calculadas');
         const cantidadHorasSpan = document.getElementById('cantidad-horas');
         const mensajeFeriadosDiv = document.getElementById('mensaje-feriados');
+
+        flatpickr('.flatpickr-datetime', {
+            enableTime: true,
+            dateFormat: 'Y-m-d H:i',
+            time_24hr: true,
+            locale: 'es'  // Cambia a español, si es necesario
+        });
         function calcularHoras() {
             const fechaInicio = new Date(fechaInicioInput.value);
             const fechaFin = new Date(fechaFinInput.value);

@@ -77,6 +77,13 @@
         const fechaFinInput = document.getElementById('id_fecha_fin');
         const diasCalculadosDiv = document.getElementById('dias-calculados');
         const cantidadDiasSpan = document.getElementById('cantidad-dias');
+
+        flatpickr('.flatpickr-datetime', {
+            enableTime: true,
+            dateFormat: 'Y-m-d H:i',
+            time_24hr: true,
+            locale: 'es'  // Cambia a español, si es necesario
+        });
     
         function calcularDias() {
             const fechaInicio = new Date(fechaInicioInput.value);

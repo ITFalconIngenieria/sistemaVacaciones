@@ -36,16 +36,15 @@ class SolicitudForm(forms.ModelForm):
                 'readonly': 'readonly'
             }),
             'tipo': forms.Select(attrs={
-                'class': 'form-control'
-            }),
-            'fecha_inicio': forms.DateTimeInput(attrs={
-                'type': 'datetime-local',
                 'class': 'form-control',
                 'required': 'required'
             }),
-            'fecha_fin': forms.DateTimeInput(attrs={
-                'type': 'datetime-local',
-                'class': 'form-control',
+            'fecha_inicio': forms.TextInput(attrs={
+                'class': 'form-control flatpickr-datetime',
+                'required': 'required'
+            }),
+            'fecha_fin': forms.TextInput(attrs={
+                'class': 'form-control flatpickr-datetime',
                 'required': 'required'
             }),
         }
@@ -91,20 +90,14 @@ class RegistrarHorasForm(forms.ModelForm):
                 'class': 'form-control',
                 'readonly': 'readonly'  # Campo solo lectura
             }),
-            'fecha_inicio': forms.DateTimeInput(
-                attrs={
-                    'type': 'datetime-local',
-                    'class': 'form-control',
-                    'required': 'required'
-                }
-            ),
-            'fecha_fin': forms.DateTimeInput(
-                attrs={
-                    'type': 'datetime-local',
-                    'class': 'form-control',
-                    'required': 'required'
-                }
-            ),'numero_proyecto': forms.NumberInput(
+            'fecha_inicio': forms.TextInput(attrs={
+                'class': 'form-control flatpickr-datetime',
+                'required': 'required'
+            }),
+            'fecha_fin': forms.TextInput(attrs={
+                'class': 'form-control flatpickr-datetime',
+                'required': 'required'
+            }),'numero_proyecto': forms.NumberInput(
                 attrs={
                     'class': 'form-control',
                     'placeholder': 'Numero de Proyecto',
@@ -195,13 +188,13 @@ class IncapacidadForm(forms.ModelForm):
         model = Incapacidad
         fields = ['fecha_inicio', 'fecha_fin', 'archivo_adjunto', 'descripcion']
         widgets = {
-            'fecha_inicio': forms.DateInput(attrs={
-                'type': 'date',
-                'class': 'form-control'
+            'fecha_inicio': forms.TextInput(attrs={
+                'class': 'form-control flatpickr-datetime',
+                'required': 'required'
             }),
-            'fecha_fin': forms.DateInput(attrs={
-                'type': 'date',
-                'class': 'form-control'
+            'fecha_fin': forms.TextInput(attrs={
+                'class': 'form-control flatpickr-datetime',
+                'required': 'required'
             }),
             'descripcion': forms.Textarea(attrs={
                 'class': 'form-control',
