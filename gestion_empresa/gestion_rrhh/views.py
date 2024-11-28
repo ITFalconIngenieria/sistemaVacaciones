@@ -1132,6 +1132,12 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
+
+        fecha_actual = date.today()
+        if fecha_inicio > fecha_actual:
+            form.add_error(None, "Imposible registrar una incapacidad para el futuro.")
+            return self.form_invalid(form)
+
         
         incapacidades_conflicto = Incapacidad.objects.filter(
             usuario=usuario
@@ -1257,6 +1263,10 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
+        fecha_actual = date.today()
+        if fecha_inicio > fecha_actual:
+            form.add_error(None, "Imposible registrar una incapacidad para el futuro.")
+            return self.form_invalid(form)
 
         incapacidades_conflicto = Incapacidad.objects.filter(
             usuario=usuario
