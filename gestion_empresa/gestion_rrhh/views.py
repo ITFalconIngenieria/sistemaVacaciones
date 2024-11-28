@@ -204,13 +204,14 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
 
         solicitudes_en_conflicto = Solicitud.objects.filter(
             usuario=usuario,
-            fecha_inicio__date=fecha_inicio.date(),
-
         )
+
         for solicitud in solicitudes_en_conflicto:
-            print(f"Conflicto con solicitud: ID {solicitud.id}, Inicio {solicitud.fecha_inicio}, Fin {solicitud.fecha_fin}")
-            if not (fecha_fin <= solicitud.fecha_inicio or fecha_inicio >= solicitud.fecha_fin):
-                form.add_error(None, "Ya tienes una solicitud que se solapa con este rango de horas.")
+            if (solicitud.fecha_inicio <= fecha_inicio <= solicitud.fecha_fin) or \
+               (solicitud.fecha_inicio <= fecha_fin <= solicitud.fecha_fin) or \
+               (fecha_inicio<= solicitud.fecha_inicio and fecha_fin >= solicitud.fecha_fin):
+                print(f"Conflicto con registro: ID {solicitud.id}, Inicio {solicitud.fecha_inicio}, Fin {solicitud.fecha_fin}")
+                form.add_error(None, "Ya tienes una solicitud registrada que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
             
         incapacidades_conflicto = Incapacidad.objects.filter(
@@ -227,7 +228,10 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
 
         
         if tipo_solicitud == 'V':
-            dias_solicitados = (fecha_fin.date() - fecha_inicio.date()).days +1
+            fecha_inicio=fecha_inicio.date()
+            fecha_fin=fecha_fin.date()
+            form.instance.descripcion="Vacaciones"
+            dias_solicitados = (fecha_fin - fecha_inicio).days +1
             form.instance.dias_solicitados = dias_solicitados
 
             if dias_solicitados > dias_disponibles:
@@ -262,8 +266,8 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                 "usuario": self.request.user.get_full_name(),
                 "numero_solicitud": form.instance.numero_solicitud,
                 "tipo": form.instance.get_tipo_display(),
-                "fecha_inicio": form.instance.fecha_inicio.date(),
-                "fecha_fin": form.instance.fecha_fin.date(),
+                "fecha_inicio": fecha_inicio,
+                "fecha_fin": fecha_fin,
                 "year": year,
                 "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png" 
             }
@@ -414,12 +418,13 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
         
         solicitudes_en_conflicto = Solicitud.objects.filter(
             usuario=usuario,
-            fecha_inicio__date=fecha_inicio.date(),
         ).exclude(id=self.object.id)
         for solicitud in solicitudes_en_conflicto:
-            print(f"Conflicto con solicitud: ID {solicitud.id}, Inicio {solicitud.fecha_inicio}, Fin {solicitud.fecha_fin}")
-            if not (fecha_fin <= solicitud.fecha_inicio or fecha_inicio >= solicitud.fecha_fin):
-                form.add_error(None, "Ya tienes una solicitud que se solapa con este rango de horas.")
+            if (solicitud.fecha_inicio <= fecha_inicio <= solicitud.fecha_fin) or \
+               (solicitud.fecha_inicio <= fecha_fin <= solicitud.fecha_fin) or \
+               (fecha_inicio<= solicitud.fecha_inicio and fecha_fin >= solicitud.fecha_fin):
+                print(f"Conflicto con registro: ID {solicitud.id}, Inicio {solicitud.fecha_inicio}, Fin {solicitud.fecha_fin}")
+                form.add_error(None, "Ya tienes una solicitud registrada que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
             
         incapacidades_conflicto = Incapacidad.objects.filter(
@@ -435,7 +440,10 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
                 return self.form_invalid(form)
 
         if tipo_solicitud == 'V':
-            dias_solicitados = (fecha_fin.date() - fecha_inicio.date()).days + 1
+            fecha_inicio=fecha_inicio.date()
+            fecha_fin=fecha_fin.date()
+            form.instance.descripcion="Vacaciones"
+            dias_solicitados = (fecha_fin- fecha_inicio).days + 1
             form.instance.dias_solicitados = dias_solicitados
 
             if dias_solicitados > dias_disponibles:
@@ -464,8 +472,8 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
             "usuario": usuario.first_name,
             "numero_solicitud": solicitud.numero_solicitud,
             "tipo": solicitud.get_tipo_display(),
-            "fecha_inicio": solicitud.fecha_inicio.date(),
-            "fecha_fin": solicitud.fecha_fin.date(),
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
             "estado": "Aprobada" if form.instance.estado == 'A' else "Rechazada",
             "aprobado_por": form.instance.aprobado_por.get_full_name(),
             "year": year,
@@ -550,12 +558,13 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
 
         registros_en_conflicto = RegistroHoras.objects.filter(
             usuario=usuario,
-            fecha_inicio__date=fecha_inicio.date(),
         )
         for registro in registros_en_conflicto:
-            print(f"Conflicto con sel registro: ID {registro.id}, Inicio {registro.fecha_inicio}, Fin {registro.fecha_fin}")
-            if not (fecha_fin <= registro.fecha_inicio or fecha_inicio >= registro.fecha_fin):
-                form.add_error(None, "Ya tienes un registro de horas que se solapa con este rango. Por favor, selecciona otro rango")
+            if (registro.fecha_inicio <= fecha_inicio <= registro.fecha_fin) or \
+               (registro.fecha_inicio <= fecha_fin <= registro.fecha_fin) or \
+               (fecha_inicio<= registro.fecha_inicio and fecha_fin >= registro.fecha_fin):
+                print(f"Conflicto con registro: ID {registro.id}, Inicio {registro.fecha_inicio}, Fin {registro.fecha_fin}")
+                form.add_error(None, "Ya tienes un registro que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
 
         if rol_usuario == 'IN' and tipo_horas == 'HE':
@@ -567,7 +576,7 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
             return self.form_invalid(form)
 
         elif rol_usuario in ['GG', 'JI', 'JD'] and tipo_horas == 'HE':
-            form.add_error(None, "Los gerentes o jefes no pueden registrar horas extra.")
+            form.add_error(None, "Los Ingenieros no pueden registrar horas extra.")
             return self.form_invalid(form)
         
         form.instance.numero_registro = form.cleaned_data['numero_registro']
@@ -586,6 +595,7 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
                 "tipo": form.instance.get_tipo_display(),
                 "fecha_inicio": form.instance.fecha_inicio,
                 "fecha_fin": form.instance.fecha_fin,
+                "descripcion":form.instance.descripcion,
                 "year": year,
                 "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png" 
             }
@@ -708,14 +718,16 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
         registro = self.get_object()
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
+
         registros_en_conflicto = RegistroHoras.objects.filter(
             usuario=registro.usuario,
-            fecha_inicio__date=fecha_inicio.date(),
         ).exclude(id=registro.id)
-
-        for r in registros_en_conflicto:
-            if not (fecha_fin <= r.fecha_inicio or fecha_inicio >= r.fecha_fin):
-                form.add_error(None, "Ya existe un registro en este rango de fechas y horas.")
+        for registro in registros_en_conflicto:
+            if (registro.fecha_inicio <= fecha_inicio <= registro.fecha_fin) or \
+               (registro.fecha_inicio <= fecha_fin <= registro.fecha_fin) or \
+               (fecha_inicio<= registro.fecha_inicio and fecha_fin >= registro.fecha_fin):
+                print(f"Conflicto con registro: ID {registro.id}, Inicio {registro.fecha_inicio}, Fin {registro.fecha_fin}")
+                form.add_error(None, "Ya tienes un registro que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
 
         messages.success(self.request, f"El registro de horas {registro.numero_registro} ha sido actualizado.")
@@ -1150,6 +1162,18 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
                 print(f"Conflicto con registro: ID {incapacidad.id}, Inicio {incapacidad.fecha_inicio}, Fin {incapacidad.fecha_fin}")
                 form.add_error(None, "Ya tienes una incapacidad registrada que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
+            
+        solicitudes_en_conflicto = Solicitud.objects.filter(
+            usuario=usuario,
+        )
+
+        for solicitud in solicitudes_en_conflicto:
+            if (solicitud.fecha_inicio <= fecha_inicio <= solicitud.fecha_fin) or \
+               (solicitud.fecha_inicio <= fecha_fin <= solicitud.fecha_fin) or \
+               (fecha_inicio<= solicitud.fecha_inicio and fecha_fin >= solicitud.fecha_fin):
+                print(f"Conflicto con registro: ID {solicitud.id}, Inicio {solicitud.fecha_inicio}, Fin {solicitud.fecha_fin}")
+                form.add_error(None, "Ya tienes una solicitud registrada que se solapa con este rango. Por favor, selecciona otro rango")
+                return self.form_invalid(form)
         
         if not form.cleaned_data.get('archivo_adjunto'):
             form.add_error('archivo', "Debes adjuntar un archivo.")
@@ -1279,6 +1303,18 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
                (fecha_inicio <= incapacidad.fecha_inicio and fecha_fin >= incapacidad.fecha_fin):
                 print(f"Conflicto con registro: ID {incapacidad.id}, Inicio {incapacidad.fecha_inicio}, Fin {incapacidad.fecha_fin}")
                 form.add_error(None, "Ya tienes una incapacidad registrada que se solapa con este rango. Por favor, selecciona otro rango")
+                return self.form_invalid(form)
+        
+        solicitudes_en_conflicto = Solicitud.objects.filter(
+            usuario=usuario,
+        )
+
+        for solicitud in solicitudes_en_conflicto:
+            if (solicitud.fecha_inicio <= fecha_inicio <= solicitud.fecha_fin) or \
+               (solicitud.fecha_inicio <= fecha_fin <= solicitud.fecha_fin) or \
+               (fecha_inicio<= solicitud.fecha_inicio and fecha_fin >= solicitud.fecha_fin):
+                print(f"Conflicto con registro: ID {solicitud.id}, Inicio {solicitud.fecha_inicio}, Fin {solicitud.fecha_fin}")
+                form.add_error(None, "Ya tienes una solicitud registrada que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
 
         form.instance.usuario = self.request.user

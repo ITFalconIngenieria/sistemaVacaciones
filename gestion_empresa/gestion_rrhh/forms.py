@@ -188,6 +188,7 @@ class IncapacidadForm(forms.ModelForm):
         model = Incapacidad
         fields = ['fecha_inicio', 'fecha_fin', 'archivo_adjunto', 'descripcion']
         widgets = {
+
             'fecha_inicio': forms.TextInput(attrs={
                 'class': 'form-control flatpickr-datetime',
                 'required': 'required'
