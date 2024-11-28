@@ -229,7 +229,7 @@ class IncapacidadForm(forms.ModelForm):
             raise forms.ValidationError("Ambas fechas son obligatorias.")
 
         diferencia_dias = (fecha_fin - fecha_inicio).days + 1
-        if diferencia_dias < 1 or diferencia_dias > 3:
-            raise forms.ValidationError("El rango de días debe ser entre 1 y 3 días completos.")
+        if diferencia_dias < 1:
+            raise forms.ValidationError("El rango de días debe ser entre 1 o más días completos.")
 
         return cleaned_data
