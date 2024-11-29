@@ -878,10 +878,11 @@ def reporte_solicitudes(request):
     for solicitud in solicitudes:
         usuario = solicitud.usuario
         if usuario not in solicitudes_por_usuario:
-            solicitudes_por_usuario[usuario] = {'solicitudes': [], 'total_dias': 0}
+            solicitudes_por_usuario[usuario] = {'solicitudes': [], 'total_dias': 0, 'total_horas': 0}
         
         solicitudes_por_usuario[usuario]['solicitudes'].append(solicitud)
         solicitudes_por_usuario[usuario]['total_dias'] += solicitud.dias_solicitados or 0
+        solicitudes_por_usuario[usuario]['total_horas'] += solicitud.horas or 0
 
     hay_solicitudes_pendientes = solicitudes.exists()
 
