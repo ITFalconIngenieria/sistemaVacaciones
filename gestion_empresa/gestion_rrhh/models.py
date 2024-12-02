@@ -14,6 +14,7 @@ class Usuario(AbstractUser):
         ('JD', 'Jefe de Departamento'),
         ('IN', 'Ingeniero'),
         ('TE', 'Técnico'),
+        ('ADM', 'Administrador'),
     )
     username = models.CharField(
         max_length=150,
@@ -21,7 +22,7 @@ class Usuario(AbstractUser):
         validators=[validate_username],
         help_text="Solo letras, sin números ni caracteres especiales."
     )
-    rol = models.CharField(max_length=2, choices=ROLES)
+    rol = models.CharField(max_length=3, choices=ROLES)
     departamento = models.ForeignKey('Departamento', on_delete=models.SET_NULL, null=True)
     jefe = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, related_name='subordinados')
     fecha_entrada = models.DateField(null=True, blank=True)

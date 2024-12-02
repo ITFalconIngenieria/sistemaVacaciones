@@ -567,16 +567,12 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
                 form.add_error(None, "Ya tienes un registro que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
 
-        if rol_usuario == 'IN' and tipo_horas == 'HE':
-            form.add_error(None, "Los ingenieros no pueden registrar horas extra.")
-            return self.form_invalid(form)
-        
         if rol_usuario == 'TE' and tipo_horas == 'HEF':
             form.add_error(None, "Los Técnicos no pueden registrar horas extra para dias feriados.")
             return self.form_invalid(form)
 
-        elif rol_usuario in ['GG', 'JI', 'JD'] and tipo_horas == 'HE':
-            form.add_error(None, "Los Ingenieros no pueden registrar horas extra.")
+        elif rol_usuario in ['GG', 'JI', 'JD', 'ADM'] and tipo_horas == 'HE':
+            form.add_error(None, "Usted no puede registrar horas extra.")
             return self.form_invalid(form)
         
         form.instance.numero_registro = form.cleaned_data['numero_registro']
@@ -867,8 +863,9 @@ class HistorialCombinadoView(ListView):
 
 @login_required
 def reporte_solicitudes(request):
-    if request.user.rol not in ['GG', 'JI', 'JD']:
+    if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
+    
     solicitudes = Solicitud.objects.filter(
         estado_cierre=0,
         estado='A'
@@ -905,8 +902,9 @@ def reporte_solicitudes(request):
 
 @login_required
 def generar_reporte_solicitudes_pdf(request):
-    if request.user.rol not in ['GG', 'JI', 'JD']:
+    if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
+
     solicitudes = Solicitud.objects.filter(estado='A', estado_cierre=False).order_by('usuario', 'fecha_inicio')
     solicitudes_por_usuario = {}
     for solicitud in solicitudes:
@@ -979,9 +977,8 @@ class MiSolicitudYRegistroView(ListView):
 
 
 def ajuste_vacaciones(request):
-    if request.user.rol not in ['GG', 'JI', 'JD']:
-        messages.error(request, "No tienes permiso para acceder a esta página.")
-        return redirect('dashboard')
+    if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
+        raise PermissionDenied("No tienes permiso para acceder a esta página.")
 
     usuarios = Usuario.objects.filter(is_superuser=False)
     usuarios_vacaciones = []
@@ -1026,9 +1023,12 @@ def ajuste_vacaciones(request):
 
 @login_required
 def reporte_horas_extra_html(request):
-    if request.user.rol not in ['GG', 'JI', 'JD']:
-        raise PermissionDenied("No tienes permiso para acceder a esta página.")
+
+    print(request.user.rol , request.user.departamento)
     
+    if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
+        raise PermissionDenied("No tienes permiso para acceder a esta página.")
+
     registros = RegistroHoras.objects.filter(
         Q(tipo='HE') | Q(tipo='HEF'),
         estado='A',
@@ -1084,6 +1084,12 @@ def cerrar_quincena(request):
 
 
 class reporte_horas_extra_PDF(View):
+    
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
+            raise PermissionDenied("No tienes permiso para acceder a esta página.")
+        return super().dispatch(request, *args, **kwargs)
+    
     def get(self, request, *args, **kwargs):
         try:
             locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')
@@ -1183,6 +1189,11 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
 
 
 class GenerarReporteIncapacidadesView(View):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
+            raise PermissionDenied("No tienes permiso para acceder a esta página.")
+        return super().dispatch(request, *args, **kwargs)
+
     def get(self, request, *args, **kwargs):
         incapacidades = Incapacidad.objects.filter(revisado=False).order_by('fecha_inicio')
 
@@ -1220,8 +1231,10 @@ class GenerarReporteIncapacidadesView(View):
 
 @login_required
 def lista_incapacidades(request):
-    if request.user.rol not in ['GG', 'JI', 'JD']:
+    
+    if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
+
     
     incapacidades = Incapacidad.objects.filter(revisado=False).order_by('usuario', '-fecha_inicio')
     incapacidades_por_usuario = {}
