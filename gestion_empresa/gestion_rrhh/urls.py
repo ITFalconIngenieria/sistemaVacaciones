@@ -26,8 +26,6 @@ urlpatterns = [
     path('reporte-solicitudes/', views.reporte_solicitudes, name='reporte_solicitudes'),
     path('reporte_solicitudes/pdf/', views.generar_reporte_solicitudes_pdf, name='generar_reporte_solicitudes_pdf'),
     path('solicitudes/jerarquia/', views.ListaSolicitudesRegistrosDosNivelesView.as_view(), name="solicitudes_jerarquicas"),
-    path('solicitud/<int:pk>/aprobar-rechazar/', views.AprobarRechazarSolicitudDosNivelesView.as_view(), name='aprobar_rechazar_solicitud_dos_niveles'),
-    path('aprobar-rechazar-horas/<int:pk>/', views.AprobarRechazarHorasDosNivelesView.as_view(), name='aprobar_rechazar_horas_dos_niveles'),
 
     
     # Registro de horas y aprobación

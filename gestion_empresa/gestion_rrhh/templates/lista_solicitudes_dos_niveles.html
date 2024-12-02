@@ -60,9 +60,9 @@
             <td>{{ item.get_estado_display }}</td>
             <td>
                 {% if item.tipo_objeto == 'solicitud' %}
-                    <a href="{% url 'aprobar_rechazar_solicitud_dos_niveles' item.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
+                    <a href="{% url 'aprobar_rechazar_solicitud' item.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
                 {% else %}
-                    <a href="{% url 'aprobar_rechazar_horas_dos_niveles' item.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
+                    <a href="{% url 'aprobar_rechazar_horas' item.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
                 {% endif %}
             </td>
         </tr>
