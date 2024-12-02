@@ -829,6 +829,251 @@ class ListaSolicitudesRegistrosPendientesView(ListView):
         return context
 
 
+class ListaSolicitudesRegistrosDosNivelesView(ListView):
+    template_name = 'lista_solicitudes_dos_niveles.html'
+    context_object_name = 'pendientes'
+
+    def dispatch(self, request, *args, **kwargs):
+        # Validar si el usuario tiene el rol permitido
+        if request.user.rol not in ['GG', 'JI', 'JD']:
+            raise PermissionDenied("No tienes permiso para acceder a esta página.")
+        return super().dispatch(request, *args, **kwargs)
+
+    def obtener_subordinados_dos_niveles(self, usuario):
+        # Obtiene subordinados de primer y segundo nivel
+        subordinados_nivel_1 = Usuario.objects.filter(jefe=usuario)
+        subordinados_nivel_2 = Usuario.objects.filter(jefe__in=subordinados_nivel_1)
+        return subordinados_nivel_1 | subordinados_nivel_2
+
+    def get_queryset(self):
+        # Retornamos vacío porque procesaremos en get_context_data
+        return []
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+
+        # Filtramos registros y solicitudes
+        registros_queryset = RegistroHoras.objects.filter(estado='P')
+        solicitudes_queryset = Solicitud.objects.filter(estado='P')
+
+        if user.rol in ['GG', 'JI', 'JD']:
+            # Filtrar por subordinados hasta dos niveles
+            subordinados = self.obtener_subordinados_dos_niveles(user)
+            registros_queryset = registros_queryset.filter(usuario__in=subordinados)
+            solicitudes_queryset = solicitudes_queryset.filter(usuario__in=subordinados)
+        else:
+            registros_queryset = RegistroHoras.objects.none()
+            solicitudes_queryset = Solicitud.objects.none()
+
+        # Combinar y procesar resultados
+        pendientes = list(solicitudes_queryset) + list(registros_queryset)
+
+        # Asignar prioridad de estado y tipo
+        estado_prioridad = {'P': 1, 'R': 2, 'A': 3}
+        for item in pendientes:
+            item.tipo_objeto = 'solicitud' if isinstance(item, Solicitud) else 'registro'
+            item.estado_orden = estado_prioridad.get(item.estado, 4)
+
+        # Ordenar por estado y fecha
+        pendientes = sorted(pendientes, key=attrgetter('estado_orden', 'fecha_inicio'))
+
+        # Paginar resultados
+        paginator = Paginator(pendientes, 8)
+        page_number = self.request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
+        # Agregar al contexto
+        context['pendientes'] = page_obj
+        context['page_obj'] = page_obj
+        return context
+
+class AprobarRechazarSolicitudDosNivelesView(LoginRequiredMixin, UpdateView):
+    model = Solicitud
+    fields = ['estado']
+    template_name = 'aprobar_rechazar_solicitud.html'
+    success_url = reverse_lazy('lista_solicitudes')
+
+    def dispatch(self, request, *args, **kwargs):
+        # Validar que el usuario tenga el permiso adecuado
+        if not self.tiene_permiso_aprobacion():
+            raise PermissionDenied("No tienes permiso para aprobar o rechazar esta solicitud.")
+        return super().dispatch(request, *args, **kwargs)
+
+    def tiene_permiso_aprobacion(self):
+        solicitud = self.get_object()
+        usuario_solicitud = solicitud.usuario
+
+        # El usuario no puede aprobar su propia solicitud
+        if self.request.user == usuario_solicitud:
+            return False
+
+        # Obtener subordinados de primer y segundo nivel
+        subordinados_directos = Usuario.objects.filter(jefe=self.request.user)
+        subordinados_dos_niveles = Usuario.objects.filter(jefe__in=subordinados_directos)
+
+        # Permitir si el usuario de la solicitud está dentro de los subordinados directos o de dos niveles
+        if usuario_solicitud in subordinados_directos or usuario_solicitud in subordinados_dos_niveles:
+            return True
+
+        # Permitir al Gerente General aprobar todo
+        if self.request.user.rol == 'GG':
+            return True
+
+        return False
+
+    def form_valid(self, form):
+        solicitud = self.get_object()
+        usuario = solicitud.usuario
+
+        # Realiza acciones adicionales según el tipo de solicitud
+        if form.instance.estado == 'A':
+            if solicitud.tipo == 'V':  # Vacaciones
+                dias_disponibles = calcular_dias_disponibles(usuario)['dias_disponibles']
+                if solicitud.dias_solicitados > dias_disponibles:
+                    messages.warning(self.request, "La solicitud será aprobada, pero el saldo de días será negativo.")
+
+                # Actualizar días tomados
+                historial = HistorialVacaciones.objects.filter(usuario=usuario, año=now().year)
+                for registro in historial:
+                    registro.dias_tomados += solicitud.dias_solicitados
+                    registro.save()
+
+            elif solicitud.tipo == 'HC':  # Horas compensatorias
+                horas_disponibles = calcular_horas_individuales(usuario)['HC']
+                if solicitud.horas > horas_disponibles:
+                    messages.error(self.request, "No hay suficientes horas compensatorias disponibles.")
+                    return self.form_invalid(form)
+
+        # Registrar quién aprobó o rechazó
+        form.instance.aprobado_por = self.request.user
+
+        # Enviar notificación por correo electrónico
+        estados = {'A': 'Aprobada', 'R': 'Rechazada', 'P': 'Pendiente'}
+        context = {
+            "usuario": usuario.first_name,
+            "numero_solicitud": solicitud.numero_solicitud,
+            "tipo": solicitud.get_tipo_display(),
+            "fecha_inicio": solicitud.fecha_inicio.date(),
+            "fecha_fin": solicitud.fecha_fin.date(),
+            "estado": estados.get(form.instance.estado, "Desconocido"),
+            "aprobado_por": self.request.user.get_full_name(),
+            "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+            "enlace_revisar": settings.ENLACE_DEV,
+        }
+        html_content = render_to_string("mail_estado_solicitud.html", context)
+        email_sender = MicrosoftGraphEmail()
+        subject = f"Tu solicitud ha sido {context['estado']}"
+        try:
+            email_sender.send_email(
+                subject=subject,
+                content=html_content,
+                to_recipients=[usuario.email],
+            )
+        except Exception as e:
+            print(f"Error al enviar el correo al usuario {usuario.email}: {e}")
+
+        messages.success(self.request, "La solicitud ha sido procesada exitosamente.")
+        return super().form_valid(form)
+
+
+class AprobarRechazarHorasDosNivelesView(LoginRequiredMixin, UpdateView):
+    model = RegistroHoras
+    fields = ['estado']
+    template_name = 'aprobar_rechazar_horas.html'
+    success_url = reverse_lazy('lista_solicitudes')
+
+    def dispatch(self, request, *args, **kwargs):
+        # Validar que el usuario tenga permiso para aprobar/rechazar el registro de horas
+        if not self.tiene_permiso_aprobacion():
+            raise PermissionDenied("No tienes permiso para aprobar o rechazar este registro de horas.")
+        return super().dispatch(request, *args, **kwargs)
+
+    def tiene_permiso_aprobacion(self):
+        registro = self.get_object()
+        usuario_registro = registro.usuario
+
+        # Evitar que un usuario apruebe su propio registro
+        if self.request.user == usuario_registro:
+            return False
+
+        # Obtener subordinados de primer y segundo nivel
+        subordinados_directos = Usuario.objects.filter(jefe=self.request.user)
+        subordinados_dos_niveles = Usuario.objects.filter(jefe__in=subordinados_directos)
+
+        # Permitir si el usuario del registro está en los subordinados de uno o dos niveles
+        if usuario_registro in subordinados_directos or usuario_registro in subordinados_dos_niveles:
+            return True
+
+        # Permitir al Gerente General aprobar cualquier registro
+        if self.request.user.rol == 'GG':
+            return True
+
+        return False
+
+    def form_valid(self, form):
+        registro = self.get_object()
+        usuario = registro.usuario
+
+        # Calcula la diferencia de días para referencia
+        diferencia_dias = (registro.fecha_fin.date() - registro.fecha_inicio.date()).days + 1
+        print(f"Diferencia de días: {diferencia_dias} días")
+
+        # Procesa según el estado seleccionado
+        if form.instance.estado == 'A':  # Aprobado
+            if registro.tipo == 'HEF':  # Horas extras flexibles
+                registro.save()
+            form.instance.aprobado_por = self.request.user
+            messages.success(self.request, 'El registro de horas ha sido aprobado exitosamente.')
+
+        elif form.instance.estado == 'R':  # Rechazado
+            messages.warning(
+                self.request,
+                f"El registro de horas con el número {registro.numero_registro} ha sido rechazado."
+            )
+
+        elif form.instance.estado == 'P':  # Pendiente
+            messages.info(
+                self.request,
+                f"El registro de horas con el número {registro.numero_registro} ha sido marcado como pendiente."
+            )
+
+        # Preparar notificación por correo
+        year = now().year
+        estados = {
+            'A': "Aprobada",
+            'R': "Rechazada",
+            'P': "Pendiente",
+        }
+        context = {
+            "usuario": usuario.first_name,
+            "numero_solicitud": registro.numero_registro,
+            "tipo": registro.get_tipo_display(),
+            "fecha_inicio": registro.fecha_inicio,
+            "fecha_fin": registro.fecha_fin,
+            "estado": estados.get(form.instance.estado, "Desconocido"),
+            "aprobado_por": self.request.user.get_full_name(),
+            "year": year,
+            "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+            "enlace_revisar": settings.ENLACE_DEV,
+        }
+
+        html_content = render_to_string("mail_estado_solicitud.html", context)
+        email_sender = MicrosoftGraphEmail()
+        subject = f"Tu registro de horas ha sido {context['estado']}"
+
+        try:
+            email_sender.send_email(
+                subject=subject,
+                content=html_content,
+                to_recipients=[usuario.email],
+            )
+        except Exception as e:
+            print(f"Error al enviar correo al usuario {usuario.email}: {e}")
+
+        return super().form_valid(form)
+
+
 class HistorialCombinadoView(ListView):
     template_name = 'historial_solicitudes.html'
     context_object_name = 'registros_y_solicitudes'
