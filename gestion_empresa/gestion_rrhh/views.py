@@ -24,6 +24,7 @@ from django.core.mail import send_mail
 from .utils import MicrosoftGraphEmail
 from django.template.loader import render_to_string
 from django.utils.timezone import now
+from django.conf import settings
 
 def es_jefe(user):
     return user.rol in ['GG', 'JI', 'JD']
@@ -268,8 +269,10 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                 "tipo": form.instance.get_tipo_display(),
                 "fecha_inicio": fecha_inicio,
                 "fecha_fin": fecha_fin,
+                "descripcion" : form.instance.descripcion,
                 "year": year,
-                "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png" 
+                "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+                "enlace_revisar":settings.ENLACE_DEV 
             }
 
             html_content = render_to_string("mail_solicitud.html", context)
@@ -376,7 +379,8 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
             "estado": estados.get(form.instance.estado, "Desconocido"),
             "aprobado_por": form.instance.aprobado_por.get_full_name(),
             "year": year,
-            "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png"
+            "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+            "enlace_revisar": settings.ENLACE_DEV
         }
 
         html_content = render_to_string("mail_estado_solicitud.html", context)
@@ -467,31 +471,39 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
             form.instance.horas = horas_solicitadas
 
         messages.success(self.request, 'Solicitud actualizada correctamente.')
-        year = now().year
-        context = {
-            "usuario": usuario.first_name,
-            "numero_solicitud": solicitud.numero_solicitud,
-            "tipo": solicitud.get_tipo_display(),
-            "fecha_inicio": fecha_inicio,
-            "fecha_fin": fecha_fin,
-            "estado": "Aprobada" if form.instance.estado == 'A' else "Rechazada",
-            "aprobado_por": form.instance.aprobado_por.get_full_name(),
-            "year": year,
-            "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png"
-        }
 
-        html_content = render_to_string("mail_estado_solicitud.html", context)
-        email_sender = MicrosoftGraphEmail()
-        subject = f"Tu solicitud ha sido {context['estado']}"
+        
+        jefe = self.request.user.jefe
+        if jefe and jefe.email: 
+            year = now().year
+            context = {
+                "jefe": jefe.first_name,
+                "usuario": self.request.user.get_full_name(),
+                "numero_solicitud": form.instance.numero_solicitud,
+                "tipo": form.instance.get_tipo_display(),
+                "fecha_inicio": fecha_inicio,
+                "fecha_fin": fecha_fin,
+                "descripcion" : form.instance.descripcion,
+                "year": year,
+                "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+                "enlace_revisar":settings.ENLACE_DEV 
+            }
 
-        try:
-            email_sender.send_email(
-                subject=subject,
-                content=html_content,
-                to_recipients=[usuario.email],
-            )
-        except Exception as e:
-            print(f"Error al enviar correo al usuario {usuario.email}: {e}")
+            html_content = render_to_string("mail_editar_solicitud.html", context)
+            email_sender = MicrosoftGraphEmail()
+            subject = "Nueva solicitud pendiente de aprobación"
+            content=html_content
+
+            try:
+                email_sender.send_email(
+                    subject=subject,
+                    content=content,
+                    to_recipients=[jefe.email],
+                )
+            except Exception as e:
+                print(f"Error al enviar correo al jefe {jefe.email}: {e}")
+
+
         return super().form_valid(form)
 
 
@@ -581,7 +593,6 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
         
         jefe = self.request.user.jefe
-        print(jefe)
         if jefe and jefe.email: 
             year = now().year
             context = {
@@ -593,7 +604,8 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
                 "fecha_fin": form.instance.fecha_fin,
                 "descripcion":form.instance.descripcion,
                 "year": year,
-                "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png" 
+                "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+                "enlace_revisar": settings.ENLACE_DEV, 
             }
 
             html_content = render_to_string("mail_solicitud.html", context)
@@ -676,7 +688,8 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
             "estado": estados.get(form.instance.estado, "Desconocido"), 
             "aprobado_por": form.instance.aprobado_por.get_full_name(),
             "year": year,
-            "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png"
+            "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+            "enlace_revisar": settings.ENLACE_DEV
         }
 
         html_content = render_to_string("mail_estado_solicitud.html", context)
@@ -727,8 +740,8 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
                 return self.form_invalid(form)
 
         messages.success(self.request, f"El registro de horas {registro.numero_registro} ha sido actualizado.")
+        
         jefe = self.request.user.jefe
-        print(jefe)
         if jefe and jefe.email: 
             year = now().year
             context = {
@@ -738,11 +751,13 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
                 "tipo": form.instance.get_tipo_display(),
                 "fecha_inicio": form.instance.fecha_inicio,
                 "fecha_fin": form.instance.fecha_fin,
+                "descripcion":form.instance.descripcion,
                 "year": year,
-                "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png" 
+                "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+                "enlace_revisar": settings.ENLACE_DEV, 
             }
 
-            html_content = render_to_string("mail_solicitud.html", context)
+            html_content = render_to_string("mail_editar_solicitud.html", context)
             email_sender = MicrosoftGraphEmail()
             subject = "Nueva solicitud pendiente de aprobación"
             content=html_content
@@ -1024,8 +1039,6 @@ def ajuste_vacaciones(request):
 @login_required
 def reporte_horas_extra_html(request):
 
-    print(request.user.rol , request.user.departamento)
-    
     if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
 
@@ -1156,8 +1169,6 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
         if fecha_inicio > fecha_actual:
             form.add_error(None, "Imposible registrar una incapacidad para el futuro.")
             return self.form_invalid(form)
-
-        
         incapacidades_conflicto = Incapacidad.objects.filter(
             usuario=usuario
         )
