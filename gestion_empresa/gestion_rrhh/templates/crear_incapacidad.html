@@ -21,6 +21,10 @@
                             Los días calculados de incapacidad son: <span id="cantidad-dias">0</span> días.
                         </div>
 
+                        <div class="alert alert-warning" id="nota">
+                            Para que su registro sea valido debe presentar la incapacidad en fisico a RRHH antes de esta quincena 
+                        </div>
+
                         <button type="submit" class="btn btn-success w-100">Guardar Cambios</button>
                         <a href="{% url 'mis_incapacidades' %}" class="btn btn-secondary w-100 mt-2">Cancelar</a>
                     </form>
@@ -36,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const fechaFinInput = document.getElementById('id_fecha_fin');
     const diasCalculadosDiv = document.getElementById('dias-calculados');
     const cantidadDiasSpan = document.getElementById('cantidad-dias');
+    const nota = document.getElementById('nota')
 
     flatpickr('.flatpickr-datetime', {
             enableTime: true,
@@ -53,9 +58,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const dias = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24)) + 1;
             cantidadDiasSpan.textContent = dias;
             diasCalculadosDiv.style.display = 'block';
+            nota.style.display='block'
         } else {
             cantidadDiasSpan.textContent = 0;
             diasCalculadosDiv.style.display = 'none';
+            nota.style.display='none';
         }
     }
 
