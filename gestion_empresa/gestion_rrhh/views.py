@@ -584,9 +584,13 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
 
+        anio_actual = date.today().year
+        feriados = FeriadoNacional.objects.filter(fecha__year=anio_actual)
+
         registros_en_conflicto = RegistroHoras.objects.filter(
             usuario=usuario,
         )
+
         for registro in registros_en_conflicto:
             if (registro.fecha_inicio <= fecha_inicio <= registro.fecha_fin) or \
                (registro.fecha_inicio <= fecha_fin <= registro.fecha_fin) or \
@@ -594,6 +598,11 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
                 print(f"Conflicto con registro: ID {registro.id}, Inicio {registro.fecha_inicio}, Fin {registro.fecha_fin}")
                 form.add_error(None, "Ya tienes un registro que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
+            
+        if tipo_horas == 'HEF':
+            if not feriados.filter(fecha=fecha_inicio.date()).exists():
+                form.add_error(None, "El día de inicio no coincide con ningún feriado registrado para este año.")
+                return self.form_invalid(form)    
 
         if rol_usuario == 'TE' and tipo_horas == 'HEF':
             form.add_error(None, "Los Técnicos no pueden registrar horas extra para dias feriados.")

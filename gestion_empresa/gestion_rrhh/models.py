@@ -125,7 +125,6 @@ class RegistroHoras(models.Model):
     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador_horas', null=True, blank=True, on_delete=models.SET_NULL)
    
     def calcular_horas(self):
-        """ Calcula las horas trabajadas a partir de la diferencia entre fecha_inicio y fecha_fin. """
         delta = self.fecha_fin - self.fecha_inicio
         horas = delta.total_seconds() / 3600
         return Decimal(horas).quantize(Decimal('0.01'))
@@ -189,7 +188,8 @@ class Incapacidad(models.Model):
         super().save(*args, **kwargs)  
     def __str__(self):
         return f"Incapacidad de {self.usuario.get_full_name()} del {self.fecha_inicio} al {self.fecha_fin}"
-    
+
+
 class FeriadoNacional(models.Model):
     fecha = models.DateField(unique=True, verbose_name="Fecha del Feriado")
     descripcion = models.CharField(max_length=255, verbose_name="Descripción")
