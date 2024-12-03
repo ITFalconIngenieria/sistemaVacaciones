@@ -1403,9 +1403,9 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
         )
 
         for solicitud in solicitudes_en_conflicto:
-            if (solicitud.fecha_inicio <= fecha_inicio <= solicitud.fecha_fin) or \
-               (solicitud.fecha_inicio <= fecha_fin <= solicitud.fecha_fin) or \
-               (fecha_inicio<= solicitud.fecha_inicio and fecha_fin >= solicitud.fecha_fin):
+            if (solicitud.fecha_inicio.date() <= fecha_inicio <= solicitud.fecha_fin.date()) or \
+               (solicitud.fecha_inicio.date() <= fecha_fin <= solicitud.fecha_fin.date()) or \
+               (fecha_inicio<= solicitud.fecha_inicio.date() and fecha_fin >= solicitud.fecha_fin.date()):
                 print(f"Conflicto con registro: ID {solicitud.id}, Inicio {solicitud.fecha_inicio}, Fin {solicitud.fecha_fin}")
                 form.add_error(None, "Ya tienes una solicitud registrada que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
