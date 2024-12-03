@@ -939,14 +939,17 @@ class HistorialCombinadoView(ListView):
 
 @login_required
 def reporte_solicitudes(request):
+    # Verificar permisos
     if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
     
+    # Filtrar solicitudes aprobadas no cerradas
     solicitudes = Solicitud.objects.filter(
         estado_cierre=0,
         estado='A'
     ).order_by('usuario', 'fecha_inicio')
 
+    # Agrupar solicitudes por usuario
     solicitudes_por_usuario = {}
     for solicitud in solicitudes:
         usuario = solicitud.usuario
@@ -959,14 +962,22 @@ def reporte_solicitudes(request):
 
     hay_solicitudes_pendientes = solicitudes.exists()
 
+    # Manejar acciones del formulario
     if request.method == "POST":
         seleccionados = request.POST.getlist('seleccionados')
         if 'marcar_cerrado' in request.POST:
-            Solicitud.objects.filter(id__in=seleccionados).update(estado_cierre=1)
+            if seleccionados:
+                solicitudes_actualizadas = Solicitud.objects.filter(id__in=seleccionados).update(estado_cierre=1)
+                messages.success(request, f"{solicitudes_actualizadas} solicitudes han sido marcadas como cerradas.")
+                return redirect('reporte_solicitudes')
+            else:
+                messages.warning(request, "Por favor selecciona al menos una solicitud para marcar como cerrada.")
+        
         elif 'generar_reporte' in request.POST:
             request.session['reporte_solicitudes'] = seleccionados
             return redirect('generar_reporte_solicitudes_pdf')
 
+    # Paginación
     paginator = Paginator(list(solicitudes_por_usuario.items()), 5) 
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -1099,10 +1110,11 @@ def ajuste_vacaciones(request):
 
 @login_required
 def reporte_horas_extra_html(request):
-
+    # Verificar permisos
     if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
 
+    # Filtrar registros
     registros = RegistroHoras.objects.filter(
         Q(tipo='HE') | Q(tipo='HEF'),
         estado='A',
@@ -1121,13 +1133,17 @@ def reporte_horas_extra_html(request):
     hay_registros_pendientes = registros.exists()
 
     if request.method == "POST":
-        seleccionados = request.POST.getlist('seleccionados')  # Lista de IDs seleccionados
+        seleccionados = request.POST.getlist('seleccionados')
         if 'marcar_pagado' in request.POST:
-            RegistroHoras.objects.filter(id__in=seleccionados).update(estado_pago='PG')
+            registros_actualizados = RegistroHoras.objects.filter(id__in=seleccionados).update(estado_pago='PG')
+            messages.success(request, f"{registros_actualizados} registros de horas extra han sido marcados como pagados.")
+            return redirect('reporte_horas_extra')  # Redirigir después de marcar como pagado
+
         elif 'generar_reporte' in request.POST:
-            request.session['reporte_horas_extra'] = seleccionados
+            request.session['reporte_horas_extra']
             return redirect('generar_pdf')
 
+    # Paginación
     paginator = Paginator(list(registros_por_usuario.items()), 5)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -1137,24 +1153,6 @@ def reporte_horas_extra_html(request):
         'hay_registros_pendientes': hay_registros_pendientes,
     })
 
-
-
-@login_required
-def cerrar_quincena(request):
-    registros_a_pagar = RegistroHoras.objects.filter(
-        Q(tipo='HE') | Q(tipo='HEF'),
-        estado='A',
-        estado_pago='NP'
-    )
-
-    for registro in registros_a_pagar:
-        usuario = registro.usuario  
-        usuario.horas_extra_acumuladas = 0 
-        usuario.save()
-
-    registros_actualizados = registros_a_pagar.update(estado_pago='PG')
-    messages.success(request, f"{registros_actualizados} registros de horas extra han sido marcados como pagados.")
-    return redirect('reporte_horas_extra')
 
 
 class reporte_horas_extra_PDF(View):
@@ -1237,7 +1235,7 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
         for incapacidad in incapacidades_conflicto:
             if (incapacidad.fecha_inicio <= fecha_inicio <= incapacidad.fecha_fin) or \
                (incapacidad.fecha_inicio <= fecha_fin <= incapacidad.fecha_fin) or \
-               (fecha_inicio <= incapacidad.fecha_inicio and fecha_fin >= incapacidad.fecha_fin):
+               (fecha_inicio<= incapacidad.fecha_inicio and fecha_fin >= incapacidad.fecha_fin):
                 print(f"Conflicto con registro: ID {incapacidad.id}, Inicio {incapacidad.fecha_inicio}, Fin {incapacidad.fecha_fin}")
                 form.add_error(None, "Ya tienes una incapacidad registrada que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
@@ -1247,9 +1245,9 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
         )
 
         for solicitud in solicitudes_en_conflicto:
-            if (solicitud.fecha_inicio <= fecha_inicio <= solicitud.fecha_fin) or \
-               (solicitud.fecha_inicio <= fecha_fin <= solicitud.fecha_fin) or \
-               (fecha_inicio<= solicitud.fecha_inicio and fecha_fin >= solicitud.fecha_fin):
+            if (solicitud.fecha_inicio.date() <= fecha_inicio <= solicitud.fecha_fin.date()) or \
+               (solicitud.fecha_inicio.date() <= fecha_fin<= solicitud.fecha_fin.date()) or \
+               (fecha_inicio<= solicitud.fecha_inicio.date() and fecha_fin>= solicitud.fecha_fin.date()):
                 print(f"Conflicto con registro: ID {solicitud.id}, Inicio {solicitud.fecha_inicio}, Fin {solicitud.fecha_fin}")
                 form.add_error(None, "Ya tienes una solicitud registrada que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
@@ -1303,11 +1301,11 @@ class GenerarReporteIncapacidadesView(View):
 
 @login_required
 def lista_incapacidades(request):
-    
+    # Verificar permisos
     if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
 
-    
+    # Filtrar incapacidades no revisadas
     incapacidades = Incapacidad.objects.filter(revisado=False).order_by('usuario', '-fecha_inicio')
     incapacidades_por_usuario = {}
     for incapacidad in incapacidades:
@@ -1317,16 +1315,23 @@ def lista_incapacidades(request):
         incapacidades_por_usuario[usuario]['incapacidades'].append(incapacidad)
         incapacidades_por_usuario[usuario]['total_dias'] += incapacidad.dias_incapacidad
 
-    hay_incapacidades_pendientes = Incapacidad.objects.filter(revisado=False).exists()
+    hay_incapacidades_pendientes = incapacidades.exists()
 
     if request.method == "POST":
         seleccionados = request.POST.getlist('seleccionados')
         if 'marcar_revisado' in request.POST:
-            Incapacidad.objects.filter(id__in=seleccionados).update(revisado=True)
+            if seleccionados:
+                incapacidades_actualizadas = Incapacidad.objects.filter(id__in=seleccionados).update(revisado=True)
+                messages.success(request, f"{incapacidades_actualizadas} incapacidades han sido marcadas como revisadas.")
+                return redirect('lista_incapacidades')
+            else:
+                messages.warning(request, "Por favor selecciona al menos una incapacidad para marcar como revisada.")
+
         elif 'generar_reporte' in request.POST:
             request.session['reporte_incapacidades'] = seleccionados
             return redirect('generar_reporte_incapacidades')
 
+    # Paginación
     paginator = Paginator(list(incapacidades_por_usuario.items()), 5)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -1335,6 +1340,8 @@ def lista_incapacidades(request):
         'page_obj': page_obj,
         'hay_incapacidades_pendientes': hay_incapacidades_pendientes,
     })
+
+
 
 class MisIncapacidadesView(LoginRequiredMixin, ListView):
     model = Incapacidad

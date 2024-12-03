@@ -37,7 +37,6 @@ urlpatterns = [
     path('ajuste-vacaciones/', views.ajuste_vacaciones, name='ajuste_vacaciones'),
 
     path('reporte-horas-extra/',views.reporte_horas_extra_html, name='reporte_horas_extra'),
-    path('cerrar-quincena/', views.cerrar_quincena, name='cerrar_quincena'),
     path('generar-pdf/', views.reporte_horas_extra_PDF.as_view(), name='generar_pdf'),
 
     path('incapacidades/crear/', views.CrearIncapacidadView.as_view(), name='crear_incapacidad'),
