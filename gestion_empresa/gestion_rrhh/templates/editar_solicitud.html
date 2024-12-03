@@ -23,75 +23,84 @@
 
 
 <script>
-    
     document.addEventListener('DOMContentLoaded', function () {
-    const tipoSelect = document.getElementById('id_tipo');
-    const fechaFinInput = document.getElementById('id_fecha_fin');
-    const fechaInicioInput = document.getElementById('id_fecha_inicio');
-    const diasSolicitadosInfo = document.getElementById('dias-solicitados');
-    const horasSolicitadasInfo = document.getElementById('horas-solicitadas');
-    
-    flatpickr('.flatpickr-datetime', {
+        const tipoSelect = document.getElementById('id_tipo');
+        const fechaFinInput = document.getElementById('id_fecha_fin');
+        const fechaInicioInput = document.getElementById('id_fecha_inicio');
+        const diasSolicitadosInfo = document.getElementById('dias-solicitados');
+        const horasSolicitadasInfo = document.getElementById('horas-solicitadas');
+
+        flatpickr('.flatpickr-datetime', {
             enableTime: true,
             dateFormat: 'Y-m-d H:i',
             time_24hr: true,
-            locale: 'es'  // Cambia a español, si es necesario
+            locale: 'es'
         });
 
-    function calcularHorasSolicitadas() {
-        const fechaInicio = new Date(fechaInicioInput.value);
-        const fechaFin = new Date(fechaFinInput.value);
+        function calcularHorasSolicitadas() {
+            const fechaInicio = new Date(fechaInicioInput.value);
+            const fechaFin = new Date(fechaFinInput.value);
 
-        if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
-            const diferenciaTiempo = fechaFin - fechaInicio;
-            const horas = diferenciaTiempo / (1000 * 60 * 60);
-            horasSolicitadasInfo.textContent = `La cantidad de horas solicitadas es: ${Math.round(horas * 100) / 100} horas.`;
-        } else {
-            horasSolicitadasInfo.textContent = `La cantidad de horas solicitadas es: 0 horas.`;
+            if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
+                let diferenciaTiempo = fechaFin - fechaInicio;
+                let horas = diferenciaTiempo / (1000 * 60 * 60);
+
+                const almuerzoInicio = new Date(fechaInicio);
+                almuerzoInicio.setHours(12, 0, 0, 0);
+
+                const almuerzoFin = new Date(fechaInicio);
+                almuerzoFin.setHours(13, 0, 0, 0);
+
+                if (fechaInicio <= almuerzoInicio && fechaFin >= almuerzoFin) {
+                    horas -= 1;
+                }
+
+                horasSolicitadasInfo.textContent = `La cantidad de horas solicitadas es: ${Math.round(horas * 100) / 100} horas.`;
+            } else {
+                horasSolicitadasInfo.textContent = `La cantidad de horas solicitadas es: 0 horas.`;
+            }
         }
-    }
 
-    function calcularDiasSolicitados() {
-        const fechaInicio = new Date(fechaInicioInput.value);
-        const fechaFin = new Date(fechaFinInput.value);
+        function calcularDiasSolicitados() {
+            const fechaInicio = new Date(fechaInicioInput.value);
+            const fechaFin = new Date(fechaFinInput.value);
 
-        if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
-            const diferenciaTiempo = fechaFin - fechaInicio;
-            const dias = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24)) + 1;
-            diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: ${dias} días.`;
-        } else {
-            diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: 0 días.`;
+            if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
+                const diferenciaTiempo = fechaFin - fechaInicio;
+                const dias = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24));
+                diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: ${dias} días.`;
+            } else {
+                diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: 0 días.`;
+            }
         }
-    }
 
-    function actualizarCalculos() {
-        if (tipoSelect.value === 'V') {
-            calcularDiasSolicitados();
-        } else if (tipoSelect.value === 'HE' || tipoSelect.value === 'HC') {
-            calcularHorasSolicitadas();
+        function actualizarCalculos() {
+            if (tipoSelect.value === 'V') {
+                calcularDiasSolicitados();
+            } else if (tipoSelect.value === 'HC') {
+                calcularHorasSolicitadas();
+            }
         }
-    }
 
-    function mostrarOcultarDiasHoras() {
-        if (tipoSelect.value === 'V') {
-            diasSolicitadosInfo.style.display = 'block';
-            horasSolicitadasInfo.style.display = 'none';
-            calcularDiasSolicitados();
-        } else if (tipoSelect.value === 'HE' || tipoSelect.value === 'HC') {
-            diasSolicitadosInfo.style.display = 'none';
-            horasSolicitadasInfo.style.display = 'block';
-            calcularHorasSolicitadas();
-        } else {
-            diasSolicitadosInfo.style.display = 'none';
-            horasSolicitadasInfo.style.display = 'none';
+        function mostrarOcultarDiasHoras() {
+            if (tipoSelect.value === 'V') {
+                diasSolicitadosInfo.style.display = 'block';
+                horasSolicitadasInfo.style.display = 'none';
+                calcularDiasSolicitados();
+            } else if (tipoSelect.value === 'HE' || tipoSelect.value === 'HC') {
+                diasSolicitadosInfo.style.display = 'none';
+                horasSolicitadasInfo.style.display = 'block';
+                calcularHorasSolicitadas();
+            } else {
+                diasSolicitadosInfo.style.display = 'none';
+                horasSolicitadasInfo.style.display = 'none';
+            }
         }
-    }
 
-    // Inicialización y event listeners
-    mostrarOcultarDiasHoras();
-    tipoSelect.addEventListener('change', mostrarOcultarDiasHoras);
-    fechaInicioInput.addEventListener('change', actualizarCalculos);
-    fechaFinInput.addEventListener('change', actualizarCalculos);
-});
+        mostrarOcultarDiasHoras();
+        tipoSelect.addEventListener('change', mostrarOcultarDiasHoras);
+        fechaInicioInput.addEventListener('change', actualizarCalculos);
+        fechaFinInput.addEventListener('change', actualizarCalculos);
+    });
 </script>
 {% endblock %}

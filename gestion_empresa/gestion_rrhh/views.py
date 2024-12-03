@@ -20,11 +20,12 @@ from django.contrib.auth.views import PasswordChangeView
 from django.utils.timezone import now, timedelta
 import json
 from django.core.exceptions import PermissionDenied
-from django.core.mail import send_mail
 from .utils import MicrosoftGraphEmail
 from django.template.loader import render_to_string
 from django.utils.timezone import now
 from django.conf import settings
+from datetime import datetime, time
+from django.utils.timezone import make_aware , get_current_timezone
 
 def es_jefe(user):
     return user.rol in ['GG', 'JI', 'JD']
@@ -231,7 +232,6 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         if tipo_solicitud == 'V':
             fecha_inicio=fecha_inicio.date()
             fecha_fin=fecha_fin.date()
-            form.instance.descripcion="Vacaciones"
             dias_solicitados = (fecha_fin - fecha_inicio).days +1
             form.instance.dias_solicitados = dias_solicitados
 
@@ -244,6 +244,15 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         elif tipo_solicitud == 'HC':
             diferencia = fecha_fin - fecha_inicio
             horas_solicitadas = diferencia.total_seconds() / 3600
+
+
+            # Hora de almuerzo
+            tz = get_current_timezone()
+            almuerzo_inicio = make_aware(datetime.combine(fecha_inicio.date(), time(12, 0)), tz)
+            almuerzo_fin = make_aware(datetime.combine(fecha_inicio.date(), time(13, 0)), tz)
+
+            if fecha_inicio < almuerzo_fin and fecha_fin > almuerzo_inicio:
+                horas_solicitadas -= 1
 
             if horas_solicitadas > 9:
                 form.add_error(None, "La cantidad de horas solicitadas excede las 9 horas permitidas.")
@@ -259,7 +268,6 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         messages.success(self.request, 'Solicitud creada correctamente y pendiente de aprobación.')
         
         jefe = self.request.user.jefe
-        print(jefe)
         if jefe and jefe.email: 
             year = now().year
             context = {
@@ -269,7 +277,6 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                 "tipo": form.instance.get_tipo_display(),
                 "fecha_inicio": fecha_inicio,
                 "fecha_fin": fecha_fin,
-                "descripcion" : form.instance.descripcion,
                 "year": year,
                 "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
                 "enlace_revisar":settings.ENLACE_DEV 
@@ -459,6 +466,13 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
         elif tipo_solicitud == 'HC':
             diferencia = fecha_fin - fecha_inicio
             horas_solicitadas = diferencia.total_seconds() / 3600
+
+            tz = get_current_timezone()
+            almuerzo_inicio = make_aware(datetime.combine(fecha_inicio.date(), time(12, 0)), tz)
+            almuerzo_fin = make_aware(datetime.combine(fecha_inicio.date(), time(13, 0)), tz)
+
+            if fecha_inicio < almuerzo_fin and fecha_fin > almuerzo_inicio:
+                horas_solicitadas -= 1
 
             if horas_solicitadas > 9:
                 form.add_error(None, "La cantidad de horas solicitadas excede las 9 horas permitidas.")
