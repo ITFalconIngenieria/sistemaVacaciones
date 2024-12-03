@@ -246,9 +246,6 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         elif tipo_solicitud == 'HC':
             diferencia = fecha_fin - fecha_inicio
             horas_solicitadas = diferencia.total_seconds() / 3600
-
-
-            # Hora de almuerzo
             tz = get_current_timezone()
             almuerzo_inicio = make_aware(datetime.combine(fecha_inicio.date(), time(12, 0)), tz)
             almuerzo_fin = make_aware(datetime.combine(fecha_inicio.date(), time(13, 0)), tz)

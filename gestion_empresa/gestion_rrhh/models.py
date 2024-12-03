@@ -1,10 +1,11 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from datetime import date
-from decimal import Decimal  # Importar Decimal
+from decimal import Decimal
 from .validators import validate_username
 from django.conf import settings
-
+from datetime import datetime, time, timedelta
+from django.utils.timezone import make_aware , get_current_timezone
 
 class Usuario(AbstractUser):
     recalcular_vacaciones = True
@@ -126,8 +127,17 @@ class RegistroHoras(models.Model):
    
     def calcular_horas(self):
         delta = self.fecha_fin - self.fecha_inicio
-        horas = delta.total_seconds() / 3600
-        return Decimal(horas).quantize(Decimal('0.01'))
+        total_horas = delta.total_seconds() / 3600
+
+        tz = get_current_timezone()
+        almuerzo_inicio = make_aware(datetime.combine(self.fecha_inicio.date(), time(12, 0)), tz)
+        almuerzo_fin = make_aware(datetime.combine(self.fecha_fin.date(), time(13, 0)), tz)
+
+        if self.fecha_inicio <= almuerzo_fin and self.fecha_fin >= almuerzo_inicio:
+            total_horas -= 1
+
+        total_horas = max(total_horas, 0)
+        return Decimal(total_horas).quantize(Decimal('0.01'))
 
     def save(self, *args, **kwargs):
         self.horas = self.calcular_horas()
