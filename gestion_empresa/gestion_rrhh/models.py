@@ -189,3 +189,15 @@ class Incapacidad(models.Model):
         super().save(*args, **kwargs)  
     def __str__(self):
         return f"Incapacidad de {self.usuario.get_full_name()} del {self.fecha_inicio} al {self.fecha_fin}"
+    
+class FeriadoNacional(models.Model):
+    fecha = models.DateField(unique=True, verbose_name="Fecha del Feriado")
+    descripcion = models.CharField(max_length=255, verbose_name="Descripción")
+
+    class Meta:
+        verbose_name = "Feriado Nacional"
+        verbose_name_plural = "Feriados Nacionales"
+        ordering = ['fecha']
+
+    def __str__(self):
+        return f"{self.fecha} - {self.descripcion}"

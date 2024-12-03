@@ -1,11 +1,11 @@
 
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
-from .models import Solicitud, RegistroHoras, Usuario, AjusteVacaciones
+from .models import Solicitud, RegistroHoras, Usuario, AjusteVacaciones, FeriadoNacional, Incapacidad
 from .validators import validate_username
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django import forms
-from .models import Incapacidad
+
 class UsuarioCreationForm(UserCreationForm):
     username = forms.CharField(
         max_length=150,
@@ -227,3 +227,21 @@ class IncapacidadForm(forms.ModelForm):
             raise forms.ValidationError("El rango de días debe ser entre 1 o más días completos.")
 
         return cleaned_data
+    
+
+
+
+class FeriadoNacionalForm(forms.ModelForm):
+    class Meta:
+        model = FeriadoNacional
+        fields = ['fecha', 'descripcion']
+        widgets = {
+           'fecha': forms.TextInput(attrs={
+                'class': 'form-control flatpickr-datetime',
+                'required': 'required'
+            }),
+        }
+        labels = {
+            'fecha': 'Fecha del Feriado',
+            'descripcion': 'Descripción',
+        }

@@ -3,8 +3,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import render, redirect,  redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView, View, DeleteView
-from .models import Usuario, Solicitud, HistorialVacaciones, AjusteVacaciones, RegistroHoras,Solicitud, Incapacidad
-from .forms import UsuarioCreationForm, SolicitudForm, RegistrarHorasForm,RegistroHorasFilterForm, AjusteVacacionesForm, IncapacidadForm
+from .models import FeriadoNacional, Usuario, Solicitud, HistorialVacaciones, AjusteVacaciones, RegistroHoras,Solicitud, Incapacidad
+from .forms import UsuarioCreationForm, SolicitudForm, FeriadoNacionalForm, RegistrarHorasForm,RegistroHorasFilterForm, AjusteVacacionesForm, IncapacidadForm
 from django.contrib import messages
 from django.contrib.auth import logout
 from operator import attrgetter
@@ -26,6 +26,8 @@ from django.utils.timezone import now
 from django.conf import settings
 from datetime import datetime, time
 from django.utils.timezone import make_aware , get_current_timezone
+
+
 
 def es_jefe(user):
     return user.rol in ['GG', 'JI', 'JD']
@@ -803,7 +805,6 @@ class ListaSolicitudesRegistrosPendientesView(ListView):
     template_name = 'lista_solicitudes.html'
     context_object_name = 'pendientes'
     def dispatch(self, request, *args, **kwargs):
-        # Validar si el usuario tiene el rol permitido
         if request.user.rol not in ['GG', 'JI', 'JD']:
             raise PermissionDenied("No tienes permiso para acceder a esta página.")
         return super().dispatch(request, *args, **kwargs)
@@ -848,31 +849,26 @@ class ListaSolicitudesRegistrosDosNivelesView(ListView):
     context_object_name = 'pendientes'
 
     def dispatch(self, request, *args, **kwargs):
-        # Validar si el usuario tiene el rol permitido
         if request.user.rol not in ['GG', 'JI', 'JD']:
             raise PermissionDenied("No tienes permiso para acceder a esta página.")
         return super().dispatch(request, *args, **kwargs)
 
     def obtener_subordinados_dos_niveles(self, usuario):
-        # Obtiene subordinados de primer y segundo nivel
         subordinados_nivel_1 = Usuario.objects.filter(jefe=usuario)
         subordinados_nivel_2 = Usuario.objects.filter(jefe__in=subordinados_nivel_1)
         return subordinados_nivel_1 | subordinados_nivel_2
 
     def get_queryset(self):
-        # Retornamos vacío porque procesaremos en get_context_data
         return []
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
 
-        # Filtramos registros y solicitudes
         registros_queryset = RegistroHoras.objects.filter(estado='P')
         solicitudes_queryset = Solicitud.objects.filter(estado='P')
 
         if user.rol in ['GG', 'JI', 'JD']:
-            # Filtrar por subordinados hasta dos niveles
             subordinados = self.obtener_subordinados_dos_niveles(user)
             registros_queryset = registros_queryset.filter(usuario__in=subordinados)
             solicitudes_queryset = solicitudes_queryset.filter(usuario__in=subordinados)
@@ -880,24 +876,19 @@ class ListaSolicitudesRegistrosDosNivelesView(ListView):
             registros_queryset = RegistroHoras.objects.none()
             solicitudes_queryset = Solicitud.objects.none()
 
-        # Combinar y procesar resultados
         pendientes = list(solicitudes_queryset) + list(registros_queryset)
 
-        # Asignar prioridad de estado y tipo
         estado_prioridad = {'P': 1, 'R': 2, 'A': 3}
         for item in pendientes:
             item.tipo_objeto = 'solicitud' if isinstance(item, Solicitud) else 'registro'
             item.estado_orden = estado_prioridad.get(item.estado, 4)
 
-        # Ordenar por estado y fecha
         pendientes = sorted(pendientes, key=attrgetter('estado_orden', 'fecha_inicio'))
 
-        # Paginar resultados
         paginator = Paginator(pendientes, 8)
         page_number = self.request.GET.get('page')
         page_obj = paginator.get_page(page_number)
 
-        # Agregar al contexto
         context['pendientes'] = page_obj
         context['page_obj'] = page_obj
         return context
@@ -953,17 +944,14 @@ class HistorialCombinadoView(ListView):
 
 @login_required
 def reporte_solicitudes(request):
-    # Verificar permisos
     if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
     
-    # Filtrar solicitudes aprobadas no cerradas
     solicitudes = Solicitud.objects.filter(
         estado_cierre=0,
         estado='A'
     ).order_by('usuario', 'fecha_inicio')
 
-    # Agrupar solicitudes por usuario
     solicitudes_por_usuario = {}
     for solicitud in solicitudes:
         usuario = solicitud.usuario
@@ -976,7 +964,6 @@ def reporte_solicitudes(request):
 
     hay_solicitudes_pendientes = solicitudes.exists()
 
-    # Manejar acciones del formulario
     if request.method == "POST":
         seleccionados = request.POST.getlist('seleccionados')
         if 'marcar_cerrado' in request.POST:
@@ -991,7 +978,6 @@ def reporte_solicitudes(request):
             request.session['reporte_solicitudes'] = seleccionados
             return redirect('generar_reporte_solicitudes_pdf')
 
-    # Paginación
     paginator = Paginator(list(solicitudes_por_usuario.items()), 5) 
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -1315,11 +1301,9 @@ class GenerarReporteIncapacidadesView(View):
 
 @login_required
 def lista_incapacidades(request):
-    # Verificar permisos
     if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
 
-    # Filtrar incapacidades no revisadas
     incapacidades = Incapacidad.objects.filter(revisado=False).order_by('usuario', '-fecha_inicio')
     incapacidades_por_usuario = {}
     for incapacidad in incapacidades:
@@ -1437,6 +1421,43 @@ class EliminarIncapacidadView(LoginRequiredMixin, DeleteView):
         if obj.usuario != self.request.user or not obj.es_eliminable():
             raise PermissionDenied("No puedes eliminar esta incapacidad por que la fecha de la incapacidad ya inició.")
         return obj
+    
+
+
+class FeriadoNacionalListView(LoginRequiredMixin, ListView):
+    model = FeriadoNacional
+    template_name = 'feriados/feriado_list.html'
+    context_object_name = 'feriados'
+
+class FeriadoNacionalCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+    model = FeriadoNacional
+    form_class = FeriadoNacionalForm
+    template_name = 'feriados/feriado_form.html'
+    success_url = reverse_lazy('feriado_list')
+
+    def test_func(self):
+        return self.request.user.is_superuser  # Solo usuarios con superusuario pueden agregar
+
+class FeriadoNacionalUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    model = FeriadoNacional
+    form_class = FeriadoNacionalForm
+    template_name = 'feriados/feriado_form.html'
+    success_url = reverse_lazy('feriado_list')
+
+    def test_func(self):
+        return self.request.user.is_superuser  # Solo usuarios con superusuario pueden editar
+
+class FeriadoNacionalDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+    model = FeriadoNacional
+    template_name = 'feriados/feriado_confirm_delete.html'
+    success_url = reverse_lazy('feriado_list')
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+
+
+
     
 def logout_view(request):
     logout(request)
