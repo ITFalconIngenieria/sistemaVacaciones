@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-0%l29_j8s#5a)*h1k6@#^zun1k&##)a=cw7w(03oo^*iox*8yp
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.128.59']
+ALLOWED_HOSTS = ['172.31.67.163','0.0.0.0','ec2-54-84-74-28.compute-1.amazonaws.com','54.84.74.28']
 
 
 # Application definition
@@ -34,6 +34,7 @@ ALLOWED_HOSTS = ['192.168.128.59']
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
+    'sslserver',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -84,10 +85,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'mssql',
         'NAME': 'gestionVacaciones',
-        'USER': 'sa',
-        'PASSWORD': 'admin1',
-        'HOST': 'localhost',
-        'PORT': '1433',
+        'USER': 'falcon',
+        'PASSWORD': 'falcon1*',
+        'HOST': 'EC2AMAZ-HO0U0SO\FALCONCLOUD',
         'OPTIONS': {
             'driver': 'ODBC Driver 17 for SQL Server',
         },
