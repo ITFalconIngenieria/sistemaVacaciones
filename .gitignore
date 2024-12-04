@@ -18,3 +18,43 @@ __pycache__/
 
 media
 .env
+
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.sqlite3
+
+# Virtual environments
+env/
+venv/
+
+# Django
+*.log
+*.pot
+*.pyc
+__pycache__/
+db.sqlite3
+db.sqlite3-journal
+
+# Static and media
+/staticfiles/
+*/staticfiles/
+*/media/
+media/
+
+# Local settings
+.env
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+
+# Compiled files
+*.egg-info/
+dist/
+build/
+*.egg
