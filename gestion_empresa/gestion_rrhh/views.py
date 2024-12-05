@@ -795,13 +795,14 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
+        registro = self.get_object()
 
         anio_actual = date.today().year
         feriados = FeriadoNacional.objects.filter(fecha__year=anio_actual)
 
         registros_en_conflicto = RegistroHoras.objects.filter(
             usuario=usuario,
-        )
+        ).exclude(pk=self.object.pk)
 
         for registro in registros_en_conflicto:
             if (registro.fecha_inicio <= fecha_inicio <= registro.fecha_fin) or \
