@@ -30,12 +30,12 @@
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
+                            <a class="nav-link text-white" href="{% url 'dashboard' %}">Dashboard</a>
                         </li>
                         
                         <!-- Opciones Propias -->
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="gestionPropiaDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <a class="nav-link dropdown-toggle text-white" href="#" id="gestionPropiaDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 Mis Gestiones
                             </a>
                             <ul class="dropdown-menu" aria-labelledby="gestionPropiaDropdown">
@@ -50,7 +50,7 @@
                         <!-- Opciones de colaboradores -->
                         {% if user.rol in 'GG,JI,JD' %}
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="gestionSubordinadosDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <a class="nav-link dropdown-toggle text-white" href="#" id="gestionSubordinadosDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 Gestiones de colaboradores
                             </a>
                             <ul class="dropdown-menu" aria-labelledby="gestionSubordinadosDropdown">
@@ -65,10 +65,10 @@
                         <!-- Opciones Administrativas (solo JD del departamento Admon) -->
                         {% if user.rol in 'JD' and user.departamento.nombre in 'Admon' %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'ajuste_vacaciones' %}">Ajuste Vacaciones</a>
+                            <a class="nav-link text-white" href="{% url 'ajuste_vacaciones' %}">Ajuste Vacaciones</a>
                         </li>
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="reportesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <a class="nav-link dropdown-toggle text-white" href="#" id="reportesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 Reportes
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="reportesDropdown">
@@ -81,11 +81,11 @@
             
                         <!-- Usuario -->
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <a class="nav-link dropdown-toggle text-white" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 {{ user.get_full_name }}
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                                <li><a class="dropdown-item" href="{% url 'perfil_usuario' %}">Perfil</a></li>
+                                <li><a class="dropdown-item " href="{% url 'perfil_usuario' %}">Perfil</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'logout' %}">Cerrar Sesión</a></li>
                             </ul>
