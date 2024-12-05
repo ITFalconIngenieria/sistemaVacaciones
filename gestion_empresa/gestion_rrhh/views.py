@@ -1019,7 +1019,7 @@ class HistorialCombinadoView(ListView):
 
 @login_required
 def reporte_solicitudes(request):
-    if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
+    if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'ADMON':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
     
     solicitudes = Solicitud.objects.filter(
@@ -1064,7 +1064,7 @@ def reporte_solicitudes(request):
 
 @login_required
 def generar_reporte_solicitudes_pdf(request):
-    if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
+    if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'ADMON':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
 
     solicitudes = Solicitud.objects.filter(estado='A', estado_cierre=False).order_by('usuario', 'fecha_inicio')
@@ -1139,7 +1139,7 @@ class MiSolicitudYRegistroView(ListView):
 
 
 def ajuste_vacaciones(request):
-    if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
+    if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'ADMON':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
 
     usuarios = Usuario.objects.filter(is_superuser=False)
@@ -1186,7 +1186,7 @@ def ajuste_vacaciones(request):
 @login_required
 def reporte_horas_extra_html(request):
     # Verificar permisos
-    if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
+    if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'ADMON':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
 
     # Filtrar registros
@@ -1233,7 +1233,7 @@ def reporte_horas_extra_html(request):
 class reporte_horas_extra_PDF(View):
     
     def dispatch(self, request, *args, **kwargs):
-        if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
+        if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'ADMON':
             raise PermissionDenied("No tienes permiso para acceder a esta página.")
         return super().dispatch(request, *args, **kwargs)
     
@@ -1368,7 +1368,7 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
 
 class GenerarReporteIncapacidadesView(View):
     def dispatch(self, request, *args, **kwargs):
-        if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
+        if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'ADMON':
             raise PermissionDenied("No tienes permiso para acceder a esta página.")
         return super().dispatch(request, *args, **kwargs)
 
@@ -1409,7 +1409,7 @@ class GenerarReporteIncapacidadesView(View):
 
 @login_required
 def lista_incapacidades(request):
-    if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'Admon':
+    if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'ADMON':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
 
     incapacidades = Incapacidad.objects.filter(revisado=False).order_by('usuario', '-fecha_inicio')

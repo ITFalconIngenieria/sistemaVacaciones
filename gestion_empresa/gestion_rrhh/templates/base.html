@@ -62,8 +62,8 @@
                         </li>
                         {% endif %}
             
-                        <!-- Opciones Administrativas (solo JD del departamento Admon) -->
-                        {% if user.rol in 'JD' and user.departamento.nombre in 'Admon' %}
+                        <!-- Opciones Administrativas (solo JD del departamento ADMON) -->
+                        {% if user.rol in 'JD' and user.departamento.nombre in 'ADMON' %}
                         <li class="nav-item">
                             <a class="nav-link text-white" href="{% url 'ajuste_vacaciones' %}">Ajuste Vacaciones</a>
                         </li>
