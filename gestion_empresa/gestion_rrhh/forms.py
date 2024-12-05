@@ -131,6 +131,11 @@ class RegistrarHorasForm(forms.ModelForm):
         descripcion = cleaned_data.get('descripcion')
         fecha_actual = timezone.now()
 
+        print("fecha inicio ", fecha_inicio)
+        print("fecha fin ", fecha_fin)
+        print("fecha actual ", fecha_actual)
+
+
         if (numero_proyecto is None or numero_proyecto == 0) and not descripcion:
             raise forms.ValidationError(
                 "Debe llenar la descripción porque el número de proyecto está vacío o es 0."
@@ -139,8 +144,11 @@ class RegistrarHorasForm(forms.ModelForm):
         if fecha_inicio and fecha_fin and fecha_fin <= fecha_inicio:
             raise forms.ValidationError("La fecha y hora de fin deben ser posteriores a la fecha y hora de inicio.")
         
-        if fecha_inicio and fecha_fin and fecha_inicio> fecha_actual:
-            raise forms.ValidationError("Imposible registrar horas para el futuro. Favor valide la fecha y hora")
+        if fecha_inicio and fecha_inicio > fecha_actual:
+            raise forms.ValidationError("Imposible registrar horas para el futuro. Favor valide la fecha y hora de inicio.")
+    
+        if fecha_fin and fecha_fin >= fecha_actual:
+            raise forms.ValidationError("Imposible registrar horas para el futuro. Favor valide la fecha y hora de fin.")
 
         return cleaned_data
     

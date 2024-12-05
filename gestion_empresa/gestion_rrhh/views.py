@@ -645,7 +645,7 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
             form.add_error(None, "Los Técnicos no pueden registrar horas extra para dias feriados.")
             return self.form_invalid(form)
 
-        elif rol_usuario in ['GG', 'JI', 'JD', 'ADM'] and tipo_horas == 'HE':
+        elif rol_usuario in ['GG', 'JI', 'JD','IN','ADM'] and tipo_horas == 'HE':
             form.add_error(None, "Usted no puede registrar horas extra.")
             return self.form_invalid(form)
         
@@ -786,13 +786,21 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
         return context
 
     def form_valid(self, form):
-        registro = self.get_object()
+        form.instance.usuario = self.request.user
+        form.instance.estado = 'P'
+        rol_usuario = self.request.user.rol
+        tipo_horas = form.cleaned_data.get('tipo')
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
+        usuario = self.request.user
+
+        anio_actual = date.today().year
+        feriados = FeriadoNacional.objects.filter(fecha__year=anio_actual)
 
         registros_en_conflicto = RegistroHoras.objects.filter(
-            usuario=registro.usuario,
-        ).exclude(id=registro.id)
+            usuario=usuario,
+        )
+
         for registro in registros_en_conflicto:
             if (registro.fecha_inicio <= fecha_inicio <= registro.fecha_fin) or \
                (registro.fecha_inicio <= fecha_fin <= registro.fecha_fin) or \
@@ -800,6 +808,21 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
                 print(f"Conflicto con registro: ID {registro.id}, Inicio {registro.fecha_inicio}, Fin {registro.fecha_fin}")
                 form.add_error(None, "Ya tienes un registro que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
+            
+        if tipo_horas == 'HEF':
+            if not feriados.filter(fecha=fecha_inicio.date()).exists():
+                form.add_error(None, "El día de inicio no coincide con ningún feriado registrado para este año.")
+                return self.form_invalid(form)    
+
+        if rol_usuario == 'TE' and tipo_horas == 'HEF':
+            form.add_error(None, "Los Técnicos no pueden registrar horas extra para dias feriados.")
+            return self.form_invalid(form)
+
+        elif rol_usuario in ['GG', 'JI', 'JD','IN','ADM'] and tipo_horas == 'HE':
+            form.add_error(None, "Usted no puede registrar horas extra.")
+            return self.form_invalid(form)
+        
+        form.instance.numero_registro = form.cleaned_data['numero_registro']
 
         messages.success(self.request, f"El registro de horas {registro.numero_registro} ha sido actualizado.")
         
