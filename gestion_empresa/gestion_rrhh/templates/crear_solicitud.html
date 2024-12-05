@@ -77,17 +77,21 @@
         }
 
         function calcularDiasSolicitados() {
-            const fechaInicio = new Date(fechaInicioInput.value);
-            const fechaFin = new Date(fechaFinInput.value);
+        const fechaInicio = new Date(fechaInicioInput.value);
+        const fechaFin = new Date(fechaFinInput.value);
 
-            if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
-                const diferenciaTiempo = fechaFin - fechaInicio;
-                const dias = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24))+1;
-                diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: ${dias} días.`;
-            } else {
-                diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: 0 días.`;
-            }
+        // Set the time component to midnight (00:00:00) for both dates
+        fechaInicio.setHours(0, 0, 0, 0);
+        fechaFin.setHours(0, 0, 0, 0);
+
+        if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
+            const diferenciaTiempo = fechaFin - fechaInicio;
+            const dias = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24)) + 1;
+            diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: ${dias} días.`;
+        } else {
+            diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: 0 días.`;
         }
+}
 
         function actualizarCalculos() {
             if (tipoSelect.value === 'V') {

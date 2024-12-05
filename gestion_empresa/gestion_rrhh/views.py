@@ -582,7 +582,7 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
 
 class EliminarMiSolicitudView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = Solicitud
-    template_name = 'confirmar_eliminar.html'
+    template_name = 'confirmar_eliminar_solicitud.html'
     success_url = reverse_lazy('mis_solicitudes')
 
     def test_func(self):
