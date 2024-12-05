@@ -32,68 +32,54 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
                         </li>
-                        {% if user.rol in 'GG,JI,JD' %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'lista_solicitudes' %}">Solicitudes</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'solicitudes_jerarquicas' %}">Otras Solicitudes</a>
-                        </li>
-                        {% endif %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'registrar_horas' %}">Registro</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'crear_solicitud' %}">Crear Solicitud</a>
-                        </li>
                         
+                        <!-- Opciones Propias -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="gestionPropiaDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Gestiones Propias
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="gestionPropiaDropdown">
+                                <li><a class="dropdown-item" href="{% url 'registrar_horas' %}">Registro</a></li>
+                                <li><a class="dropdown-item" href="{% url 'crear_solicitud' %}">Crear Solicitud</a></li>
+                                <li><a class="dropdown-item" href="{% url 'mis_solicitudes' %}">Mis Solicitudes</a></li>
+                                <li><a class="dropdown-item" href="{% url 'crear_incapacidad' %}">Crear Incapacidad</a></li>
+                                <li><a class="dropdown-item" href="{% url 'mis_incapacidades' %}">Mis Incapacidades</a></li>
+                            </ul>
+                        </li>
+            
+                        <!-- Opciones de Subordinados -->
                         {% if user.rol in 'GG,JI,JD' %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'historial_solicitudes' %}">Historial Solicitudes</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="gestionSubordinadosDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Gestiones de colaboradores
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="gestionSubordinadosDropdown">
+                                <li><a class="dropdown-item" href="{% url 'lista_solicitudes' %}">Solicitudes</a></li>
+                                <li><a class="dropdown-item" href="{% url 'historial_solicitudes' %}">Historial Solicitudes</a></li>
+                                <li><a class="dropdown-item" href="{% url 'solicitudes_jerarquicas' %}">Otras Solicitudes</a></li>
+
+                            </ul>
                         </li>
-
-                       
-
-                       
-
                         {% endif %}
-
-
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'mis_solicitudes' %}">Mis solicitudes</a>
-                        </li>
-
-
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'crear_incapacidad' %}">Crear Incapacidad</a>
-                        </li>
-
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'mis_incapacidades' %}">Mis Incapacidades</a>
-                        </li>
-
+            
+                        <!-- Opciones Administrativas (solo JD del departamento Admon) -->
                         {% if user.rol in 'JD' and user.departamento.nombre in 'Admon' %}
-
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'ajuste_vacaciones' %}">Ajuste Vacaciones</a>
                         </li>
-
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <a class="nav-link dropdown-toggle" href="#" id="reportesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 Reportes
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="reportesDropdown">
                                 <li><a class="dropdown-item" href="{% url 'reporte_horas_extra' %}">Horas Extra</a></li>
-                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'lista_incapacidades' %}">Incapacidades</a></li>
-                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'reporte_solicitudes' %}">Solicitudes</a></li>
                             </ul>
                         </li>
                         {% endif %}
-
-
-                        <!-- Dropdown de usuario -->
+            
+                        <!-- Usuario -->
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 {{ user.get_full_name }}
@@ -111,6 +97,7 @@
                     {% endif %}
                 </ul>
             </div>
+            
         </div>
     </nav>
 
