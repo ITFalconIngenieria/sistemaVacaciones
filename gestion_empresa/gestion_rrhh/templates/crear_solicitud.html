@@ -82,7 +82,7 @@
 
             if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
                 const diferenciaTiempo = fechaFin - fechaInicio;
-                const dias = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24));
+                const dias = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24))+1;
                 diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: ${dias} días.`;
             } else {
                 diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: 0 días.`;

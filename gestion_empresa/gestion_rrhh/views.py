@@ -210,6 +210,22 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
             usuario=usuario,
         )
 
+        feriados = FeriadoNacional.objects.filter(
+            fecha__range=[fecha_inicio.date(), fecha_fin.date()]
+        )
+
+
+        non_working_dates = [
+            date for date in (fecha_inicio.date() + timedelta(n) for n in range((fecha_fin.date() - fecha_inicio.date()).days + 1)) 
+            if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
+        ]
+
+        if non_working_dates:
+            non_working_str = ", ".join(date.strftime("%d/%m/%Y (%A)") for date in non_working_dates)
+            form.add_error(None, f"La solicitud incluye días no laborables: {non_working_str}. Por favor, selecciona otro rango.")
+            return self.form_invalid(form)
+        
+
         for solicitud in solicitudes_en_conflicto:
             if (solicitud.fecha_inicio <= fecha_inicio <= solicitud.fecha_fin) or \
                (solicitud.fecha_inicio <= fecha_fin <= solicitud.fecha_fin) or \
@@ -232,10 +248,18 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
 
         
         if tipo_solicitud == 'V':
+
             fecha_inicio=fecha_inicio.date()
             fecha_fin=fecha_fin.date()
             dias_solicitados = (fecha_fin - fecha_inicio).days +1
             form.instance.dias_solicitados = dias_solicitados
+
+            fecha_actual = date.today()
+
+            if fecha_inicio<fecha_actual:
+                form.add_error(None, "Imposible solicitar vacaciones para fechas menores a la actual.")
+                return self.form_invalid(form)
+
 
             if dias_solicitados > dias_disponibles:
                 messages.warning(
@@ -425,10 +449,26 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
         dias_disponibles = dias_data['dias_disponibles']
         horas_data = calcular_horas_individuales(usuario)
         horas_compensatorias = horas_data['HC']
+
+        feriados = FeriadoNacional.objects.filter(
+            fecha__range=[fecha_inicio.date(), fecha_fin.date()]
+        )
+
+
+        non_working_dates = [
+            date for date in (fecha_inicio.date() + timedelta(n) for n in range((fecha_fin.date() - fecha_inicio.date()).days + 1)) 
+            if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
+        ]
+
+        if non_working_dates:
+            non_working_str = ", ".join(date.strftime("%d/%m/%Y (%A)") for date in non_working_dates)
+            form.add_error(None, f"La solicitud incluye días no laborables: {non_working_str}. Por favor, selecciona otro rango.")
+            return self.form_invalid(form)
         
         solicitudes_en_conflicto = Solicitud.objects.filter(
             usuario=usuario,
         ).exclude(id=self.object.id)
+
         for solicitud in solicitudes_en_conflicto:
             if (solicitud.fecha_inicio <= fecha_inicio <= solicitud.fecha_fin) or \
                (solicitud.fecha_inicio <= fecha_fin <= solicitud.fecha_fin) or \
