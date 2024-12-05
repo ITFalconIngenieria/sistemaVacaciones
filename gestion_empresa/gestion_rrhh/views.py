@@ -1327,6 +1327,39 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
         if not form.cleaned_data.get('archivo_adjunto'):
             form.add_error('archivo', "Debes adjuntar un archivo.")
             return self.form_invalid(form)
+        
+
+        messages.success(self.request, 'Incapacidad creada correctamente')
+        
+        jefe = self.request.user.jefe
+        if jefe and jefe.email: 
+            year = now().year
+            context = {
+                "jefe": jefe.first_name,
+                "usuario": self.request.user.get_full_name(),
+                "fecha_inicio": fecha_inicio,
+                "fecha_fin": fecha_fin,
+                "year": year,
+                "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+                "enlace_revisar":settings.ENLACE_DEV 
+            }
+
+            html_content = render_to_string("mail_incapacidades.html", context)
+            email_sender = MicrosoftGraphEmail()
+            subject = "Registro de Incapacidad"
+            content=html_content
+
+            try:
+                email_sender.send_email(
+                    subject=subject,
+                    content=content,
+                    to_recipients=[jefe.email],
+                )
+            except Exception as e:
+                print(f"Error al enviar correo al jefe {jefe.email}: {e}")
+        
+
+
         return super().form_valid(form)
 
 
@@ -1481,6 +1514,36 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
                 return self.form_invalid(form)
 
         form.instance.usuario = self.request.user
+
+        messages.success(self.request, 'Incapacidad actualizada correctamente')
+        
+        jefe = self.request.user.jefe
+        if jefe and jefe.email: 
+            year = now().year
+            context = {
+                "jefe": jefe.first_name,
+                "usuario": self.request.user.get_full_name(),
+                "fecha_inicio": fecha_inicio,
+                "fecha_fin": fecha_fin,
+                "year": year,
+                "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+                "enlace_revisar":settings.ENLACE_DEV 
+            }
+
+            html_content = render_to_string("mail_incapacidades.html", context)
+            email_sender = MicrosoftGraphEmail()
+            subject = "Registro de Incapacidad"
+            content=html_content
+
+            try:
+                email_sender.send_email(
+                    subject=subject,
+                    content=content,
+                    to_recipients=[jefe.email],
+                )
+            except Exception as e:
+                print(f"Error al enviar correo al jefe {jefe.email}: {e}")
+
         return super().form_valid(form)
 
 class EliminarIncapacidadView(LoginRequiredMixin, DeleteView):
