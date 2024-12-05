@@ -16,10 +16,18 @@
                         <p><strong>Horas compensatorias disponibles:</strong> {{ horas_compensatorias }}</p>
                         <p><strong>Horas extra acumuladas:</strong> {{ horas_extra }}</p>
                     </div>
+                    <div class="alert alert-warning">
+                        <strong>Requisitos para la aprobación de esta solicitud:</strong>
+                        <ul>
+                            <li>Debe tener registro de horas al día en Odoo.</li>
+                            <li>Debe atender llamadas, mensajes y correos.</li>
+                        </ul>
+                    </div>
 
                     <form method="post">
                         {% csrf_token %}
                         {{ form|crispy }}
+                        
 
                         <div class="alert alert-info" id="dias-solicitados">
                             La cantidad de días solicitados es:  días.
@@ -27,6 +35,8 @@
                         <div class="alert alert-info" id="horas-solicitadas">
                             La cantidad de horas solicitadas es:  horas.
                         </div>
+                        
+                        
 
                         <button type="submit" class="btn btn-success w-100">Crear Solicitud</button>
                     </form>

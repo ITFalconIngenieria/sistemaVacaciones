@@ -14,7 +14,14 @@
         <p><strong>Fecha Fin:</strong> {{ object.fecha_fin }}</p>
         <p><strong>Horas:</strong> {{ object.horas }}</p>
         <p><strong>Dias:</strong> {{ object.dias_solicitados}}</p>
-    </div>
+        <p><strong>Confirmación de Requisitos:</strong> 
+            {% if object.requisitos_confirmados %}
+                Sí
+            {% else %}
+                No
+            {% endif %}
+        </p>
+            </div>
     <div class="mb-3">
         <label for="id_estado" class="form-label">Estado:</label>
         {{ form.estado }}

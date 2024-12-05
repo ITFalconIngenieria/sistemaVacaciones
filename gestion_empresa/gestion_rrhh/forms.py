@@ -27,6 +27,12 @@ class UsuarioChangeForm(UserChangeForm):
         fields = UserChangeForm.Meta.fields
 
 class SolicitudForm(forms.ModelForm):
+    confirmacion_requisitos = forms.BooleanField(
+        required=True,
+        label="Confirmo que he leído y acepto los requisitos (tener registro de horas al día en Odoo y atender llamadas, mensajes y correos).",
+        error_messages={'required': 'Debe confirmar que está de acuerdo con los requisitos antes de continuar.'}
+    )
+
     class Meta:
         model = Solicitud
         fields = ['numero_solicitud', 'tipo', 'fecha_inicio', 'fecha_fin']
@@ -66,18 +72,23 @@ class SolicitudForm(forms.ModelForm):
         cleaned_data = super().clean()
         fecha_inicio = cleaned_data.get('fecha_inicio')
         fecha_fin = cleaned_data.get('fecha_fin')
+        confirmacion_requisitos = cleaned_data.get('confirmacion_requisitos')
 
         if not fecha_inicio or not fecha_fin:
-            raise ValidationError("Las fechas de inicio y fin son obligatorias.")
+            raise forms.ValidationError("Las fechas de inicio y fin son obligatorias.")
 
         if fecha_inicio > fecha_fin:
-            raise ValidationError("La fecha de inicio no puede ser posterior a la fecha de fin.")
+            raise forms.ValidationError("La fecha de inicio no puede ser posterior a la fecha de fin.")
 
         fecha_actual = timezone.now()
         if fecha_inicio.date() < fecha_actual.date():
-            raise ValidationError("La fecha de inicio no puede ser anterior a la fecha actual.")
+            raise forms.ValidationError("La fecha de inicio no puede ser anterior a la fecha actual.")
+
+        if not confirmacion_requisitos:
+            raise forms.ValidationError("Debe confirmar que está de acuerdo con los requisitos antes de enviar la solicitud.")
 
         return cleaned_data
+
 
 
 

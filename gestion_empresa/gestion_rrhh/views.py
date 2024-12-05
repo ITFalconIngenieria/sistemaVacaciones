@@ -207,6 +207,7 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         dias_disponibles = dias_data['dias_disponibles']
         horas_data = calcular_horas_individuales(usuario)
         horas_compensatorias = horas_data['HC']
+        form.instance.requisitos_confirmados = form.cleaned_data.get('confirmacion_requisitos')
 
         solicitudes_en_conflicto = Solicitud.objects.filter(
             usuario=usuario,
@@ -451,6 +452,8 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
         dias_disponibles = dias_data['dias_disponibles']
         horas_data = calcular_horas_individuales(usuario)
         horas_compensatorias = horas_data['HC']
+        form.instance.requisitos_confirmados = form.cleaned_data.get('confirmacion_requisitos')
+
 
         feriados = FeriadoNacional.objects.filter(
             fecha__range=[fecha_inicio.date(), fecha_fin.date()]
