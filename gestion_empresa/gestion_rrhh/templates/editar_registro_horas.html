@@ -46,6 +46,16 @@
     
             if (fechaInicio && fechaFin && fechaFin > fechaInicio) {
                 let horas = (fechaFin - fechaInicio) / (1000 * 60 * 60); // Calcular horas
+
+                const almuerzoInicio = new Date(fechaInicio);
+                almuerzoInicio.setHours(12, 0, 0, 0);
+
+                const almuerzoFin = new Date(fechaInicio);
+                almuerzoFin.setHours(13, 0, 0, 0);
+
+                if (fechaInicio <= almuerzoInicio && fechaFin >= almuerzoFin) {
+                    horas -= 1;
+                }
     
                 // Verificar si la fecha de inicio es domingo (weekday 0) y si el tipo es compensatorias (HC)
                 if (fechaInicio.getDay() === 0 && fechaFin.getDay() === 0 && tipoHorasInput.value === 'HC') {
