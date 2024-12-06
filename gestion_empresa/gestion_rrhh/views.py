@@ -78,7 +78,7 @@ def calcular_horas_individuales(usuario):
 def dashboard(request):
     usuario = request.user
     fecha_actual = now().date()
-    fecha_limite = fecha_actual + timedelta(days=30)
+    # fecha_limite = fecha_actual + timedelta(days=30)
     dias_data = calcular_dias_disponibles(usuario)
     dias_disponibles = dias_data['dias_disponibles']
     horas_data = calcular_horas_individuales(usuario)
@@ -87,11 +87,10 @@ def dashboard(request):
 
     solicitudes_aprobadas = Solicitud.objects.filter(
         estado='A',
-        fecha_inicio__lte=fecha_limite,
+
         fecha_fin__gte=fecha_actual
     ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin', 'tipo')
     incapacidades_aprobadas = Incapacidad.objects.filter(
-        fecha_inicio__lte=fecha_limite,
         fecha_fin__gte=fecha_actual
     ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin')
     eventos = []
