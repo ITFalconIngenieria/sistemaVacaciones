@@ -1370,7 +1370,6 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
             form.add_error('archivo', "Debes adjuntar un archivo.")
             return self.form_invalid(form)
         
-
         messages.success(self.request, 'Incapacidad creada correctamente')
         
         jefe = self.request.user.jefe
@@ -1385,7 +1384,6 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
                 "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
                 "enlace_revisar":settings.ENLACE_DEV 
             }
-
             html_content = render_to_string("mail_incapacidades.html", context)
             email_sender = MicrosoftGraphEmail()
             subject = "Registro de Incapacidad"
@@ -1399,9 +1397,6 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
                 )
             except Exception as e:
                 print(f"Error al enviar correo al jefe {jefe.email}: {e}")
-        
-
-
         return super().form_valid(form)
 
 
