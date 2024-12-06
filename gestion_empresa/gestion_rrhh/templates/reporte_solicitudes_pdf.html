@@ -82,7 +82,7 @@
     <h2>Fecha del Reporte: {{ fecha_reporte|date:"d/m/Y" }}</h2>
 
     {% for usuario, data in solicitudes_por_usuario.items %}
-    <h3>Usuario: {{ usuario.get_full_name }}</h3>
+    <h3>Colaborador: {{ usuario.get_full_name }}</h3>
     <table>
         <thead>
             <tr>

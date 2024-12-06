@@ -1,32 +1,46 @@
 {% extends 'base.html' %}
 
 {% block title %}Aprobar/Rechazar Solicitud{% endblock %}
+{% load widget_tweaks %}
 
 {% block content %}
-<h2>Aprobar/Rechazar Solicitud</h2>
-<form method="post">
-    {% csrf_token %}
-    <div class="mb-3">
-        <p><strong>Nº Solicitud:</strong> {{ object.numero_solicitud }}</p>
-        <p><strong>Usuario:</strong> {{ object.usuario.get_full_name }}</p>
-        <p><strong>Tipo:</strong> {{ object.get_tipo_display }}</p>
-        <p><strong>Fecha Inicio:</strong> {{ object.fecha_inicio }}</p>
-        <p><strong>Fecha Fin:</strong> {{ object.fecha_fin }}</p>
-        <p><strong>Horas:</strong> {{ object.horas }}</p>
-        <p><strong>Dias:</strong> {{ object.dias_solicitados}}</p>
-        <p><strong>Confirmación de Requisitos:</strong> 
-            {% if object.requisitos_confirmados %}
-                Sí
-            {% else %}
-                No
-            {% endif %}
-        </p>
-            </div>
-    <div class="mb-3">
-        <label for="id_estado" class="form-label">Estado:</label>
-        {{ form.estado }}
-    </div>
-    <button type="submit" class="btn btn-primary">Guardar</button>
-    <a href="{% url 'lista_solicitudes' %}" class="btn btn-secondary">Cancelar</a>
-</form>
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Aprobar/Rechazar Solicitud</h2>
+    <form method="post" class="card shadow p-4">
+        {% csrf_token %}
+        <div class="alert alert-warning">
+            <strong>Requisitos para la aprobación de esta solicitud:</strong>
+            <ul>
+                <li>Antes de aprobar esta solicitud confirma en Odoo que el colaborador tiene el registro de sus horas de trabajo al dia.</li>
+            </ul>
+        </div>
+        <div class="mb-3">
+            <p><strong>Nº Solicitud:</strong> {{ object.numero_solicitud }}</p>
+            <p><strong>Colaborador:</strong> {{ object.usuario.get_full_name }}</p>
+            <p><strong>Tipo:</strong> {{ object.get_tipo_display }}</p>
+            <p><strong>Fecha Inicio:</strong> {{ object.fecha_inicio }}</p>
+            <p><strong>Fecha Fin:</strong> {{ object.fecha_fin }}</p>
+            <p><strong>Horas:</strong> {{ object.horas }}</p>
+            <p><strong>Dias:</strong> {{ object.dias_solicitados }}</p>
+            <!-- <p><strong>Confirmación de Requisitos:</strong> 
+                <span class="badge {% if object.requisitos_confirmados %}bg-success{% else %}bg-danger{% endif %}">
+                    {% if object.requisitos_confirmados %}
+                        Sí
+                    {% else %}
+                        No
+                    {% endif %}
+                </span>
+            </p> -->
+        </div>
+        <div class="mb-3">
+            <label for="id_estado" class="form-label">Estado:</label>
+            {{ form.estado|add_class:"form-select" }}
+
+        </div>
+        <div class="d-flex justify-content-between">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a href="{% url 'lista_solicitudes' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
 {% endblock %}

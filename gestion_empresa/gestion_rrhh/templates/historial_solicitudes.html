@@ -27,7 +27,7 @@
 
         {% if user.rol in 'GG,JI,JD' %}
         <div class="col-md-3">
-            <label for="usuario" class="form-label">Filtrar por usuario:</label>
+            <label for="usuario" class="form-label">Filtrar por colaborador:</label>
             <select name="usuario" id="usuario" class="form-select">
                 <option value="">Todos</option>
                 {% for subordinado in subordinados %}
