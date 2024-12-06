@@ -39,9 +39,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-     'gestion_rrhh',
-      'crispy_forms',
-      'crispy_bootstrap5',
+    'gestion_rrhh',
+    'crispy_forms',
+    'crispy_bootstrap5',
+    'widget_tweaks',
 ]
 CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
@@ -93,6 +94,21 @@ DATABASES = {
         },
     }
 }
+
+#conexion a prd
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'mssql',
+#         'NAME': 'gestionVacaciones',
+#         'USER': 'falcon',
+#         'PASSWORD': 'falcon1*',
+#         'HOST': 'EC2AMAZ-HO0U0SO\FALCONCLOUD',
+#         'OPTIONS': {
+#             'driver': 'ODBC Driver 17 for SQL Server',
+#         },
+#     }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
