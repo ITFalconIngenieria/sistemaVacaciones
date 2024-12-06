@@ -1167,7 +1167,8 @@ def ajuste_vacaciones(request):
         if form.is_valid():
             ajuste = form.save(commit=False)
             ajuste.usuario = usuario
-            ajuste.año = date.today().year 
+            ajuste.ajustado_por = request.user
+            ajuste.año = date.today().year
             ajuste.save()
 
             # Enviar correos electrónicos de notificación
@@ -1202,6 +1203,23 @@ def ajuste_vacaciones(request):
         'form': form,
     }
     return render(request, 'ajuste_vacaciones.html', context)
+
+
+@login_required
+
+def historial_ajustes_vacaciones(request):
+    if request.user.rol != 'GG':
+        
+        raise PermissionDenied("No tienes permiso para acceder a esta página.")
+    
+
+    ajustes = AjusteVacaciones.objects.select_related('usuario', 'ajustado_por').order_by('-fecha_ajuste')
+
+    paginator = Paginator(ajustes, 8)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'historial_ajustes_vacaciones.html', {'page_obj': page_obj})
 
 
 @login_required

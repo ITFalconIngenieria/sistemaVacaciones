@@ -67,6 +67,15 @@
                     </li>
                     {% endif %}
 
+                    {% if user.rol in 'GG' %}
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="{% url 'historial_ajustes_vacaciones' %}">Historial Ajuste Vacaciones</a>
+                    </li>
+
+                    {% endif %}
+
+
+
                     <!-- Opciones Administrativas (solo JD del departamento ADMON) -->
                     {% if user.rol in 'JD' and user.departamento.nombre in 'ADMON' %}
                     <li class="nav-item">

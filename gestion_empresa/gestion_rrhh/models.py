@@ -164,6 +164,7 @@ class AjusteVacaciones(models.Model):
     dias_ajustados = models.IntegerField(default=0)
     descripcion = models.TextField(null=True, blank=True)
     fecha_ajuste = models.DateField(auto_now_add=True)
+    ajustado_por = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True, related_name='ajustes_realizados')
 
     def __str__(self):
         return f"Ajuste de {self.dias_ajustados} días para {self.usuario} en el año {self.año}"
