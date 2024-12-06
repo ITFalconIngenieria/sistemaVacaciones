@@ -6,21 +6,18 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django import forms
 
-class UsuarioCreationForm(UserCreationForm):
-    username = forms.CharField(
-        max_length=150,
-        required=True,
-        validators=[validate_username],
-        help_text="Solo letras, sin números ni caracteres especiales."
-    )
-    
+class UsuarioCreationForm(forms.ModelForm):
     class Meta:
         model = Usuario
-        fields = ['username', 'first_name', 'last_name', 'email', 'rol', 'departamento', 'jefe', 'fecha_entrada', 'fecha_salida', 'password1', 'password2']
-        widgets = {
-            'fecha_entrada': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-            'fecha_salida': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-        }
+        fields = ['first_name', 'last_name', 'email', 'rol', 'departamento', 'jefe', 'fecha_entrada', 'fecha_salida']
+
+        # widgets = {
+        #     'fecha_entrada': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        #     'fecha_salida': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+        # }
+
+
+
 class UsuarioChangeForm(UserChangeForm):
     class Meta(UserChangeForm.Meta):
         model = Usuario

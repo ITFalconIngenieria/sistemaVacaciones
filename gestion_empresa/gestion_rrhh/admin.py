@@ -1,17 +1,32 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import Usuario, FeriadoNacional
-
+from .forms import UsuarioCreationForm, UsuarioChangeForm
 
 class UsuarioAdmin(UserAdmin):
-     fieldsets = UserAdmin.fieldsets + (
+    add_form = UsuarioCreationForm
+    form = UsuarioChangeForm
+    model = Usuario
+
+    fieldsets = UserAdmin.fieldsets + (
         ('Fechas importantes', {
             'fields': ('fecha_entrada', 'fecha_salida')
         }),
         ('Información Adicional', {
-            'fields': ('rol', 'departamento', 'jefe','mostrar_en_dashboard')
+            'fields': ('rol', 'departamento', 'jefe', 'mostrar_en_dashboard')
         }),
     )
+
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('first_name', 'last_name', 'email', 'rol', 'departamento', 'jefe', 'fecha_entrada', 'fecha_salida'),
+        }),
+    )
+
+    # def save_model(self, request, obj, form, change):
+    #     super().save_model(request, obj, form, change)
+
 
 admin.site.register(Usuario, UsuarioAdmin)
 

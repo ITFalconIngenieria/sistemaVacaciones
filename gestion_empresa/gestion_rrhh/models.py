@@ -4,8 +4,13 @@ from datetime import date
 from decimal import Decimal
 from .validators import validate_username
 from django.conf import settings
-from datetime import datetime, time, timedelta
+from datetime import datetime, time
 from django.utils.timezone import make_aware , get_current_timezone
+import random
+import string
+from django.template.loader import render_to_string
+from django.conf import settings
+from .utils import MicrosoftGraphEmail 
 
 class Usuario(AbstractUser):
     recalcular_vacaciones = True
@@ -55,10 +60,82 @@ class Usuario(AbstractUser):
             historial.dias_asignados = dias_vacaciones
             historial.save()
 
+    def _generate_random_password(self, length=10):
+        """Genera una contraseña aleatoria."""
+        characters = string.ascii_letters + string.digits + "!@#$%^&*()"  # Caracteres válidos
+        if not characters or length <= 0:  # Verificación adicional
+            print("Error: Lista de caracteres vacía o longitud inválida.")
+            return None
+
+        password = ''.join(random.choices(characters, k=length))  # Genera la contraseña
+        print(f"Contraseña generada dentro de _generate_random_password: {password}")  # Para depurar
+        return password
+
+
+    
+    def send_welcome_email(self, plain_password):
+        if self.email:
+            print(f"Contraseña generada: {plain_password}")
+
+
+            context = {
+                "nombre_usuario": self.first_name,
+                "username": self.username,
+                "password": plain_password,  # Incluye la contraseña generada
+                "url_sistema": settings.ENLACE_DEV,
+            }
+
+            # Renderiza la plantilla de correo
+            html_content = render_to_string("mail_bienvenida.html", context)
+
+            # Configura el envío del correo
+            email_sender = MicrosoftGraphEmail()
+            subject = "Bienvenido a la plataforma"
+            content = html_content
+
+            try:
+                email_sender.send_email(
+                    subject=subject,
+                    content=content,
+                    to_recipients=[self.email],
+                )
+            except Exception as e:
+                print(f"Error al enviar correo de bienvenida a {self.email}: {e}")
+
     def save(self, *args, **kwargs):
-        """Override save to assign vacations automatically each year."""
-        self.asignar_vacaciones_anuales()
+        is_new = not self.pk
+        plain_password = None
+
+        if is_new:
+            print("si es new")
+            if self.email:
+                self.username = self.email.split('@')[0]
+                print("password generada jok ", self.password)
+            
+            if not self.password:
+                # Genera y asigna la contraseña aleatoria antes de encriptarla
+                plain_password = self._generate_random_password()
+                print(f"Contraseña generada antes de set_password: {plain_password}")
+                self.set_password(plain_password)
+
+        # Guarda el objeto
         super().save(*args, **kwargs)
+
+        if is_new and plain_password:
+            # Envía el correo inmediatamente después del guardado
+            print(f"Contraseña generada final para el correo: {plain_password}")
+            self.send_welcome_email(plain_password)
+        elif is_new:
+            print("Error: No se generó la contraseña para enviar el correo.")
+
+        # Asigna vacaciones (se hace después del guardado principal)
+        self.asignar_vacaciones_anuales()
+
+
+
+
+
+
 
 
 class Departamento(models.Model):
