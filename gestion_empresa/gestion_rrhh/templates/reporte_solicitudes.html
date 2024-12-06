@@ -5,6 +5,7 @@
 {% block content %}
 <div class="container mt-4">
     <h2>Reporte de Solicitudes</h2>
+    <h3>Fecha del Reporte: {{ fecha_reporte|date:"d/m/Y" }}</h3>
     <form method="post">
         {% csrf_token %}
         <table class="table table-striped ">

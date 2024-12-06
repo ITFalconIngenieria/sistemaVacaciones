@@ -1059,6 +1059,7 @@ def reporte_solicitudes(request):
     return render(request, 'reporte_solicitudes.html', {
         'page_obj': page_obj,
         'hay_solicitudes_pendientes': hay_solicitudes_pendientes,
+        'fecha_reporte': now(),
     })
 
 @login_required
@@ -1089,9 +1090,9 @@ def generar_reporte_solicitudes_pdf(request):
 
     template = get_template('reporte_solicitudes_pdf.html')
     html = template.render(context)
-
+    fecha_actual = datetime.now().strftime("%Y:%m:%d")
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="reporte_solicitudes.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="reporte_solicitudes_{fecha_actual}.pdf"'
     pisa_status = pisa.CreatePDF(html, dest=response, encoding='UTF-8')
 
     if pisa_status.err:
@@ -1310,13 +1311,14 @@ class reporte_horas_extra_PDF(View):
         context = {
             'registros_por_usuario': registros_por_usuario,
             'year': timezone.now().year,
+            'fecha_reporte': now(),
         }
 
         template = get_template('reporte_horas_extra_pdf.html')
         html = template.render(context)
-
+        fecha_actual = datetime.now().strftime("%Y:%m:%d")
         response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename="reporte_horas_extra.pdf"'
+        response['Content-Disposition'] = f'attachment; filename="reporte_horas_extra_{fecha_actual}.pdf"'
         pisa_status = pisa.CreatePDF(html, dest=response, encoding='UTF-8')
 
         if pisa_status.err:
@@ -1434,9 +1436,9 @@ class GenerarReporteIncapacidadesView(View):
         }
         template = get_template('reporte_incapacidades_pdf.html')
         html = template.render(context)
-
+        fecha_actual = datetime.now().strftime("%Y:%m:%d")
         response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = 'attachment; filename="reporte_incapacidades.pdf"'
+        response['Content-Disposition'] = f'attachment; filename="reporte_incapacidades_{fecha_actual}.pdf"'
         pisa_status = pisa.CreatePDF(html, dest=response, encoding='UTF-8')
 
         if pisa_status.err:
