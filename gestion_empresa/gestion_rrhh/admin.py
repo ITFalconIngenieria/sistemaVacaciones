@@ -19,8 +19,8 @@ admin.site.register(Usuario, UsuarioAdmin)
 
 @admin.register(FeriadoNacional)
 class FeriadoNacionalAdmin(admin.ModelAdmin):
-    list_display = ('fecha', 'descripcion')  # Campos que se mostrarán en la lista del admin
-    search_fields = ('descripcion',)        # Campo para realizar búsquedas
-    list_filter = ('fecha',)                # Filtro por fecha
+    list_display = ('fecha', 'descripcion') 
+    search_fields = ('descripcion',) 
+    list_filter = ('fecha',) 
     ordering = ('fecha',)
     date_hierarchy = 'fecha'         
