@@ -1211,10 +1211,10 @@ def reporte_horas_extra_html(request):
         if 'marcar_pagado' in request.POST:
             registros_actualizados = RegistroHoras.objects.filter(id__in=seleccionados).update(estado_pago='PG')
             messages.success(request, f"{registros_actualizados} registros de horas extra han sido marcados como pagados.")
-            return redirect('reporte_horas_extra')  # Redirigir después de marcar como pagado
+            return redirect('reporte_horas_extra')
 
         elif 'generar_reporte' in request.POST:
-            request.session['reporte_horas_extra']
+            request.session['reporte_horas_extra'] = seleccionados
             return redirect('generar_pdf')
 
     # Paginación
