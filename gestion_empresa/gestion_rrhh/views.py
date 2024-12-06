@@ -1209,10 +1209,8 @@ def ajuste_vacaciones(request):
 
 def historial_ajustes_vacaciones(request):
     if request.user.rol != 'GG':
-        
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
     
-
     ajustes = AjusteVacaciones.objects.select_related('usuario', 'ajustado_por').order_by('-fecha_ajuste')
 
     paginator = Paginator(ajustes, 8)

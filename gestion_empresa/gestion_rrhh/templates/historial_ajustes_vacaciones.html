@@ -14,6 +14,7 @@
                 <th>Días Ajustados</th>
                 <th>Ajustado Por</th>
                 <th>Año</th>
+                <th>Descripción</th>
             </tr>
         </thead>
         <tbody>
@@ -24,6 +25,7 @@
                 <td>{{ ajuste.dias_ajustados }}</td>
                 <td>{{ ajuste.ajustado_por.get_full_name }}</td>
                 <td>{{ ajuste.año }}</td>
+                <td>{{ ajuste.descripcion}}</td>
             </tr>
             {% empty %}
             <tr>
