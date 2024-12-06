@@ -1170,6 +1170,28 @@ def ajuste_vacaciones(request):
             ajuste.año = date.today().year 
             ajuste.save()
 
+            # Enviar correos electrónicos de notificación
+            context = {
+                'ajustado_por': request.user.get_full_name(),
+                'usuario': usuario.get_full_name(),
+                'dias_ajustados': ajuste.dias_ajustados,
+                'total_dias_disponibles': calcular_dias_disponibles(usuario)['dias_disponibles'],
+                'fecha_ajuste': now().strftime('%d/%m/%Y %H:%M'),
+            
+            }
+            html_content = render_to_string("mail_ajuste_vacaciones.html", context)
+            email_sender = MicrosoftGraphEmail()
+            subject = f"Ajuste de Vacaciones"
+
+            try:
+                email_sender.send_email(
+                    subject=subject,
+                    content=html_content,
+                    to_recipients=[usuario.email],
+                )
+            except Exception as e:
+                print(f"Error al enviar correo al usuario {usuario.email}: {e}")
+
             messages.success(request, f"Vacaciones ajustadas para {usuario.get_full_name()}")
             return redirect('ajuste_vacaciones')
     else:
