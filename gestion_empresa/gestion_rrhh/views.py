@@ -45,7 +45,7 @@ def calcular_dias_disponibles(usuario):
     }
 
 def calcular_horas_individuales(usuario):
-    tipos = ['HE', 'HC']  # Trabajamos con HE y HC base
+    tipos = ['HE', 'HC'] 
     horas_por_tipo = {'HE': 0, 'HC': 0}
     for tipo in tipos:
         total_horas = RegistroHoras.objects.filter(
@@ -77,22 +77,27 @@ def calcular_horas_individuales(usuario):
 @login_required
 def dashboard(request):
     usuario = request.user
-    fecha_actual = now().date()
-    # fecha_limite = fecha_actual + timedelta(days=30)
+    fecha_actual =(now() - timedelta(hours=6)).date()
+    # fecha_actual = now().date()
+    fecha_limite = fecha_actual + timedelta(days=30)
     dias_data = calcular_dias_disponibles(usuario)
     dias_disponibles = dias_data['dias_disponibles']
     horas_data = calcular_horas_individuales(usuario)
     horas_extra = horas_data['HE']
     horas_compensatorias = horas_data['HC']
 
+    print("fecha actual ", fecha_actual)
+
     solicitudes_aprobadas = Solicitud.objects.filter(
         estado='A',
-
         fecha_fin__gte=fecha_actual
     ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin', 'tipo')
+
     incapacidades_aprobadas = Incapacidad.objects.filter(
         fecha_fin__gte=fecha_actual
     ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin')
+
+    print("incapacidades ", incapacidades_aprobadas)
     eventos = []
 
     for solicitud in solicitudes_aprobadas:
@@ -293,8 +298,9 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         messages.success(self.request, 'Solicitud creada correctamente y pendiente de aprobación.')
         
         jefe = self.request.user.jefe
-        if jefe and jefe.email: 
-            year = now().year
+        if jefe and jefe.email:
+            fecha_ajustada = now() - timedelta(hours=6)
+            year = fecha_ajustada.year
             context = {
                 "jefe": jefe.first_name,
                 "usuario": self.request.user.get_full_name(),
@@ -367,7 +373,8 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
         dias_data = calcular_dias_disponibles(solicitud.usuario)
         usuario = solicitud.usuario
         dias_disponibles = dias_data['dias_disponibles']
-        año_actual = now().year
+        fecha_ajustada = now() - timedelta(hours=6)
+        año_actual = fecha_ajustada.year
         horas_data = calcular_horas_individuales(solicitud.usuario)
         horas_compensatorias = horas_data['HC']
         
@@ -396,7 +403,8 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
 
         form.instance.aprobado_por = self.request.user
         messages.success(self.request, 'La solicitud ha sido procesada exitosamente.')
-        year = now().year
+        fecha_ajustada = now() - timedelta(hours=6)
+        year = fecha_ajustada.year
         estados = {
         'A': "Aprobada",
         'R': "Rechazada",
@@ -532,7 +540,8 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
         
         jefe = self.request.user.jefe
         if jefe and jefe.email: 
-            year = now().year
+            fecha_ajustada = now() - timedelta(hours=6)
+            year = fecha_ajustada.year
             context = {
                 "jefe": jefe.first_name,
                 "usuario": self.request.user.get_full_name(),
@@ -660,7 +669,8 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         
         jefe = self.request.user.jefe
         if jefe and jefe.email: 
-            year = now().year
+            fecha_ajustada = now() - timedelta(hours=6)
+            year = fecha_ajustada.year
             context = {
                 "jefe": jefe.first_name,
                 "usuario": self.request.user.get_full_name(),
@@ -739,7 +749,8 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
                 f"El registro de horas con el número {registro.numero_registro} ha sido marcado como pendiente."
             )
 
-        year = now().year
+        fecha_ajustada = now() - timedelta(hours=6)
+        year = fecha_ajustada.year
         estados = {
             'A': "Aprobada",
             'R': "Rechazada",
@@ -833,7 +844,8 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
         
         jefe = self.request.user.jefe
         if jefe and jefe.email: 
-            year = now().year
+            fecha_ajustada = now() - timedelta(hours=6)
+            year = fecha_ajustada.year
             context = {
                 "jefe": jefe.first_name,
                 "usuario": self.request.user.get_full_name(),
@@ -1346,6 +1358,22 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
             usuario=usuario
         )
 
+
+        feriados = FeriadoNacional.objects.filter(
+            fecha__range=[fecha_inicio, fecha_fin]
+        )
+
+
+        non_working_dates = [
+            date for date in (fecha_inicio + timedelta(n) for n in range((fecha_fin - fecha_inicio).days + 1)) 
+            if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
+        ]
+
+        if non_working_dates:
+            non_working_str = ", ".join(date.strftime("%d/%m/%Y (%A)") for date in non_working_dates)
+            form.add_error(None, f"La incapacidad incluye días no laborables: {non_working_str}. Por favor, selecciona otro rango.")
+            return self.form_invalid(form)
+
         for incapacidad in incapacidades_conflicto:
             if (incapacidad.fecha_inicio <= fecha_inicio <= incapacidad.fecha_fin) or \
                (incapacidad.fecha_inicio <= fecha_fin <= incapacidad.fecha_fin) or \
@@ -1374,7 +1402,8 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
         
         jefe = self.request.user.jefe
         if jefe and jefe.email: 
-            year = now().year
+            fecha_ajustada = now() - timedelta(hours=6)
+            year = fecha_ajustada.year
             context = {
                 "jefe": jefe.first_name,
                 "usuario": self.request.user.get_full_name(),
@@ -1549,6 +1578,21 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
                 print(f"Conflicto con registro: ID {solicitud.id}, Inicio {solicitud.fecha_inicio}, Fin {solicitud.fecha_fin}")
                 form.add_error(None, "Ya tienes una solicitud registrada que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
+            
+        feriados = FeriadoNacional.objects.filter(
+            fecha__range=[fecha_inicio, fecha_fin]
+        )
+
+
+        non_working_dates = [
+            date for date in (fecha_inicio + timedelta(n) for n in range((fecha_fin - fecha_inicio).days + 1)) 
+            if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
+        ]
+
+        if non_working_dates:
+            non_working_str = ", ".join(date.strftime("%d/%m/%Y (%A)") for date in non_working_dates)
+            form.add_error(None, f"La incapacidad incluye días no laborables: {non_working_str}. Por favor, selecciona otro rango.")
+            return self.form_invalid(form)
 
         form.instance.usuario = self.request.user
 
@@ -1556,7 +1600,8 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
         
         jefe = self.request.user.jefe
         if jefe and jefe.email: 
-            year = now().year
+            fecha_ajustada = now() - timedelta(hours=6)
+            year = fecha_ajustada.year
             context = {
                 "jefe": jefe.first_name,
                 "usuario": self.request.user.get_full_name(),

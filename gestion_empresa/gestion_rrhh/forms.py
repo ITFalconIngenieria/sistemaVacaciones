@@ -5,7 +5,7 @@ from .validators import validate_username
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django import forms
-
+from datetime import date
 class UsuarioCreationForm(forms.ModelForm):
     class Meta:
         model = Usuario
@@ -234,13 +234,19 @@ class IncapacidadForm(forms.ModelForm):
         cleaned_data = super().clean()
         fecha_inicio = cleaned_data.get('fecha_inicio')
         fecha_fin = cleaned_data.get('fecha_fin')
+        hoy = date.today()
 
         if not fecha_inicio or not fecha_fin:
             raise forms.ValidationError("Ambas fechas son obligatorias.")
 
-        diferencia_dias = (fecha_fin - fecha_inicio).days + 1
-        if diferencia_dias < 1:
-            raise forms.ValidationError("El rango de días debe ser entre 1 o más días completos.")
+        if fecha_inicio < hoy:
+            raise forms.ValidationError("La fecha de inicio no puede ser menor a la fecha actual.")
+
+        if fecha_fin < fecha_inicio:
+            raise forms.ValidationError("La fecha de fin no puede ser menor a la fecha de inicio.")
+
+        if fecha_fin < hoy:
+            raise forms.ValidationError("La fecha de fin no puede ser menor a la fecha actual.")
 
         return cleaned_data
     
