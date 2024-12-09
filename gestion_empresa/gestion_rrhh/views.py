@@ -739,7 +739,6 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         usuario = registro.usuario
 
         diferencia_dias = (registro.fecha_fin.date() - registro.fecha_inicio.date()).days + 1
-        print(f"Diferencia de días: {diferencia_dias} días")
 
         if form.instance.estado == 'A':  
             if registro.tipo =='HEF':
