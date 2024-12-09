@@ -27,7 +27,7 @@ from django.conf import settings
 from datetime import datetime, time
 from django.utils.timezone import make_aware , get_current_timezone
 from django.http import JsonResponse
-
+import uuid
 
 def es_jefe(user):
     return user.rol in ['GG', 'JI', 'JD']
@@ -209,13 +209,10 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
 
     def get_initial(self):
         initial = super().get_initial()
-        last_record = Solicitud.objects.order_by('id').last()
-        if last_record:
-            numero_solicitud = last_record.id + 1 
-        else:
-            numero_solicitud = 1 
-        
-        initial['numero_solicitud'] = f"S-{numero_solicitud:04d}"
+        # Generar un UUID único para 'numero_solicitud'
+        numero_solicitud = uuid.uuid4()
+        # Formatear el UUID en el campo inicial
+        initial['numero_solicitud'] = f"S-{str(numero_solicitud)[:8]}"  # Tomar los primeros 8 caracteres del UUID
         return initial
 
     def form_valid(self, form):
@@ -560,18 +557,18 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
 
             feriados = FeriadoNacional.objects.filter(
             fecha__range=[fecha_inicio.date(), fecha_fin.date()]
-        )
+            )
 
 
-        non_working_dates = [
-            date for date in (fecha_inicio.date() + timedelta(n) for n in range((fecha_fin.date() - fecha_inicio.date()).days + 1)) 
-            if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
-        ]
+            non_working_dates = [
+                date for date in (fecha_inicio.date() + timedelta(n) for n in range((fecha_fin.date() - fecha_inicio.date()).days + 1)) 
+                if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
+            ]
 
-        if non_working_dates:
-            non_working_str = ", ".join(date.strftime("%d/%m/%Y (%A)") for date in non_working_dates)
-            form.add_error(None, f"La solicitud incluye días no laborables: {non_working_str}. Por favor, selecciona otro rango.")
-            return self.form_invalid(form)
+            if non_working_dates:
+                non_working_str = ", ".join(date.strftime("%d/%m/%Y (%A)") for date in non_working_dates)
+                form.add_error(None, f"La solicitud incluye días no laborables: {non_working_str}. Por favor, selecciona otro rango.")
+                return self.form_invalid(form)
 
             if fecha_inicio < almuerzo_fin and fecha_fin > almuerzo_inicio:
                 horas_solicitadas -= 1
@@ -672,13 +669,7 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
 
     def get_initial(self):
         initial = super().get_initial()
-        last_record = RegistroHoras.objects.order_by('id').last()
-        if last_record:
-            numero_registro = last_record.id + 1 
-        else:
-            numero_registro = 1 
-        
-        initial['numero_registro'] = f"RGH-{numero_registro:04d}"
+        initial['numero_registro'] = f"RGH-{uuid.uuid4().hex[:8].upper()}"
         return initial
 
 
@@ -785,8 +776,6 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         registro = self.get_object()
         usuario = registro.usuario
 
-        diferencia_dias = (registro.fecha_fin.date() - registro.fecha_inicio.date()).days + 1
-
         if form.instance.estado == 'A':  
             if registro.tipo =='HEF':
                 registro.save()
@@ -833,7 +822,7 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
             email_sender.send_email(
                 subject=subject,
                 content=html_content,
-                to_recipients=[usuario.email],  # Correo del usuario al que pertenece la solicitud
+                to_recipients=[usuario.email],
             )
         except Exception as e:
             print(f"Error al enviar correo al usuario {usuario.email}: {e}")
