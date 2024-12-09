@@ -27,16 +27,22 @@
                     <form method="post">
                         {% csrf_token %}
                         {{ form|crispy }}
-                        
+
 
                         <div class="alert alert-info" id="dias-solicitados">
-                            La cantidad de días solicitados es:  días.
+                            La cantidad de días solicitados es: días.
                         </div>
                         <div class="alert alert-info" id="horas-solicitadas">
-                            La cantidad de horas solicitadas es:  horas.
+                            La cantidad de horas solicitadas es: horas.
                         </div>
-                        
-                        
+                        {% if form.non_field_errors %}
+
+
+                        <div class="alert alert-danger" id="form-errors" style="display: none;">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+
 
                         <button type="submit" class="btn btn-success w-100">Crear Solicitud</button>
                     </form>
@@ -54,13 +60,49 @@
         const fechaInicioInput = document.getElementById('id_fecha_inicio');
         const diasSolicitadosInfo = document.getElementById('dias-solicitados');
         const horasSolicitadasInfo = document.getElementById('horas-solicitadas');
-
+        const formErrors = document.getElementById('form-errors');
         flatpickr('.flatpickr-datetime', {
             enableTime: true,
             dateFormat: 'Y-m-d H:i',
             time_24hr: true,
             locale: 'es'
         });
+
+
+        function ocultarMensajes() {
+            diasSolicitadosInfo.style.display = 'none';
+            diasSolicitadosInfo.textContent = '';
+            horasSolicitadasInfo.style.display = 'none';
+            horasSolicitadasInfo.textContent = '';
+        }
+
+        function verificarErroresFormulario() {
+            if (formErrors && formErrors.textContent.trim() !== '') {
+                ocultarMensajes();
+            }
+        }
+
+
+
+
+        let diasFeriados = [];
+
+        async function obtenerFeriados(fechaInicio, fechaFin) {
+            // Eliminar la hora de las fechas
+            const fechaInicioSinHora = fechaInicio.split(' ')[0];
+            const fechaFinSinHora = fechaFin.split(' ')[0];
+
+            const response = await fetch(`/getferiados/?fecha_inicio=${fechaInicioSinHora}&fecha_fin=${fechaFinSinHora}`);
+            const feriados = await response.ok
+                ? (await response.json()).feriados.map(fecha => new Date(fecha))
+                : [];
+
+            console.log('Feriados obtenidos:', feriados);
+            return feriados;
+        }
+
+
+
 
         function calcularHorasSolicitadas() {
             const fechaInicio = new Date(fechaInicioInput.value);
@@ -87,29 +129,51 @@
         }
 
         function calcularDiasSolicitados() {
-        const fechaInicio = new Date(fechaInicioInput.value);
-        const fechaFin = new Date(fechaFinInput.value);
+            const fechaInicio = new Date(fechaInicioInput.value);
+            const fechaFin = new Date(fechaFinInput.value);
 
-        // Set the time component to midnight (00:00:00) for both dates
-        fechaInicio.setHours(0, 0, 0, 0);
-        fechaFin.setHours(0, 0, 0, 0);
+            fechaInicio.setUTCHours(6, 0, 0, 0);
+            fechaFin.setUTCHours(6, 0, 0, 0);
 
-        if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
-            const diferenciaTiempo = fechaFin - fechaInicio;
-            const dias = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24)) + 1;
-            diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: ${dias} días.`;
-        } else {
-            diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: 0 días.`;
+            // Verificar si las fechas son válidas
+            if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
+                let dias = 0;
+                let diaActual = new Date(fechaInicio);
+
+                while (diaActual <= fechaFin) {
+                    const esFeriado = diasFeriados.some(f => {
+                        const feriado = new Date(f);
+                        feriado.setUTCHours(6, 0, 0, 0);
+                        return feriado.getTime() === diaActual.getTime();
+                    });
+                    const esDiaLaborable = diaActual.getUTCDay() !== 6 && diaActual.getUTCDay() !== 0 && !esFeriado;
+
+                    if (esDiaLaborable) {
+                        dias++;
+                    }
+                    diaActual.setUTCDate(diaActual.getUTCDate() + 1);
+                }
+
+                diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: ${dias} días.`;
+            } else {
+                diasSolicitadosInfo.textContent = `La cantidad de días solicitados es: 0 días.`;
+            }
         }
-}
 
-        function actualizarCalculos() {
+
+        async function actualizarCalculos() {
+            const fechaInicioSoloFecha = fechaInicioInput.value.split("T")[0]; // Extraer solo la fecha
+            const fechaFinSoloFecha = fechaFinInput.value.split("T")[0];
+
             if (tipoSelect.value === 'V') {
+                diasFeriados = await obtenerFeriados(fechaInicioSoloFecha, fechaFinSoloFecha);
+                console.log('Días feriados:', diasFeriados);
                 calcularDiasSolicitados();
             } else if (tipoSelect.value === 'HC') {
                 calcularHorasSolicitadas();
             }
         }
+
 
         function mostrarOcultarDiasHoras() {
             if (tipoSelect.value === 'V') {
@@ -127,6 +191,7 @@
         }
 
         mostrarOcultarDiasHoras();
+        verificarErroresFormulario()
         tipoSelect.addEventListener('change', mostrarOcultarDiasHoras);
         fechaInicioInput.addEventListener('change', actualizarCalculos);
         fechaFinInput.addEventListener('change', actualizarCalculos);

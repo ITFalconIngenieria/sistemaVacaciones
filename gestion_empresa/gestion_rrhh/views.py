@@ -26,7 +26,7 @@ from django.utils.timezone import now
 from django.conf import settings
 from datetime import datetime, time
 from django.utils.timezone import make_aware , get_current_timezone
-
+from django.http import JsonResponse
 
 
 def es_jefe(user):
@@ -182,6 +182,24 @@ class CrearUsuarioView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 
     def test_func(self):
         return self.request.user.is_superuser or self.request.user.rol in ['GG', 'JI', 'JD']
+
+
+def obtener_dias_feriados(request):
+    fecha_inicio = request.GET.get('fecha_inicio', '').split()[0]
+    fecha_fin = request.GET.get('fecha_fin', '').split()[0]
+
+    try:
+        fecha_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+        fecha_fin = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+
+        feriados = FeriadoNacional.objects.filter(fecha__range=[fecha_inicio, fecha_fin])
+        feriados_list = [feriado.fecha.strftime("%Y-%m-%d") for feriado in feriados]
+
+        print(feriados_list)
+
+        return JsonResponse({'feriados': feriados_list})
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'Fechas inválidas'}, status=400)
     
 class CrearSolicitudView(LoginRequiredMixin, CreateView):
     model = Solicitud
@@ -217,22 +235,6 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
             usuario=usuario,
         )
 
-        feriados = FeriadoNacional.objects.filter(
-            fecha__range=[fecha_inicio.date(), fecha_fin.date()]
-        )
-
-
-        non_working_dates = [
-            date for date in (fecha_inicio.date() + timedelta(n) for n in range((fecha_fin.date() - fecha_inicio.date()).days + 1)) 
-            if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
-        ]
-
-        if non_working_dates:
-            non_working_str = ", ".join(date.strftime("%d/%m/%Y (%A)") for date in non_working_dates)
-            form.add_error(None, f"La solicitud incluye días no laborables: {non_working_str}. Por favor, selecciona otro rango.")
-            return self.form_invalid(form)
-        
-
         for solicitud in solicitudes_en_conflicto:
             if (solicitud.fecha_inicio <= fecha_inicio <= solicitud.fecha_fin) or \
                (solicitud.fecha_inicio <= fecha_fin <= solicitud.fecha_fin) or \
@@ -253,26 +255,35 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                 form.add_error(None, "Ya tienes una incapacidad registrada que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
 
-        
         if tipo_solicitud == 'V':
+            total_days_no_work=0
+            feriados = FeriadoNacional.objects.filter(
+            fecha__range=[fecha_inicio.date(), fecha_fin.date()]
+        )
+            non_working_dates = [
+            date for date in (fecha_inicio.date() + timedelta(n) for n in range((fecha_fin.date() - fecha_inicio.date()).days + 1)) 
+            if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
+            ]
+
+            if non_working_dates:
+                total_days_no_work = len(non_working_dates)
 
             fecha_inicio=fecha_inicio.date()
             fecha_fin=fecha_fin.date()
             dias_solicitados = (fecha_fin - fecha_inicio).days +1
-            form.instance.dias_solicitados = dias_solicitados
-
+            
             fecha_actual = date.today()
-
             if fecha_inicio<fecha_actual:
                 form.add_error(None, "Imposible solicitar vacaciones para fechas menores a la actual.")
                 return self.form_invalid(form)
 
-
             if dias_solicitados > dias_disponibles:
                 messages.warning(
                     self.request,
-                    f"Advertencia: estás solicitando {dias_solicitados} días, pero solo tienes {dias_disponibles} días disponibles."
+                    f"Advertencia: estás solicitando {dias_solicitados - total_days_no_work} días, pero solo tienes {dias_disponibles} días disponibles."
                 )
+
+            form.instance.dias_solicitados = dias_solicitados - total_days_no_work
 
         elif tipo_solicitud == 'HC':
             diferencia = fecha_fin - fecha_inicio
@@ -280,6 +291,22 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
             tz = get_current_timezone()
             almuerzo_inicio = make_aware(datetime.combine(fecha_inicio.date(), time(12, 0)), tz)
             almuerzo_fin = make_aware(datetime.combine(fecha_inicio.date(), time(13, 0)), tz)
+
+
+            feriados = FeriadoNacional.objects.filter(
+            fecha__range=[fecha_inicio.date(), fecha_fin.date()]
+            )
+
+
+            non_working_dates = [
+                date for date in (fecha_inicio.date() + timedelta(n) for n in range((fecha_fin.date() - fecha_inicio.date()).days + 1)) 
+                if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
+            ]
+
+            if non_working_dates:
+                non_working_str = ", ".join(date.strftime("%d/%m/%Y (%A)") for date in non_working_dates)
+                form.add_error(None, f"La solicitud incluye días no laborables: {non_working_str}. Por favor, selecciona otro rango.")
+                return self.form_invalid(form)
 
             if fecha_inicio < almuerzo_fin and fecha_fin > almuerzo_inicio:
                 horas_solicitadas -= 1
@@ -395,6 +422,7 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
                     registro.save()
 
             elif solicitud.tipo == 'HC':
+                
                 if horas_compensatorias >= solicitud.horas:
                     solicitud.usuario.save()  
                 else:
@@ -466,20 +494,7 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
         form.instance.requisitos_confirmados = form.cleaned_data.get('confirmacion_requisitos')
 
 
-        feriados = FeriadoNacional.objects.filter(
-            fecha__range=[fecha_inicio.date(), fecha_fin.date()]
-        )
 
-
-        non_working_dates = [
-            date for date in (fecha_inicio.date() + timedelta(n) for n in range((fecha_fin.date() - fecha_inicio.date()).days + 1)) 
-            if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
-        ]
-
-        if non_working_dates:
-            non_working_str = ", ".join(date.strftime("%d/%m/%Y (%A)") for date in non_working_dates)
-            form.add_error(None, f"La solicitud incluye días no laborables: {non_working_str}. Por favor, selecciona otro rango.")
-            return self.form_invalid(form)
         
         solicitudes_en_conflicto = Solicitud.objects.filter(
             usuario=usuario,
@@ -506,17 +521,34 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
                 return self.form_invalid(form)
 
         if tipo_solicitud == 'V':
+            total_days_no_work=0
+            feriados = FeriadoNacional.objects.filter(
+            fecha__range=[fecha_inicio.date(), fecha_fin.date()]
+        )
+            non_working_dates = [
+            date for date in (fecha_inicio.date() + timedelta(n) for n in range((fecha_fin.date() - fecha_inicio.date()).days + 1)) 
+            if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
+            ]
+
+            if non_working_dates:
+                total_days_no_work = len(non_working_dates)
+
             fecha_inicio=fecha_inicio.date()
             fecha_fin=fecha_fin.date()
-            form.instance.descripcion="Vacaciones"
-            dias_solicitados = (fecha_fin- fecha_inicio).days + 1
-            form.instance.dias_solicitados = dias_solicitados
+            dias_solicitados = (fecha_fin - fecha_inicio).days +1
+            
+            fecha_actual = date.today()
+            if fecha_inicio<fecha_actual:
+                form.add_error(None, "Imposible solicitar vacaciones para fechas menores a la actual.")
+                return self.form_invalid(form)
 
             if dias_solicitados > dias_disponibles:
                 messages.warning(
                     self.request,
-                    f"Advertencia: estás solicitando {dias_solicitados} días, pero solo tienes {dias_disponibles} días disponibles."
+                    f"Advertencia: estás solicitando {dias_solicitados - total_days_no_work} días, pero solo tienes {dias_disponibles} días disponibles."
                 )
+
+            form.instance.dias_solicitados = dias_solicitados - total_days_no_work
 
         elif tipo_solicitud == 'HC':
             diferencia = fecha_fin - fecha_inicio
@@ -525,6 +557,21 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
             tz = get_current_timezone()
             almuerzo_inicio = make_aware(datetime.combine(fecha_inicio.date(), time(12, 0)), tz)
             almuerzo_fin = make_aware(datetime.combine(fecha_inicio.date(), time(13, 0)), tz)
+
+            feriados = FeriadoNacional.objects.filter(
+            fecha__range=[fecha_inicio.date(), fecha_fin.date()]
+        )
+
+
+        non_working_dates = [
+            date for date in (fecha_inicio.date() + timedelta(n) for n in range((fecha_fin.date() - fecha_inicio.date()).days + 1)) 
+            if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
+        ]
+
+        if non_working_dates:
+            non_working_str = ", ".join(date.strftime("%d/%m/%Y (%A)") for date in non_working_dates)
+            form.add_error(None, f"La solicitud incluye días no laborables: {non_working_str}. Por favor, selecciona otro rango.")
+            return self.form_invalid(form)
 
             if fecha_inicio < almuerzo_fin and fecha_fin > almuerzo_inicio:
                 horas_solicitadas -= 1
@@ -1651,7 +1698,6 @@ class EliminarIncapacidadView(LoginRequiredMixin, DeleteView):
         return obj
     
 
-
 class FeriadoNacionalListView(LoginRequiredMixin, ListView):
     model = FeriadoNacional
     template_name = 'feriados/feriado_list.html'
@@ -1683,10 +1729,6 @@ class FeriadoNacionalDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteV
     def test_func(self):
         return self.request.user.is_superuser
 
-
-
-
-    
 def logout_view(request):
     logout(request)
     return redirect('login')
