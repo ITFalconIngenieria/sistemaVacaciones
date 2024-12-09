@@ -149,6 +149,10 @@ class Solicitud(models.Model):
     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador', null=True, blank=True, on_delete=models.SET_NULL)
     estado_cierre = models.BooleanField(default=False)
     requisitos_confirmados = models.BooleanField(default=False)
+
+    def es_eliminable(self):
+        return date.today() <= self.fecha_inicio.date()
+    
     def save(self, *args, **kwargs):
         if self.tipo == 'V':
             self.fecha_inicio = self.fecha_inicio.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -184,7 +188,10 @@ class RegistroHoras(models.Model):
     estado = models.CharField(max_length=1, choices=ESTADOS, default='P') 
     estado_pago = models.CharField(max_length=2, choices=ESTADOS_PAGO, default='NP')
     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador_horas', null=True, blank=True, on_delete=models.SET_NULL)
-   
+    
+    def es_eliminable(self):
+        return date.today() <= self.fecha_inicio.date()
+
     def calcular_horas(self):
         delta = self.fecha_fin - self.fecha_inicio
         total_horas = delta.total_seconds() / 3600

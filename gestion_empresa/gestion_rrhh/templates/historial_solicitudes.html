@@ -94,14 +94,33 @@
                 {{ item.descripcion | default:'-'}}
             </td>
             <td>{{ item.get_estado_display }}</td>
-            <td>
+            <!-- <td>
                 <a href="{% if item.tipo_objeto == 'solicitud' %}
                             {% url 'aprobar_rechazar_solicitud' item.id %}
                         {% else %}
                             {% url 'aprobar_rechazar_horas' item.id %}
                         {% endif %}"
                     class="btn btn-primary btn-sm">Cambiar Estado</a>
+            </td> -->
+
+            <td>
+                {% if item.tipo_objeto == 'solicitud'  %}
+                    {% if item.es_eliminable %}
+                        <a href="{% url 'aprobar_rechazar_solicitud' item.id %}" class="btn btn-primary btn-sm">Cambiar Estado</a>
+                    {% else %}
+                        <span class="text-muted">No modificable</span>
+                    {% endif %}
+                {% endif %}
+                
+                {% if item.tipo_objeto == 'registro' %}
+                    {% if item.es_eliminable %}
+                    <a href="{% url 'aprobar_rechazar_horas' item.id %}" class="btn btn-primary btn-sm">Cambiar Estado</a>
+                    {% else %}
+                    <span class="text-muted">No modificable</span>
+                    {% endif %}
+                    {% endif %}
             </td>
+            
             
         </tr>
         {% empty %}

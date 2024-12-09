@@ -448,6 +448,10 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
         if self.object.horas:
             initial['horas'] = self.object.horas
         return initial
+    
+    def test_func(self):
+        solicitud = self.get_object()
+        return solicitud.usuario == self.request.user and solicitud.estado == 'P'
 
     def form_valid(self, form):
         form.instance.usuario = self.request.user
@@ -597,6 +601,12 @@ class EliminarMiSolicitudView(LoginRequiredMixin, UserPassesTestMixin, DeleteVie
     model = Solicitud
     template_name = 'confirmar_eliminar_solicitud.html'
     success_url = reverse_lazy('mis_solicitudes')
+
+    def get_initial(self):
+        initial = super().get_initial()
+        if self.object.horas:
+            initial['horas'] = self.object.horas
+        return initial
 
     def test_func(self):
         solicitud = self.get_object()
@@ -998,6 +1008,7 @@ class HistorialCombinadoView(ListView):
         estado = self.request.GET.get('estado')
         tipo = self.request.GET.get('tipo')
         usuario_id = self.request.GET.get('usuario')
+        
         registros_queryset = RegistroHoras.objects.filter(usuario__in=user.subordinados.all())
         solicitudes_queryset = Solicitud.objects.filter(usuario__in=user.subordinados.all())
 
@@ -1354,10 +1365,7 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
         if fecha_inicio > fecha_actual:
             form.add_error(None, "Imposible registrar una incapacidad para el futuro.")
             return self.form_invalid(form)
-        incapacidades_conflicto = Incapacidad.objects.filter(
-            usuario=usuario
-        )
-
+        
 
         feriados = FeriadoNacional.objects.filter(
             fecha__range=[fecha_inicio, fecha_fin]
@@ -1373,6 +1381,10 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
             non_working_str = ", ".join(date.strftime("%d/%m/%Y (%A)") for date in non_working_dates)
             form.add_error(None, f"La incapacidad incluye días no laborables: {non_working_str}. Por favor, selecciona otro rango.")
             return self.form_invalid(form)
+        
+        incapacidades_conflicto = Incapacidad.objects.filter(
+            usuario=usuario
+        )
 
         for incapacidad in incapacidades_conflicto:
             if (incapacidad.fecha_inicio <= fecha_inicio <= incapacidad.fecha_fin) or \
