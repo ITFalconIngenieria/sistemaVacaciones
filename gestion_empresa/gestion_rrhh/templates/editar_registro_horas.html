@@ -17,7 +17,8 @@
                 </div>
 
                 <div class="alert alert-warning mb-3" id="mensaje-feriados" style="display: none;">
-                    Por tu trabajo en días feriados, se te sumarán 9 horas compensatorias por día si el registro es aprobado.
+                    Por tu trabajo en días feriados, se te sumarán 9 horas compensatorias por día si el registro es
+                    aprobado.
                 </div>
                 <button type="submit" class="btn btn-success w-100">Guardar Cambios</button>
             </form>
@@ -26,7 +27,7 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const fechaInicioInput = document.getElementById('id_fecha_inicio');
         const fechaFinInput = document.getElementById('id_fecha_fin');
         const tipoHorasInput = document.getElementById('id_tipo');
@@ -43,30 +44,31 @@
         function calcularHoras() {
             const fechaInicio = new Date(fechaInicioInput.value);
             const fechaFin = new Date(fechaFinInput.value);
-    
+
             if (fechaInicio && fechaFin && fechaFin > fechaInicio) {
                 let horas = (fechaFin - fechaInicio) / (1000 * 60 * 60); // Calcular horas
 
+                // Descontar la hora de almuerzo si está incluida en el rango
                 const almuerzoInicio = new Date(fechaInicio);
-                almuerzoInicio.setHours(12, 0, 0, 0);
+                almuerzoInicio.setHours(12, 0, 0, 0); // 12:00 PM
 
                 const almuerzoFin = new Date(fechaInicio);
-                almuerzoFin.setHours(13, 0, 0, 0);
+                almuerzoFin.setHours(13, 0, 0, 0); // 1:00 PM
 
                 if (fechaInicio <= almuerzoInicio && fechaFin >= almuerzoFin) {
-                    horas -= 1;
+                    horas -= 1; // Descontar 1 hora de almuerzo
                 }
-    
+
                 // Verificar si la fecha de inicio es domingo (weekday 0) y si el tipo es compensatorias (HC)
                 if (fechaInicio.getDay() === 0 && fechaFin.getDay() === 0 && tipoHorasInput.value === 'HC') {
-                    horas *= 2; 
+                    horas *= 2;
                 }
-                
-                if(tipoHorasInput.value === 'HEF'){
+
+                if (tipoHorasInput.value === 'HEF') {
                     mensajeFeriadosDiv.style.display = 'block';
-    
+
                 }
-    
+
                 // Mostrar las horas calculadas con 2 decimales
                 cantidadHorasSpan.textContent = horas.toFixed(2);
                 horasCalculadasDiv.style.display = 'block';
@@ -75,16 +77,16 @@
                 horasCalculadasDiv.style.display = 'none';
             }
         }
-    
+
         // Verificar si ya hay fechas seleccionadas al cargar la página
         if (fechaInicioInput.value && fechaFinInput.value) {
             calcularHoras();
         }
-    
+
         // Agregar event listeners para recalcular cuando cambien las fechas o el tipo de horas
         fechaInicioInput.addEventListener('change', calcularHoras);
         fechaFinInput.addEventListener('change', calcularHoras);
         tipoHorasInput.addEventListener('change', calcularHoras);
     });
-    </script>
+</script>
 {% endblock %}

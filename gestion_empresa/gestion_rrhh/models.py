@@ -197,14 +197,13 @@ class RegistroHoras(models.Model):
         delta = self.fecha_fin - self.fecha_inicio
         total_horas = delta.total_seconds() / 3600
 
-        tz = get_current_timezone()
-        almuerzo_inicio = make_aware(datetime.combine(self.fecha_inicio.date(), time(12, 0)), tz)
-        almuerzo_fin = make_aware(datetime.combine(self.fecha_fin.date(), time(13, 0)), tz)
+        almuerzo_inicio = self.fecha_inicio.replace(hour=12, minute=0, second=0, microsecond=0)
+        almuerzo_fin = self.fecha_inicio.replace(hour=13, minute=0, second=0, microsecond=0)
 
-        if self.fecha_inicio <= almuerzo_fin and self.fecha_fin >= almuerzo_inicio:
-            total_horas -= 1
+        if self.fecha_inicio <= almuerzo_inicio < self.fecha_fin or self.fecha_inicio < almuerzo_fin <= self.fecha_fin:
+            total_horas -= 1 
 
-        total_horas = max(total_horas, 0)
+        total_horas = max(total_horas, 0) 
         return Decimal(total_horas).quantize(Decimal('0.01'))
 
     def save(self, *args, **kwargs):
