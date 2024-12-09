@@ -140,7 +140,7 @@ class Solicitud(models.Model):
     )
 
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
-    numero_solicitud=models.CharField(max_length=10,unique=True, blank=True)
+    numero_solicitud=models.CharField(max_length=50,unique=True, blank=True)
     tipo = models.CharField(max_length=2, choices=TIPOS)
     fecha_inicio = models.DateTimeField()
     fecha_fin = models.DateTimeField()
@@ -179,7 +179,7 @@ class RegistroHoras(models.Model):
     )
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
     tipo = models.CharField(max_length=3, choices=TIPOS_HORAS)
-    numero_registro = models.CharField(max_length=10, unique=True, blank=True)
+    numero_registro = models.CharField(max_length=50, unique=True, blank=True)
     fecha_inicio = models.DateTimeField()
     fecha_fin = models.DateTimeField() 
     horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
