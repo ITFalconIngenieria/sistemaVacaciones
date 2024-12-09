@@ -20,7 +20,8 @@ class Usuario(AbstractUser):
         ('JD', 'Jefe de Departamento'),
         ('IN', 'Ingeniero'),
         ('TE', 'Técnico'),
-        ('AST', 'ASISTENTE'),
+        ('AST', 'Asistente'),
+        ('FNZ', 'Finanzas'),
     )
     username = models.CharField(
         max_length=150,
