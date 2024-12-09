@@ -952,7 +952,7 @@ class ListaSolicitudesRegistrosDosNivelesView(ListView):
     def obtener_subordinados_dos_niveles(self, usuario):
         subordinados_nivel_1 = Usuario.objects.filter(jefe=usuario)
         subordinados_nivel_2 = Usuario.objects.filter(jefe__in=subordinados_nivel_1)
-        return subordinados_nivel_1 | subordinados_nivel_2
+        return subordinados_nivel_2
 
     def get_queryset(self):
         return []
