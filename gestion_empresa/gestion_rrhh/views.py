@@ -163,7 +163,7 @@ def PerfilUsuario(request):
     }
     return render(request, 'mi_perfil.html', context)
 
-class CambiarContrasenaView(PasswordChangeView):
+class CambiarContrasenaView(LoginRequiredMixin,PasswordChangeView):
     template_name = 'cambiar_contrasena.html' 
     success_url = reverse_lazy('perfil_usuario')
 
@@ -1025,7 +1025,7 @@ class ListaSolicitudesRegistrosDosNivelesView(ListView):
 
 
 
-class HistorialCombinadoView(ListView):
+class HistorialCombinadoView(LoginRequiredMixin,ListView):
     template_name = 'historial_solicitudes.html'
     context_object_name = 'registros_y_solicitudes'
     def dispatch(self, request, *args, **kwargs):
@@ -1157,7 +1157,7 @@ def generar_reporte_solicitudes_pdf(request):
 
     return response
 
-class MiSolicitudYRegistroView(ListView):
+class MiSolicitudYRegistroView(LoginRequiredMixin,ListView):
     template_name = 'mis_solicitudes.html'
     context_object_name = 'solicitudes_y_registros'
 
@@ -1167,6 +1167,7 @@ class MiSolicitudYRegistroView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
+
 
         solicitudes_queryset = Solicitud.objects.filter(usuario=user)
         registros_queryset = RegistroHoras.objects.filter(usuario=user)
@@ -1334,7 +1335,7 @@ def reporte_horas_extra_html(request):
 
 
 
-class reporte_horas_extra_PDF(View):
+class reporte_horas_extra_PDF(LoginRequiredMixin,View):
     
     def dispatch(self, request, *args, **kwargs):
         if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'ADMON':
@@ -1484,7 +1485,7 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-class GenerarReporteIncapacidadesView(View):
+class GenerarReporteIncapacidadesView(LoginRequiredMixin,View):
     def dispatch(self, request, *args, **kwargs):
         if request.user.rol != 'JD' or not request.user.departamento or request.user.departamento.nombre != 'ADMON':
             raise PermissionDenied("No tienes permiso para acceder a esta página.")

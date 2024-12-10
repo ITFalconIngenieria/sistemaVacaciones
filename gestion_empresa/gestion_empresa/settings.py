@@ -134,7 +134,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'es-es'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Guatemala'
 
 USE_I18N = True
 
@@ -149,7 +149,7 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'gestion_rrhh', 'static'),
 ]
 
-LOGIN_URL = 'login'
+LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 # Default primary key field type
