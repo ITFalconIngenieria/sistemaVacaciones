@@ -28,7 +28,7 @@ from datetime import datetime, time
 from django.utils.timezone import make_aware , get_current_timezone
 from django.http import JsonResponse
 import uuid
-
+import pytz
 def es_jefe(user):
     return user.rol in ['GG', 'JI', 'JD']
 
@@ -1202,6 +1202,15 @@ def ajuste_vacaciones(request):
     usuarios = Usuario.objects.filter(is_superuser=False)
     usuarios_vacaciones = []
 
+    # Zona horaria UTC-6
+    timezone_utc_minus_6 = pytz.timezone('Etc/GMT+6')
+
+    # Hora actual en UTC-6
+    utc_minus_6 = datetime.now(timezone_utc_minus_6)
+
+    # Formatear la fecha y hora
+    formatted_time = utc_minus_6.strftime('%d/%m/%Y %H:%M')
+
     for usuario in usuarios:
         dias_data = calcular_dias_disponibles(usuario)
         dias_disponibles = dias_data['dias_disponibles']
@@ -1235,7 +1244,7 @@ def ajuste_vacaciones(request):
                 'usuario': usuario.get_full_name(),
                 'dias_ajustados': ajuste.dias_ajustados,
                 'total_dias_disponibles': calcular_dias_disponibles(usuario)['dias_disponibles'],
-                'fecha_ajuste': now().strftime('%d/%m/%Y %H:%M'),
+                'fecha_ajuste':formatted_time,
             
             }
             html_content = render_to_string("mail_ajuste_vacaciones.html", context)
