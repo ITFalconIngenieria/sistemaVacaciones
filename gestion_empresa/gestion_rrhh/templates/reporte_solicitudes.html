@@ -38,8 +38,8 @@
                         <td></td>
                         <td class="text-center align-middle">{{ solicitud.numero_solicitud }}</td>
                         <td class="text-center align-middle">{{ solicitud.get_tipo_display }}</td>
-                        <td class="text-center align-middle">{{ solicitud.fecha_inicio }}</td>
-                        <td class="text-center align-middle">{{ solicitud.fecha_fin }}</td>
+                        <td class="text-center align-middle">{{ solicitud.fecha_inicio |date:"d/M/Y H:i"}}</td>
+                        <td class="text-center align-middle">{{ solicitud.fecha_fin |date:"d/M/Y H:i"}}</td>
                         <td class="text-center align-middle">{{ solicitud.dias_solicitados|default:0 }}</td>
                         <td class="text-center align-middle">{{ solicitud.horas|default:0 }}</td>
                         <td class="text-center align-middle">{{ solicitud.descripcion|default:"-" }}</td>

@@ -14,17 +14,7 @@
                     <div class="mb-3">
                         <p><strong>Días de vacaciones disponibles:</strong> {{ dias_vacaciones }}</p>
                         <p><strong>Horas compensatorias disponibles:</strong> {{ horas_compensatorias }}</p>
-                        <p><strong>Horas extra acumuladas:</strong> {{ horas_extra }}</p>
                     </div>
-                    <div class="alert alert-warning">
-                        <strong>Requisitos para la aprobación de esta solicitud:</strong>
-                        <ul>
-                            <li>Debe tener registro de horas al día en Odoo.</li>
-                            <li>Debe entregar su teléfono de trabajo a su jefe inmediato y colocar un forward en su correo electrónico.
-                                Caso contrario debe atender llamadas, mensajes y correos. </li>
-                        </ul>
-                    </div>
-
                     <form method="post">
                         {% csrf_token %}
                         {{ form|crispy }}
@@ -44,6 +34,9 @@
 
 
                         <button type="submit" class="btn btn-success w-100">Crear Solicitud</button>
+                        <a href="{% url 'dashboard' %}" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+
+                    
                     </form>
 
                 </div>

@@ -35,8 +35,8 @@
                         <td></td>
                         <td>{{ registro.numero_registro }}</td>
                         <td>{{ registro.numero_proyecto }}</td>
-                        <td>{{ registro.fecha_inicio }}</td>
-                        <td>{{ registro.fecha_fin }}</td>
+                        <td>{{ registro.fecha_inicio |date:"d/M/Y H:i"}}</td>
+                        <td>{{ registro.fecha_fin |date:"d/M/Y H:i"}}</td>
                         <td>{{ registro.horas }}</td>
                         <td>{{ registro.descripcion }}</td>
                     </tr>

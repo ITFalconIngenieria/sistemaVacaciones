@@ -23,8 +23,8 @@
             <p><strong>Nº Solicitud:</strong> {{ object.numero_solicitud }}</p>
             <p><strong>Colaborador:</strong> {{ object.usuario.get_full_name }}</p>
             <p><strong>Tipo:</strong> {{ object.get_tipo_display }}</p>
-            <p><strong>Fecha Inicio:</strong> {{ object.fecha_inicio }}</p>
-            <p><strong>Fecha Fin:</strong> {{ object.fecha_fin }}</p>
+            <p><strong>Fecha Inicio:</strong> {{ object.fecha_inicio |date:"d/M/Y H:i"}}</p>
+            <p><strong>Fecha Fin:</strong> {{ object.fecha_fin |date:"d/M/Y H:i"}}</p>
             <p><strong>Horas:</strong> {{ object.horas }}</p>
             <p><strong>Dias:</strong> {{ object.dias_solicitados }}</p>
             <!-- <p><strong>Confirmación de Requisitos:</strong> 

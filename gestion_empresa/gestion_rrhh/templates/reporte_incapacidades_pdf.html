@@ -32,8 +32,8 @@
                 {% for incapacidad in data.incapacidades %}
                 <tr>
                     <td>{{ usuario }}</td>
-                    <td>{{ incapacidad.fecha_inicio }}</td>
-                    <td>{{ incapacidad.fecha_fin }}</td>
+                    <td>{{ incapacidad.fecha_inicio |date:"d/M/Y H:i"}}</td>
+                    <td>{{ incapacidad.fecha_fin |date:"d/M/Y H:i"}}</td>
                     <td>{{ incapacidad.dias_incapacidad }}</td>
                     <td>{{ incapacidad.descripcion }}</td>
                 </tr>

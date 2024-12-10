@@ -310,7 +310,7 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                 return self.form_invalid(form)
             
             if horas_solicitadas > horas_compensatorias:
-                form.add_error(None, f"No tienes suficientes horas compensatorias disponibles (horas disponibles: {horas_compensatorias}).")
+                form.add_error(None, f"No tienes suficientes Horas compensatorias disponibles (horas disponibles: {horas_compensatorias}).")
                 return self.form_invalid(form)
             
             form.instance.horas = horas_solicitadas
@@ -577,7 +577,7 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
                 return self.form_invalid(form)
 
             if horas_solicitadas > horas_compensatorias:
-                form.add_error(None, f"No tienes suficientes horas compensatorias disponibles (horas disponibles: {horas_compensatorias}).")
+                form.add_error(None, f"No tienes suficientes Horas compensatorias disponibles (horas disponibles: {horas_compensatorias}).")
                 return self.form_invalid(form)
 
             form.instance.horas = horas_solicitadas

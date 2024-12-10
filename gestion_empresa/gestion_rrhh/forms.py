@@ -25,14 +25,33 @@ class UsuarioChangeForm(UserChangeForm):
 
 class SolicitudForm(forms.ModelForm):
     confirmacion_requisitos = forms.BooleanField(
+        
         required=True,
-        label="Confirmo que he leído y acepto los requisitos (tener registro de horas al día en Odoo y atender llamadas, mensajes y correos).",
-        error_messages={'required': 'Debe confirmar que está de acuerdo con los requisitos antes de continuar.'}
+        help_text="""
+        <div class="alert alert-warning">
+            <strong>Requisitos para la aprobación de esta solicitud:</strong>
+            <ul>
+                <li>Debe tener registro de horas al día en Odoo.</li>
+                <li>Debe entregar su teléfono de trabajo a su jefe inmediato y colocar un forward en su correo electrónico. Caso contrario debe atender llamadas, mensajes y correos.</li>
+            </ul>
+        </div>
+        """,
+        label="Confirmo que he leído y acepto los requisitos.",
+        error_messages={
+            'required': 'Debe confirmar que está de acuerdo con los requisitos antes de continuar.'
+        },
+        
     )
 
     class Meta:
         model = Solicitud
         fields = ['numero_solicitud', 'tipo', 'fecha_inicio', 'fecha_fin']
+        labels = {
+            'numero_solicitud': 'Número de Solicitud',
+            'tipo': 'Tipo',
+            'fecha_inicio': 'Fecha de Inicio',
+            'fecha_fin': 'Fecha de Fin',
+        }
         widgets = {
             'numero_solicitud': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -93,10 +112,18 @@ class RegistrarHorasForm(forms.ModelForm):
     class Meta:
         model = RegistroHoras
         fields = ['numero_registro', 'tipo', 'fecha_inicio', 'fecha_fin','numero_proyecto', 'descripcion']
+        labels = {
+            'numero_registro': 'Número de Registro',
+            'tipo': 'Tipo',
+            'fecha_inicio': 'Fecha de Inicio',
+            'fecha_fin': 'Fecha de Fin',
+            'numero_proyecto': 'Número de Proyecto',
+            'descripcion': 'Descripción',
+        }
         widgets = {
              'numero_registro': forms.TextInput(attrs={
                 'class': 'form-control',
-                'readonly': 'readonly'  # Campo solo lectura
+                'readonly': 'readonly'
             }),
             'fecha_inicio': forms.TextInput(attrs={
                 'class': 'form-control flatpickr-datetime',
@@ -197,6 +224,12 @@ class IncapacidadForm(forms.ModelForm):
     class Meta:
         model = Incapacidad
         fields = ['fecha_inicio', 'fecha_fin', 'archivo_adjunto', 'descripcion']
+        labels = {
+            'fecha_inicio': 'Fecha de Inicio',
+            'fecha_fin': 'Fecha de Fin',
+            'archivo_adjunto': 'Archivo Adjunto',
+            'descripcion': 'Descripción',
+        }
         widgets = {
 
             'fecha_inicio': forms.TextInput(attrs={

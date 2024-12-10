@@ -25,33 +25,33 @@
         {% for item in pendientes %}
         <tr>
             <td>{{ item.usuario.get_full_name }}</td>
-            
+
             <td>
                 {% if item.tipo_objeto == 'registro' %}
-                    {{ item.numero_registro}}
+                {{ item.numero_registro}}
                 {% endif %}
- 
+
                 {% if item.tipo_objeto == 'solicitud' %}
-                    {{ item.numero_solicitud}}
+                {{ item.numero_solicitud}}
                 {% endif %}
             </td>
             <td>
-                    {{ item.numero_proyecto |default:"NA" }}
+                {{ item.numero_proyecto |default:"NA" }}
             </td>
             <td>
                 {% if item.tipo_objeto == 'solicitud' %}
-                    {{ item.get_tipo_display }}
+                {{ item.get_tipo_display }}
                 {% endif %}
 
                 {% if item.tipo_objeto == 'registro' %}
-                    {{ item.get_tipo_display }}
+                {{ item.get_tipo_display }}
                 {% endif %}
             </td>
-            <td>{{ item.fecha_inicio }}</td>
-            <td>{{ item.fecha_fin }}</td>
+            <td>{{ item.fecha_inicio |date:"d/M/Y H:i" }}</td>
+            <td>{{ item.fecha_fin |date:"d/M/Y H:i"}}</td>
             <td>{{ item.horas | default:0}}</td>
             <td>
-                    {{ item.dias_solicitados | default:0  }}
+                {{ item.dias_solicitados | default:0 }}
 
             </td>
             <td>
@@ -60,9 +60,10 @@
             <td>{{ item.get_estado_display }}</td>
             <td>
                 {% if item.tipo_objeto == 'solicitud' %}
-                    <a href="{% url 'aprobar_rechazar_solicitud' item.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
+                <a href="{% url 'aprobar_rechazar_solicitud' item.pk %}"
+                    class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
                 {% else %}
-                    <a href="{% url 'aprobar_rechazar_horas' item.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
+                <a href="{% url 'aprobar_rechazar_horas' item.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
                 {% endif %}
             </td>
         </tr>
@@ -135,9 +136,5 @@
         {% endif %}
     </ul>
 </nav>
-
-
-
-
 
 {% endblock %}

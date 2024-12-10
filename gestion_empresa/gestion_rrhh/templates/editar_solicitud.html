@@ -7,15 +7,6 @@
     <div class="card-header bg-warning text-white">
         <h4 class="mb-0">Editar Solicitud</h4>
     </div>
-   
-    <!-- <div class="alert alert-warning">
-        <strong>Requisitos para la aprobación de esta solicitud:</strong>
-        <ul>
-            <li>Debe tener registro de horas al día en Odoo.</li>
-            <li>Debe entregar su teléfono de trabajo a su jefe inmediato y colocar un forward en su correo electrónico.
-                Caso contrario debe atender llamadas, mensajes y correos. </li>
-        </ul>
-    </div> -->
     <form method="post">
         {% csrf_token %}
         {{ form|crispy }}

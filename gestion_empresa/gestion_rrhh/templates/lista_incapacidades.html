@@ -33,8 +33,8 @@
                             <input type="checkbox" name="seleccionados" value="{{ incapacidad.id }}" {% if incapacidad.revisado %}checked{% endif %}>
                         </td>
                         <td></td>
-                        <td>{{ incapacidad.fecha_inicio }}</td>
-                        <td>{{ incapacidad.fecha_fin }}</td>
+                        <td>{{ incapacidad.fecha_inicio |date:"d/M/Y H:i" }}</td>
+                        <td>{{ incapacidad.fecha_fin |date:"d/M/Y H:i"}}</td>
                         <td>{{ incapacidad.dias_incapacidad }}</td>
                         <td>{{ incapacidad.descripcion }}</td>
                         <td>
