@@ -702,11 +702,11 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
                 return self.form_invalid(form)    
 
         if rol_usuario == 'TE' and tipo_horas == 'HEF':
-            form.add_error(None, "Los Técnicos no pueden registrar horas extra para dias feriados.")
+            form.add_error(None, "Los Técnicos no pueden registrar horas extras para dias feriados.")
             return self.form_invalid(form)
 
         elif rol_usuario in ['GG', 'JI', 'JD','IN','AST', 'FNZ'] and tipo_horas == 'HE':
-            form.add_error(None, "Usted no puede registrar horas extra.")
+            form.add_error(None, "Usted no puede registrar horas extras.")
             return self.form_invalid(form)
         
         form.instance.numero_registro = form.cleaned_data['numero_registro']
