@@ -60,14 +60,14 @@
                     {{ item.get_tipo_display }}
                     {% endif %}
                 </td>
-                <td>{{ item.fecha_inicio }}</td>
-                <td>{{ item.fecha_fin }}</td>
-                <td>{{ item.horas |default:0 }}</td>
+                <td>{{ item.fecha_inicio|date:"d/M/Y H:i" }}</td>
+                <td>{{ item.fecha_fin|date:"d/M/Y H:i" }}</td>
+                <td>{{ item.horas|default:0 }}</td>
                 <td>
-                    {{ item.dias_solicitados |default:0 }}
+                    {{ item.dias_solicitados|default:0 }}
                 </td>
                 <td>
-                    {{ item.descripcion |default:"-" }}
+                    {{ item.descripcion|default:"-" }}
                 </td>
                 <td>{{ item.get_estado_display }}</td>
                 <td>
