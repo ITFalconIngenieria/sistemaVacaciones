@@ -7,19 +7,7 @@
 <div class="container mt-4">
     <h2 class="text-center mb-4">Aprobar/Rechazar Registro de Horas</h2>
     <form method="post" class="card shadow p-4">
-        {% csrf_token %}
-        <div class="alert alert-warning">
-            <strong>Requisitos para la aprobación de esta solicitud:</strong>
-            <ul>
-                <li>Antes de aprobar esta solicitud confirma en Odoo que el colaborador 
-                    tiene el registro de sus horas de trabajo al dia.</li>
-                    <li>El colaborador deberá entregarle su teléfono de trabajo y colocar un 
-                        forward en su correo electrónico.
-                        Caso contrario deberá atender llamadas, mensajes y correos.</li>
-                        <li>Revisar con el colaborador las asignaciones que tiene y a quien se las delegó</li>
-            </ul>
-        </div>
-       
+        {% csrf_token %}       
         <div class="mb-3">
             <p><strong>Nº Proyecto:</strong> {{ object.numero_proyecto }}</p>
             <p><strong>Colaborador:</strong> {{ object.usuario.get_full_name }}</p>
