@@ -62,7 +62,6 @@ class Usuario(AbstractUser):
             historial.save()
 
     def _generate_random_password(self, length=10):
-        """Genera una contraseña aleatoria."""
         characters = string.ascii_letters + string.digits + "!@#$%^&*()"
         if not characters or length <= 0:
             print("Error: Lista de caracteres vacía o longitud inválida.")
@@ -75,7 +74,6 @@ class Usuario(AbstractUser):
     
     def send_welcome_email(self, plain_password):
         if self.email:
-            print(f"Contraseña generada: {plain_password}")
 
             context = {
                 "nombre_usuario": self.first_name,
@@ -104,7 +102,6 @@ class Usuario(AbstractUser):
         plain_password = None
 
         if is_new:
-            print("si es new")
             if self.email:
                 self.username = self.email.split('@')[0]
             
