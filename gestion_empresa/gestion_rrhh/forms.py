@@ -138,12 +138,6 @@ class RegistrarHorasForm(forms.ModelForm):
         numero_proyecto = cleaned_data.get('numero_proyecto')
         descripcion = cleaned_data.get('descripcion')
         fecha_actual = timezone.now()
-
-        print("fecha inicio ", fecha_inicio)
-        print("fecha fin ", fecha_fin)
-        print("fecha actual ", fecha_actual)
-
-
         if (numero_proyecto is None or numero_proyecto == 0) and not descripcion:
             raise forms.ValidationError(
                 "Debe llenar la descripción porque el número de proyecto está vacío o es 0."

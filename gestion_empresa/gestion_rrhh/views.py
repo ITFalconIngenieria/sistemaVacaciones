@@ -86,7 +86,6 @@ def dashboard(request):
     horas_extra = horas_data['HE']
     horas_compensatorias = horas_data['HC']
 
-    print("fecha actual ", fecha_actual)
 
     solicitudes_aprobadas = Solicitud.objects.filter(
         estado='A',
@@ -97,7 +96,6 @@ def dashboard(request):
         fecha_fin__gte=fecha_actual
     ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin')
 
-    print("incapacidades ", incapacidades_aprobadas)
     eventos = []
 
     for solicitud in solicitudes_aprobadas:
@@ -195,7 +193,6 @@ def obtener_dias_feriados(request):
         feriados = FeriadoNacional.objects.filter(fecha__range=[fecha_inicio, fecha_fin])
         feriados_list = [feriado.fecha.strftime("%Y-%m-%d") for feriado in feriados]
 
-        print(feriados_list)
 
         return JsonResponse({'feriados': feriados_list})
     except (ValueError, TypeError):
