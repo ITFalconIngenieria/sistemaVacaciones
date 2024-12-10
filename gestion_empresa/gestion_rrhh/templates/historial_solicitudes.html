@@ -20,8 +20,8 @@
             <select name="tipo" id="tipo" class="form-select">
                 <option value="">Todos</option>
                 <option value="V" {% if request.GET.tipo == "V" %}selected{% endif %}>Vacaciones</option>
-                <option value="HE" {% if request.GET.tipo == "HE" %}selected{% endif %}>Horas Extra</option>
                 <option value="HC" {% if request.GET.tipo == "HC" %}selected{% endif %}>Horas Compensatorias</option>
+                <option value="HE" {% if request.GET.tipo == "HE" %}selected{% endif %}>Horas Extras</option>
             </select>
         </div>
 

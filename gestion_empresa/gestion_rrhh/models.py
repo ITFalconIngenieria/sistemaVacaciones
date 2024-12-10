@@ -161,7 +161,7 @@ class Solicitud(models.Model):
 
 class RegistroHoras(models.Model):
     TIPOS_HORAS = (
-        ('HE', 'Registro Horas Extra'),
+        ('HE', 'Registro Horas Extras'),
         ('HC', 'Registro Horas Compensatorias'),
         ('HEF', 'Registro Horas Dia Feriado'),
     )

@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Reporte de Horas Extra</title>
+    <title>Reporte de Horas Extras</title>
     <style>
         @page {
             size: letter;
@@ -80,7 +80,7 @@
     
 </head>
 <body>
-    <h1>Reporte de Horas Extra</h1>
+    <h1>Reporte de Horas Extras</h1>
     <h2>Fecha del Reporte: {{ fecha_reporte|date:"d/m/Y" }}</h2>
     
     <table>
@@ -109,7 +109,7 @@
                 </tr>
                 {% endfor %}
                 <tr>
-                    <th colspan="5">Total de Horas extra para {{ usuario }}</th>
+                    <th colspan="5">Total de Horas extras para {{ usuario }}</th>
                     <td>{{ data.total_horas|floatformat:2 }}</td>
                     <td></td>
                 </tr>
