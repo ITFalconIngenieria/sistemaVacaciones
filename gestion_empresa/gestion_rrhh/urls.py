@@ -49,4 +49,5 @@ urlpatterns = [
 
 
     path('getferiados/', views.obtener_dias_feriados, name='obtener_dias_feriados'),
+    path('colaboradores-info/', views.colaboradores_info, name='colaboradores_info'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

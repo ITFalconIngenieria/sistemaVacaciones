@@ -69,9 +69,25 @@
                     {% endif %}
 
                     {% if user.rol in 'GG' %}
-                    <li class="nav-item">
-                        <a class="nav-link text-white" href="{% url 'historial_ajustes_vacaciones' %}">Historial Ajuste Vacaciones</a>
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-white" href="#" id="gestionSubordinadosDropdown"
+                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Reportes
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="reportesGerenteDropdown">
+                            <li >
+                                <a class="dropdown-item" href="{% url 'historial_ajustes_vacaciones' %}">Historial Ajuste Vacaciones</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'colaboradores_info' %}">Colaboradores</a>
+                            </li>
+
+                        </ul>
                     </li>
+
+
+                    
 
                     {% endif %}
 

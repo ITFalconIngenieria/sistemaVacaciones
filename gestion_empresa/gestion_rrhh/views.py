@@ -1699,7 +1699,7 @@ class FeriadoNacionalCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateV
     success_url = reverse_lazy('feriado_list')
 
     def test_func(self):
-        return self.request.user.is_superuser  # Solo usuarios con superusuario pueden agregar
+        return self.request.user.is_superuser 
 
 class FeriadoNacionalUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = FeriadoNacional
@@ -1708,7 +1708,7 @@ class FeriadoNacionalUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateV
     success_url = reverse_lazy('feriado_list')
 
     def test_func(self):
-        return self.request.user.is_superuser  # Solo usuarios con superusuario pueden editar
+        return self.request.user.is_superuser 
 
 class FeriadoNacionalDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     model = FeriadoNacional
@@ -1717,6 +1717,37 @@ class FeriadoNacionalDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteV
 
     def test_func(self):
         return self.request.user.is_superuser
+
+
+@login_required
+def colaboradores_info(request):
+    if request.user.rol != 'GG':
+        raise PermissionDenied("No tienes permiso para acceder a esta página.")
+
+    colaboradores = Usuario.objects.filter(is_superuser=False)
+    colaboradores_data = []
+
+    for colaborador in colaboradores:
+        dias_data = calcular_dias_disponibles(colaborador)
+        horas_data = calcular_horas_individuales(colaborador)
+
+        colaboradores_data.append({
+            'usuario': colaborador,
+            'dias_data': dias_data,
+            'horas_data': horas_data,
+        })
+
+    paginator = Paginator(colaboradores_data, 8)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+    }
+    return render(request, 'colaboradores_info.html', context)
+
+
+
 
 def logout_view(request):
     logout(request)
