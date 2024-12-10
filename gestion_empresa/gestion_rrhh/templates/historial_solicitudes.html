@@ -9,9 +9,9 @@
             <label for="estado" class="form-label">Filtrar por estado:</label>
             <select name="estado" id="estado" class="form-select">
                 <option value="">Todos</option>
-                <option value="P" {% if request.GET.estado=="P" %}selected{% endif %}>Pendiente</option>
-                <option value="A" {% if request.GET.estado=="A" %}selected{% endif %}>Aprobado</option>
-                <option value="R" {% if request.GET.estado=="R" %}selected{% endif %}>Rechazado</option>
+                <option value="P" {% if request.GET.estado == "P" %}selected{% endif %}>Pendiente</option>
+                <option value="A" {% if request.GET.estado == "A" %}selected{% endif %}>Aprobado</option>
+                <option value="R" {% if request.GET.estado == "R" %}selected{% endif %}>Rechazado</option>
             </select>
         </div>
 
@@ -19,9 +19,9 @@
             <label for="tipo" class="form-label">Filtrar por tipo:</label>
             <select name="tipo" id="tipo" class="form-select">
                 <option value="">Todos</option>
-                <option value="V" {% if request.GET.tipo=="V" %}selected{% endif %}>Vacaciones</option>
-                <option value="HE" {% if request.GET.tipo=="HE" %}selected{% endif %}>Horas Extra</option>
-                <option value="HC" {% if request.GET.tipo=="HC" %}selected{% endif %}>Horas Compensatorias</option>
+                <option value="V" {% if request.GET.tipo == "V" %}selected{% endif %}>Vacaciones</option>
+                <option value="HE" {% if request.GET.tipo == "HE" %}selected{% endif %}>Horas Extra</option>
+                <option value="HC" {% if request.GET.tipo == "HC" %}selected{% endif %}>Horas Compensatorias</option>
             </select>
         </div>
 
@@ -31,8 +31,7 @@
             <select name="usuario" id="usuario" class="form-select">
                 <option value="">Todos</option>
                 {% for subordinado in subordinados %}
-                <option value="{{ subordinado.id }}" {% if request.GET.usuario==subordinado.id|stringformat:"s"
-                    %}selected{% endif %}>
+                <option value="{{ subordinado.id }}" {% if request.GET.usuario == subordinado.id|stringformat:"s" %}selected{% endif %}>
                     {{ subordinado.get_full_name }}
                 </option>
                 {% endfor %}
@@ -63,31 +62,30 @@
         {% for item in registros_y_solicitudes %}
         <tr>
             <td>{{ item.usuario.get_full_name }}</td>
-
+            
             <td>
                 {% if item.tipo_objeto == 'registro' %}
                 {{ item.numero_registro}}
-                {% endif %}
+            {% endif %}
 
-                {% if item.tipo_objeto == 'solicitud' %}
+            {% if item.tipo_objeto == 'solicitud' %}
                 {{ item.numero_solicitud}}
-                {% endif %}
+            {% endif %}
             </td>
             <td>
                 {{ item.numero_proyecto | default:'NA'}}
             </td>
             <td>
                 {% if item.tipo_objeto == 'solicitud' %}
-                {{ item.get_tipo_display }}
+                    {{ item.get_tipo_display }}
                 {% endif %}
 
                 {% if item.tipo_objeto == 'registro' %}
-                {{ item.get_tipo_display }}
+                    {{ item.get_tipo_display }}
                 {% endif %}
             </td>
             <td>{{ item.fecha_inicio|date:"d/M/Y H:i" }}</td>
             <td>{{ item.fecha_fin|date:"d/M/Y H:i" }}</td>
-
             <td>{{ item.horas }}</td>
             <td>
                 {{ item.dias_solicitados | default:0}}
@@ -106,25 +104,24 @@
             </td> -->
 
             <td>
-                {% if item.tipo_objeto == 'solicitud' %}
-                {% if item.es_eliminable %}
-                <a href="{% url 'aprobar_rechazar_solicitud' item.id %}" class="btn btn-primary btn-sm">Cambiar
-                    Estado</a>
-                {% else %}
-                <span class="text-muted">No modificable</span>
+                {% if item.tipo_objeto == 'solicitud'  %}
+                    {% if item.es_eliminable %}
+                        <a href="{% url 'aprobar_rechazar_solicitud' item.id %}" class="btn btn-primary btn-sm">Cambiar Estado</a>
+                    {% else %}
+                        <span class="text-muted">No modificable</span>
+                    {% endif %}
                 {% endif %}
-                {% endif %}
-
+                
                 {% if item.tipo_objeto == 'registro' %}
-                {% if item.es_eliminable %}
-                <a href="{% url 'aprobar_rechazar_horas' item.id %}" class="btn btn-primary btn-sm">Cambiar Estado</a>
-                {% else %}
-                <span class="text-muted">No modificable</span>
-                {% endif %}
-                {% endif %}
+                    {% if item.es_eliminable %}
+                    <a href="{% url 'aprobar_rechazar_horas' item.id %}" class="btn btn-primary btn-sm">Cambiar Estado</a>
+                    {% else %}
+                    <span class="text-muted">No modificable</span>
+                    {% endif %}
+                    {% endif %}
             </td>
-
-
+            
+            
         </tr>
         {% empty %}
         <tr>
@@ -140,15 +137,12 @@
         <!-- Botón para ir a la primera página -->
         {% if page_obj.has_previous %}
         <li class="page-item">
-            <a class="page-link" href="?page=1{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}"
-                aria-label="Primera">
+            <a class="page-link" href="?page=1{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}" aria-label="Primera">
                 Primera
             </a>
         </li>
         <li class="page-item">
-            <a class="page-link"
-                href="?page={{ page_obj.previous_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}"
-                aria-label="Anterior">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}" aria-label="Anterior">
                 Anterior
             </a>
         </li>
@@ -168,25 +162,19 @@
         <!-- Páginas intermedias -->
         {% for num in page_obj.paginator.page_range %}
         <li class="page-item {% if page_obj.number == num %}active{% endif %}">
-            <a class="page-link"
-                href="?page={{ num }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}">{{ num
-                }}</a>
+            <a class="page-link" href="?page={{ num }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}">{{ num }}</a>
         </li>
         {% endfor %}
 
         <!-- Botón para ir a la última página -->
         {% if page_obj.has_next %}
         <li class="page-item">
-            <a class="page-link"
-                href="?page={{ page_obj.next_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}"
-                aria-label="Siguiente">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}" aria-label="Siguiente">
                 Siguiente
             </a>
         </li>
         <li class="page-item">
-            <a class="page-link"
-                href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}"
-                aria-label="Última">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.estado %}&estado={{ request.GET.estado }}{% endif %}" aria-label="Última">
                 Última
             </a>
         </li>

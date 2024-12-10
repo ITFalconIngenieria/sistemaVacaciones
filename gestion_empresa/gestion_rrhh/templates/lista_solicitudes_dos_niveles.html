@@ -47,8 +47,8 @@
                     {{ item.get_tipo_display }}
                 {% endif %}
             </td>
-            <td>{{ item.fecha_inicio |date:"d/M/Y H:i"}}</td>
-            <td>{{ item.fecha_fin |date:"d/M/Y H:i"}}</td>
+            <td>{{ item.fecha_inicio|date:"d/M/Y H:i"}}</td>
+            <td>{{ item.fecha_fin|date:"d/M/Y H:i"}}</td>
             <td>{{ item.horas | default:0}}</td>
             <td>
                     {{ item.dias_solicitados | default:0  }}
