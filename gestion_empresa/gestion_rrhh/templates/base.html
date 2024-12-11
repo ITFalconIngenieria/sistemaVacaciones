@@ -92,27 +92,7 @@
                     {% endif %}
 
 
-
-                    <!-- Opciones Administrativas (solo JD del departamento ADMON) -->
-                    {% if user.rol in 'JD' and user.departamento.nombre in 'ADMON' %}
-                    <li class="nav-item">
-                        <a class="nav-link text-white" href="{% url 'ajuste_vacaciones' %}">Ajuste Vacaciones</a>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle text-white" href="#" id="reportesDropdown" role="button"
-                            data-bs-toggle="dropdown" aria-expanded="false">
-                            Reportes
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="reportesDropdown">
-                            <li><a class="dropdown-item" href="{% url 'reporte_horas_extra' %}">Horas Extras</a></li>
-                            <li><a class="dropdown-item" href="{% url 'lista_incapacidades' %}">Incapacidades</a></li>
-                            <li><a class="dropdown-item" href="{% url 'reporte_solicitudes' %}">Solicitudes</a></li>
-                        </ul>
-                    </li>
-                    {% endif %}
-
-
-                    {% if user.rol in 'IN' or user.rol in 'TE' %}
+                    {% if user.rol in 'IN' or user.rol in 'TE'  or user.rol in 'AST' or user.rol in 'FNZ'%}
                     <li class="nav-item">
                         <a class="nav-link text-white" href="{% url 'registrar_horas' %}">Registro</a>
                     </li>
@@ -130,6 +110,31 @@
                         <a class="nav-link text-white" href="{% url 'mis_incapacidades' %}">Mis Incapacidades</a>
                     </li>
                     {%endif%}
+
+
+
+                    <!-- Opciones Administrativas (solo JD del departamento ADMON) -->
+                    {% if user.departamento.nombre in 'ADMON'  %}
+                    
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-white" href="#" id="reportesDropdown" role="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            RRHH
+                        </a>
+                        
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="reportesDropdown">
+                            <li >
+                                <a class="dropdown-item" href="{% url 'ajuste_vacaciones' %}">Ajustar Vacaciones</a>
+                            </li>
+                            <li><a class="dropdown-item" href="{% url 'reporte_horas_extra' %}">Reporte Horas Extras</a></li>
+                            <li><a class="dropdown-item" href="{% url 'lista_incapacidades' %}">Reporte Incapacidades</a></li>
+                            <li><a class="dropdown-item" href="{% url 'reporte_solicitudes' %}">Reporte Solicitudes</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+
+
+                    
 
 
 
