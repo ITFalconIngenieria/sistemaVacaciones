@@ -488,8 +488,6 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
         form.instance.requisitos_confirmados = form.cleaned_data.get('confirmacion_requisitos')
 
 
-
-        
         solicitudes_en_conflicto = Solicitud.objects.filter(
             usuario=usuario,
         ).exclude(id=self.object.id)
@@ -733,7 +731,7 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
 
             html_content = render_to_string("mail_solicitud.html", context)
             email_sender = MicrosoftGraphEmail()
-            subject = "Nueva solicitud pendiente de aprobación"
+            subject = "Nuevo registro de horas pendiente de aprobación"
             content=html_content
 
             try:
@@ -905,7 +903,7 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
 
             html_content = render_to_string("mail_editar_solicitud.html", context)
             email_sender = MicrosoftGraphEmail()
-            subject = "Nueva solicitud pendiente de aprobación"
+            subject = "Edición de registro de horas pendiente de aprobación"
             content=html_content
 
             try:
