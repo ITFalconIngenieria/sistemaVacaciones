@@ -1366,8 +1366,8 @@ class reporte_horas_extra_PDF(LoginRequiredMixin,View):
             registros_por_usuario[usuario_nombre]['registros'].append({
                 'numero_registro': registro.numero_registro,
                 'numero_proyecto': registro.numero_proyecto,
-                'fecha_inicio': registro.fecha_inicio.strftime("%#d de %B de %Y a las %H:%M"),
-                'fecha_fin': registro.fecha_fin.strftime("%#d de %B de %Y a las %H:%M"),
+                'fecha_inicio': registro.fecha_inicio,
+                'fecha_fin': registro.fecha_fin,
                 'horas': f"{registro.horas:.2f}",
                 'descripcion': registro.descripcion or ''
             })
