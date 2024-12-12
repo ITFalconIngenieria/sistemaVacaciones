@@ -6,46 +6,55 @@
 {% block content %}
 <div class="container mt-4">
     <h2 class="text-center mb-4">Aprobar/Rechazar Solicitud</h2>
-    <form method="post" class="card shadow p-4">
-        {% csrf_token %}
-        <div class="alert alert-warning">
-            <strong>Requisitos para la aprobación de esta solicitud:</strong>
-            <ul>
-                <li>Antes de aprobar esta solicitud confirma en Odoo que el colaborador 
-                    tiene el registro de sus horas de trabajo al dia.</li>
-                    <li>El colaborador deberá entregarle su teléfono de trabajo y colocar un 
-                        forward en su correo electrónico.
-                        Caso contrario deberá atender llamadas, mensajes y correos.</li>
-                        <li>Revisar con el colaborador las asignaciones que tiene y a quien se las delegó</li>
-            </ul>
-        </div>
-        <div class="mb-3">
-            <p><strong>Nº Solicitud:</strong> {{ object.numero_solicitud }}</p>
-            <p><strong>Colaborador:</strong> {{ object.usuario.get_full_name }}</p>
-            <p><strong>Tipo:</strong> {{ object.get_tipo_display }}</p>
-            <p><strong>Fecha Inicio:</strong> {{ object.fecha_inicio|date:"d/M/Y H:i"}}</p>
-            <p><strong>Fecha Fin:</strong> {{ object.fecha_fin|date:"d/M/Y H:i"}}</p>
-            <p><strong>Horas:</strong> {{ object.horas }}</p>
-            <p><strong>Dias:</strong> {{ object.dias_solicitados }}</p>
-            <!-- <p><strong>Confirmación de Requisitos:</strong> 
-                <span class="badge {% if object.requisitos_confirmados %}bg-success{% else %}bg-danger{% endif %}">
-                    {% if object.requisitos_confirmados %}
-                        Sí
-                    {% else %}
-                        No
-                    {% endif %}
-                </span>
-            </p> -->
-        </div>
-        <div class="mb-3">
-            <label for="id_estado" class="form-label">Estado:</label>
-            {{ form.estado|add_class:"form-select" }}
+    <div class="row">
+        
 
+        <!-- Columna del formulario -->
+        <div class="col-md-8">
+            <form method="post" class="card shadow p-4">
+                {% csrf_token %}
+                <div class="alert alert-warning">
+                    <strong>Requisitos para la aprobación de esta solicitud:</strong>
+                    <ul>
+                        <li>Antes de aprobar esta solicitud confirma en Odoo que el colaborador 
+                            tiene el registro de sus horas de trabajo al día.</li>
+                        <li>El colaborador deberá entregarle su teléfono de trabajo y colocar un 
+                            forward en su correo electrónico. Caso contrario deberá atender llamadas, mensajes y correos.</li>
+                        <li>Revisar con el colaborador las asignaciones que tiene y a quién se las delegó.</li>
+                    </ul>
+                </div>
+                <div class="mb-3">
+                    <p><strong>Nº Solicitud:</strong> {{ object.numero_solicitud }}</p>
+                    <p><strong>Colaborador:</strong> {{ object.usuario.get_full_name }}</p>
+                    <p><strong>Tipo:</strong> {{ object.get_tipo_display }}</p>
+                    <p><strong>Fecha Inicio:</strong> {{ object.fecha_inicio|date:"d/M/Y H:i" }}</p>
+                    <p><strong>Fecha Fin:</strong> {{ object.fecha_fin|date:"d/M/Y H:i" }}</p>
+                    <p><strong>Horas:</strong> {{ object.horas }}</p>
+                    <p><strong>Días:</strong> {{ object.dias_solicitados }}</p>
+                </div>
+                <div class="mb-3">
+                    <label for="id_estado" class="form-label">Estado:</label>
+                    {{ form.estado|add_class:"form-select" }}
+                </div>
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                    <a href="{% url 'lista_solicitudes' %}" class="btn btn-secondary">Cancelar</a>
+                </div>
+            </form>
         </div>
-        <div class="d-flex justify-content-between">
-            <button type="submit" class="btn btn-primary">Guardar</button>
-            <a href="{% url 'lista_solicitudes' %}" class="btn btn-secondary">Cancelar</a>
+        <!-- Columna de la tarjeta con información adicional -->
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Información de: {{object.usuario.get_full_name}}</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Días de vacaciones disponibles:</strong> {{ dias_disponibles }}</p>
+                    <p><strong>Horas compensatorias disponibles:</strong> {{ horas_compensatorias }}</p>
+                    <p><strong>Horas extras:</strong> {{ horas_extra }}</p>
+                </div>
+            </div>
         </div>
-    </form>
+    </div>
 </div>
 {% endblock %}

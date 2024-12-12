@@ -206,9 +206,7 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
 
     def get_initial(self):
         initial = super().get_initial()
-        # Generar un UUID único para 'numero_solicitud'
         numero_solicitud = uuid.uuid4()
-        # Formatear el UUID en el campo inicial
         initial['numero_solicitud'] = f"S-{str(numero_solicitud)[:8]}"  # Tomar los primeros 8 caracteres del UUID
         return initial
 
@@ -373,6 +371,20 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
     fields = ['estado']
     template_name = 'aprobar_rechazar_solicitud.html'
     success_url = reverse_lazy('lista_solicitudes')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        registro = self.get_object()
+        usuario = registro.usuario
+
+        dias_data = calcular_dias_disponibles(usuario)
+        horas_data = calcular_horas_individuales(usuario)
+
+        context['dias_disponibles'] = dias_data.get('dias_disponibles', 0)
+        context['horas_compensatorias'] = horas_data.get('HC', 0)
+        context['horas_extrass'] = horas_data.get('HE', 0)
+
+        return context
 
     def test_func(self):
         solicitud = self.get_object()
@@ -765,14 +777,28 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
     template_name = 'aprobar_rechazar_horas.html'
     success_url = reverse_lazy('lista_solicitudes')
     
+    
     def test_func(self):
         registro = self.get_object()
         return registro.usuario != self.request.user and self.request.user.rol in ['GG', 'JI', 'JD']
 
-    def form_valid(self, form):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
         registro = self.get_object()
         usuario = registro.usuario
 
+        dias_data = calcular_dias_disponibles(usuario)
+        horas_data = calcular_horas_individuales(usuario)
+
+        context['dias_disponibles'] = dias_data.get('dias_disponibles', 0)
+        context['horas_compensatorias'] = horas_data.get('HC', 0)
+        context['horas_extrass'] = horas_data.get('HE', 0)
+        
+        return context
+    
+    def form_valid(self, form):
+        registro = self.get_object()
+        usuario = registro.usuario
         if form.instance.estado == 'A':  
             if registro.tipo =='HEF':
                 registro.save()
