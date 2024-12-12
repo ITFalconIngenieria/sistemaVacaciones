@@ -371,7 +371,7 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
     fields = ['estado']
     template_name = 'aprobar_rechazar_solicitud.html'
     success_url = reverse_lazy('lista_solicitudes')
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         registro = self.get_object()
@@ -382,7 +382,7 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
 
         context['dias_disponibles'] = dias_data.get('dias_disponibles', 0)
         context['horas_compensatorias'] = horas_data.get('HC', 0)
-        context['horas_extrass'] = horas_data.get('HE', 0)
+        context['horas_extras'] = horas_data.get('HE', 0)
 
         return context
 
@@ -792,7 +792,7 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
 
         context['dias_disponibles'] = dias_data.get('dias_disponibles', 0)
         context['horas_compensatorias'] = horas_data.get('HC', 0)
-        context['horas_extrass'] = horas_data.get('HE', 0)
+        context['horas_extras'] = horas_data.get('HE', 0)
         
         return context
     
