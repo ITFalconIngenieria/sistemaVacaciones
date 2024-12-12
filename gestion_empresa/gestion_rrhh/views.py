@@ -278,6 +278,7 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
             form.instance.dias_solicitados = dias_solicitados - total_days_no_work
 
         elif tipo_solicitud == 'HC':
+            form.instance.descripcion="Horas Compensatorias"
             feriados = FeriadoNacional.objects.filter(
                 fecha__range=[fecha_inicio.date(), fecha_fin.date()]
             )
@@ -559,6 +560,7 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
             form.instance.dias_solicitados = dias_solicitados - total_days_no_work
 
         elif tipo_solicitud == 'HC':
+            form.instance.descripcion="Horas Compensatorias"
             feriados = FeriadoNacional.objects.filter(
                 fecha__range=[fecha_inicio.date(), fecha_fin.date()]
             )
@@ -620,7 +622,7 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
 
             html_content = render_to_string("mail_editar_solicitud.html", context)
             email_sender = MicrosoftGraphEmail()
-            subject = "Nueva solicitud pendiente de aprobación"
+            subject = "Edición de solicitud pendiente de aprobación"
             content=html_content
 
             try:
