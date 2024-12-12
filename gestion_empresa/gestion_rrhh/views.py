@@ -278,44 +278,47 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
             form.instance.dias_solicitados = dias_solicitados - total_days_no_work
 
         elif tipo_solicitud == 'HC':
-            diferencia = fecha_fin - fecha_inicio
-            horas_solicitadas = diferencia.total_seconds() / 3600
-            tz = get_current_timezone()
-            almuerzo_inicio = make_aware(datetime.combine(fecha_inicio.date(), time(12, 0)), tz)
-            almuerzo_fin = make_aware(datetime.combine(fecha_inicio.date(), time(13, 0)), tz)
-
-
             feriados = FeriadoNacional.objects.filter(
-            fecha__range=[fecha_inicio.date(), fecha_fin.date()]
+                fecha__range=[fecha_inicio.date(), fecha_fin.date()]
             )
+            horas_totales = 0
+            fecha_actual = fecha_inicio.date()
+            tz = get_current_timezone()
 
-
-            non_working_dates = [
-                date for date in (fecha_inicio.date() + timedelta(n) for n in range((fecha_fin.date() - fecha_inicio.date()).days + 1)) 
-                if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
-            ]
-
-            if non_working_dates:
-                non_working_str = ", ".join(date.strftime("%d/%m/%Y (%A)") for date in non_working_dates)
-                form.add_error(None, f"La solicitud incluye días no laborables: {non_working_str}. Por favor, selecciona otro rango.")
-                return self.form_invalid(form)
-
-            if fecha_inicio < almuerzo_fin and fecha_fin > almuerzo_inicio:
-                horas_solicitadas -= 1
-
-            if horas_solicitadas > 9:
-                form.add_error(None, "La cantidad de horas solicitadas excede las 9 horas permitidas.")
-                return self.form_invalid(form)
+            while fecha_actual <= fecha_fin.date():
+                if (fecha_actual.weekday() < 5 and 
+                    fecha_actual not in [feriado.fecha for feriado in feriados]):
+                    
+                    inicioDia = make_aware(datetime.combine(fecha_actual, time(7, 0)), tz)
+                    finDia = make_aware(datetime.combine(fecha_actual, time(17, 0)), tz)
+                    
+                    inicioValido = max(fecha_inicio, inicioDia)
+                    finValido = min(fecha_fin, finDia)
+                    
+                    if inicioValido < finValido:
+                        horasDia = (finValido - inicioValido).total_seconds() / 3600
+                        
+                        almuerzoInicio = make_aware(datetime.combine(fecha_actual, time(12, 0)), tz)
+                        almuerzoFin = make_aware(datetime.combine(fecha_actual, time(13, 0)), tz)
+                        
+                        if inicioValido <= almuerzoFin and finValido >= almuerzoInicio:
+                            horasDia -= 1
+                        
+                        horasDia = min(horasDia, 9)
+                        horas_totales += horasDia
+                
+                fecha_actual += timedelta(days=1)
             
+            horas_solicitadas = horas_totales
             if horas_solicitadas > horas_compensatorias:
                 form.add_error(None, f"No tienes suficientes Horas compensatorias disponibles (horas disponibles: {horas_compensatorias}).")
                 return self.form_invalid(form)
             
             form.instance.horas = horas_solicitadas
-        
+
         form.instance.numero_solicitud = form.cleaned_data['numero_solicitud']
         messages.success(self.request, 'Solicitud creada correctamente y pendiente de aprobación.')
-        
+
         jefe = self.request.user.jefe
         if jefe and jefe.email:
             fecha_ajustada = now() - timedelta(hours=6)
@@ -556,43 +559,46 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
             form.instance.dias_solicitados = dias_solicitados - total_days_no_work
 
         elif tipo_solicitud == 'HC':
-            form.instance.descripcion="Horas Compensatorias"
-            diferencia = fecha_fin - fecha_inicio
-            horas_solicitadas = diferencia.total_seconds() / 3600
-
-            tz = get_current_timezone()
-            almuerzo_inicio = make_aware(datetime.combine(fecha_inicio.date(), time(12, 0)), tz)
-            almuerzo_fin = make_aware(datetime.combine(fecha_inicio.date(), time(13, 0)), tz)
-
             feriados = FeriadoNacional.objects.filter(
-            fecha__range=[fecha_inicio.date(), fecha_fin.date()]
+                fecha__range=[fecha_inicio.date(), fecha_fin.date()]
             )
+            horas_totales = 0
+            fecha_actual = fecha_inicio.date()
+            tz = get_current_timezone()
 
-
-            non_working_dates = [
-                date for date in (fecha_inicio.date() + timedelta(n) for n in range((fecha_fin.date() - fecha_inicio.date()).days + 1)) 
-                if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
-            ]
-
-            if non_working_dates:
-                non_working_str = ", ".join(date.strftime("%d/%m/%Y (%A)") for date in non_working_dates)
-                form.add_error(None, f"La solicitud incluye días no laborables: {non_working_str}. Por favor, selecciona otro rango.")
-                return self.form_invalid(form)
-
-            if fecha_inicio < almuerzo_fin and fecha_fin > almuerzo_inicio:
-                horas_solicitadas -= 1
-
-            if horas_solicitadas > 9:
-                form.add_error(None, "La cantidad de horas solicitadas excede las 9 horas permitidas.")
-                return self.form_invalid(form)
-
+            while fecha_actual <= fecha_fin.date():
+                if (fecha_actual.weekday() < 5 and 
+                    fecha_actual not in [feriado.fecha for feriado in feriados]):
+                    
+                    inicioDia = make_aware(datetime.combine(fecha_actual, time(7, 0)), tz)
+                    finDia = make_aware(datetime.combine(fecha_actual, time(17, 0)), tz)
+                    
+                    inicioValido = max(fecha_inicio, inicioDia)
+                    finValido = min(fecha_fin, finDia)
+                    
+                    if inicioValido < finValido:
+                        horasDia = (finValido - inicioValido).total_seconds() / 3600
+                        
+                        almuerzoInicio = make_aware(datetime.combine(fecha_actual, time(12, 0)), tz)
+                        almuerzoFin = make_aware(datetime.combine(fecha_actual, time(13, 0)), tz)
+                        
+                        if inicioValido <= almuerzoFin and finValido >= almuerzoInicio:
+                            horasDia -= 1
+                        
+                        horasDia = min(horasDia, 9)
+                        horas_totales += horasDia
+                
+                fecha_actual += timedelta(days=1)
+            
+            horas_solicitadas = horas_totales
             if horas_solicitadas > horas_compensatorias:
                 form.add_error(None, f"No tienes suficientes Horas compensatorias disponibles (horas disponibles: {horas_compensatorias}).")
                 return self.form_invalid(form)
-
+            
             form.instance.horas = horas_solicitadas
 
-        messages.success(self.request, 'Solicitud actualizada correctamente.')
+        form.instance.numero_solicitud = form.cleaned_data['numero_solicitud']
+        messages.success(self.request, 'Solicitud creada correctamente y pendiente de aprobación.')
 
         
         jefe = self.request.user.jefe

@@ -11,10 +11,10 @@
         {% csrf_token %}
         {{ form|crispy }}
         <div class="alert alert-info" id="dias-solicitados">
-            La cantidad de días solicitados es:  días.
+            La cantidad de días solicitados es: días.
         </div>
         <div class="alert alert-info" id="horas-solicitadas">
-            La cantidad de horas solicitadas es:  horas.
+            La cantidad de horas solicitadas es: horas.
         </div>
         {% if form.non_field_errors %}
         <div class="alert alert-danger" id="form-errors" style="display: none;">
@@ -43,26 +43,15 @@
         });
 
 
-        function ocultarMensajes() {
-            diasSolicitadosInfo.style.display = 'none';
-            diasSolicitadosInfo.textContent = '';
-            horasSolicitadasInfo.style.display = 'none';
-            horasSolicitadasInfo.textContent = '';
-        }
-
         function verificarErroresFormulario() {
             if (formErrors && formErrors.textContent.trim() !== '') {
                 ocultarMensajes();
             }
         }
 
-
-
-
         let diasFeriados = [];
 
         async function obtenerFeriados(fechaInicio, fechaFin) {
-            // Eliminar la hora de las fechas
             const fechaInicioSinHora = fechaInicio.split(' ')[0];
             const fechaFinSinHora = fechaFin.split(' ')[0];
 
@@ -76,31 +65,60 @@
         }
 
 
-
-
         function calcularHorasSolicitadas() {
             const fechaInicio = new Date(fechaInicioInput.value);
             const fechaFin = new Date(fechaFinInput.value);
 
             if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
-                let diferenciaTiempo = fechaFin - fechaInicio;
-                let horas = diferenciaTiempo / (1000 * 60 * 60);
+                let horasTotales = 0;
 
-                const almuerzoInicio = new Date(fechaInicio);
-                almuerzoInicio.setHours(12, 0, 0, 0);
+                let fechaActual = new Date(fechaInicio);
+                while (fechaActual <= fechaFin) {
+                    const esFeriado = diasFeriados.some(f => {
+                        const feriado = new Date(f);
+                        feriado.setUTCHours(6, 0, 0, 0);
+                        return feriado.getTime() === fechaActual.getTime();
+                    });
+                    const esDiaLaborable = fechaActual.getUTCDay() !== 6 && fechaActual.getUTCDay() !== 0 && !esFeriado;
 
-                const almuerzoFin = new Date(fechaInicio);
-                almuerzoFin.setHours(13, 0, 0, 0);
+                    if (esDiaLaborable) {
+                        const inicioDia = new Date(fechaActual);
+                        inicioDia.setHours(7, 0, 0, 0);
 
-                if (fechaInicio <= almuerzoInicio && fechaFin >= almuerzoFin) {
-                    horas -= 1;
+                        const finDia = new Date(fechaActual);
+                        finDia.setHours(17, 0, 0, 0);
+
+                        const inicioValido = fechaActual > inicioDia ? fechaActual : inicioDia;
+                        const finValido = fechaActual.toDateString() === fechaFin.toDateString() && fechaFin < finDia ? fechaFin : finDia;
+
+                        if (inicioValido < finValido) {
+                            let horasDia = (finValido - inicioValido) / (1000 * 60 * 60);
+                            const almuerzoInicio = new Date(fechaActual);
+                            almuerzoInicio.setHours(12, 0, 0, 0);
+
+                            const almuerzoFin = new Date(fechaActual);
+                            almuerzoFin.setHours(13, 0, 0, 0);
+
+                            if (inicioValido <= almuerzoInicio && finValido >= almuerzoFin) {
+                                horasDia -= 1;
+                            }
+
+                            horasDia = Math.min(horasDia, 9);
+                            horasTotales += horasDia;
+                        }
+                    }
+
+                    fechaActual.setDate(fechaActual.getDate() + 1);
+                    fechaActual.setHours(0, 0, 0, 0);
                 }
 
-                horasSolicitadasInfo.textContent = `La cantidad de horas solicitadas es: ${Math.round(horas * 100) / 100} horas.`;
+                horasSolicitadasInfo.textContent = `La cantidad de horas solicitadas es: ${(horasTotales * 100) / 100} horas.`;
             } else {
                 horasSolicitadasInfo.textContent = `La cantidad de horas solicitadas es: 0 horas.`;
             }
         }
+
+
 
         function calcularDiasSolicitados() {
             const fechaInicio = new Date(fechaInicioInput.value);
@@ -136,7 +154,7 @@
 
 
         async function actualizarCalculos() {
-            const fechaInicioSoloFecha = fechaInicioInput.value.split("T")[0]; // Extraer solo la fecha
+            const fechaInicioSoloFecha = fechaInicioInput.value.split("T")[0];
             const fechaFinSoloFecha = fechaFinInput.value.split("T")[0];
 
             if (tipoSelect.value === 'V') {
@@ -144,6 +162,8 @@
                 console.log('Días feriados:', diasFeriados);
                 calcularDiasSolicitados();
             } else if (tipoSelect.value === 'HC') {
+                diasFeriados = await obtenerFeriados(fechaInicioSoloFecha, fechaFinSoloFecha);
+                console.log('Días feriados:', diasFeriados);
                 calcularHorasSolicitadas();
             }
         }
@@ -154,7 +174,7 @@
                 diasSolicitadosInfo.style.display = 'block';
                 horasSolicitadasInfo.style.display = 'none';
                 calcularDiasSolicitados();
-            } else if (tipoSelect.value === 'HE' || tipoSelect.value === 'HC') {
+            } else if (tipoSelect.value === 'HC') {
                 diasSolicitadosInfo.style.display = 'none';
                 horasSolicitadasInfo.style.display = 'block';
                 calcularHorasSolicitadas();
@@ -164,8 +184,10 @@
             }
         }
 
+        if (fechaInicioInput.value && fechaFinInput.value) {
+            actualizarCalculos();
+        }
         mostrarOcultarDiasHoras();
-        verificarErroresFormulario()
         tipoSelect.addEventListener('change', mostrarOcultarDiasHoras);
         fechaInicioInput.addEventListener('change', actualizarCalculos);
         fechaFinInput.addEventListener('change', actualizarCalculos);
