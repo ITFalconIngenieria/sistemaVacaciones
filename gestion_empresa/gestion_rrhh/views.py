@@ -588,7 +588,7 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
                         almuerzoInicio = make_aware(datetime.combine(fecha_actual, time(12, 0)), tz)
                         almuerzoFin = make_aware(datetime.combine(fecha_actual, time(13, 0)), tz)
                         
-                        if inicioValido <= almuerzoFin and finValido >= almuerzoInicio:
+                        if inicioValido <= almuerzoInicio < finValido or inicioValido <almuerzoFin <= finValido:
                             horasDia -= 1
                         
                         horasDia = min(horasDia, 9)
