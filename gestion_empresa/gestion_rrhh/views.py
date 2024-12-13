@@ -286,7 +286,10 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
             fecha_actual = fecha_inicio.date()
             tz = get_current_timezone()
 
+            
+            print("aaaaa ",fecha_inicio, fecha_fin, fecha_actual)
             while fecha_actual <= fecha_fin.date():
+                
                 if (fecha_actual.weekday() < 5 and 
                     fecha_actual not in [feriado.fecha for feriado in feriados]):
                     
@@ -302,8 +305,9 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                         almuerzoInicio = make_aware(datetime.combine(fecha_actual, time(12, 0)), tz)
                         almuerzoFin = make_aware(datetime.combine(fecha_actual, time(13, 0)), tz)
                         
-                        if inicioValido <= almuerzoFin and finValido >= almuerzoInicio:
+                        if inicioValido <= almuerzoInicio < finValido or inicioValido <almuerzoFin <= finValido:
                             horasDia -= 1
+
                         
                         horasDia = min(horasDia, 9)
                         horas_totales += horasDia
