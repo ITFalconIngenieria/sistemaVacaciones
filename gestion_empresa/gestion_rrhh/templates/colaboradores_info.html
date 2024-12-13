@@ -10,10 +10,7 @@
         <thead>
             <tr>
                 <th>Nombre</th>
-                <th>Vacaciones</th>
-                <th>Días Tomados</th>
-                <!-- <th>Días Ajustados</th> -->
-                <th>Días Disponibles</th>
+                <th>Vacaciones Disponibles</th>
                 <th>Horas Compensatorias</th>
                 <th>Horas Extras</th>
                 
@@ -23,10 +20,7 @@
             {% for data in page_obj %}
             <tr>
                 <td>{{ data.usuario.get_full_name }}</td>
-                <td>{{ data.dias_data.total_asignados }}</td>
-                <td>{{ data.dias_data.total_tomados }}</td>
-                <!-- <td>{{ data.dias_data.total_ajustados }}</td> -->
-                <td>{{ data.dias_data.dias_disponibles }}</td>
+                <td>{{ data.dias_data.dias_disponibles }}</td>         
                 <td>{{ data.horas_data.HC }}</td>
                 <td>{{ data.horas_data.HE }}</td>
                 
