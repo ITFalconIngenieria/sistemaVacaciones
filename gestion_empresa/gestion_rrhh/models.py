@@ -190,15 +190,27 @@ class RegistroHoras(models.Model):
     def es_eliminable(self):
         return date.today() <= self.fecha_inicio.date()
 
+
     def calcular_horas(self):
+        feriados = FeriadoNacional.objects.values_list('fecha', flat=True)
+
+        print("feriados ", feriados)
+        
         delta = self.fecha_fin - self.fecha_inicio
         total_horas = delta.total_seconds() / 3600
 
         almuerzo_inicio = self.fecha_inicio.replace(hour=12, minute=0, second=0, microsecond=0)
         almuerzo_fin = self.fecha_inicio.replace(hour=13, minute=0, second=0, microsecond=0)
 
-        if self.fecha_inicio <= almuerzo_inicio < self.fecha_fin or self.fecha_inicio < almuerzo_fin <= self.fecha_fin:
-            total_horas -= 1 
+        es_dia_especial = (
+            self.fecha_inicio.date() in feriados or
+            self.fecha_inicio.weekday() >= 5
+        )
+
+        # Solo restar hora de almuerzo si NO es un día especial
+        if not es_dia_especial:
+            if self.fecha_inicio <= almuerzo_inicio < self.fecha_fin or self.fecha_inicio < almuerzo_fin <= self.fecha_fin:
+                total_horas -= 1 
 
         total_horas = max(total_horas, 0) 
         return Decimal(total_horas).quantize(Decimal('0.01'))
