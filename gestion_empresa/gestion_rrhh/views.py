@@ -74,76 +74,175 @@ def calcular_horas_individuales(usuario):
     horas_por_tipo['HC'] -= horas_solicitudes_hc
     return horas_por_tipo
 
+# @login_required
+# def dashboard(request):
+#     usuario = request.user
+#     fecha_actual =(now() - timedelta(hours=6)).date()
+#     fecha_hora_actual =(now() - timedelta(hours=6))
+#     # fecha_actual = now().date()
+#     fecha_limite = fecha_actual + timedelta(days=30)
+#     dias_data = calcular_dias_disponibles(usuario)
+#     dias_disponibles = dias_data['dias_disponibles']
+#     horas_data = calcular_horas_individuales(usuario)
+#     horas_extra = horas_data['HE']
+#     horas_compensatorias = horas_data['HC']
+
+#     vacaciones_aprobadas = Solicitud.objects.filter(
+#         estado='A',
+#         tipo='V',
+#         fecha_fin__gte=fecha_actual
+#     ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin', 'tipo')
+
+#     horas_aprobadas = Solicitud.objects.filter(
+#         estado='A',
+#         tipo='HC',
+#         fecha_fin__gte=fecha_hora_actual
+#     ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin', 'tipo')
+
+#     incapacidades_aprobadas = Incapacidad.objects.filter(
+#         fecha_fin__gte=fecha_actual
+#     ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin')
+
+#     eventos = []
+
+#     for vacacion in vacaciones_aprobadas:
+#         nombre_completo = f"{vacacion['usuario__first_name']} {vacacion['usuario__last_name']}"
+        
+#         title = f"{nombre_completo} (Vacaciones)"
+#         description = f'Inicio: {vacacion["fecha_inicio"].strftime("%Y-%m-%d")} - Fin: {vacacion["fecha_fin"].strftime("%Y-%m-%d")}'
+#         start = vacacion['fecha_inicio'].strftime("%Y-%m-%d") 
+#         end = (vacacion['fecha_fin'] + timedelta(days=1)).strftime("%Y-%m-%d")
+#         color = "#e74c3c"
+#         eventos.append({
+#             "title": title,
+#             "start": start,
+#             "end": end,
+#             "description": description,
+#             "color": color
+#         })
+
+#     for hora in horas_aprobadas:
+#         nombre_completo = f"{hora['usuario__first_name']} {hora['usuario__last_name']}"
+        
+#         title = f"{nombre_completo} (HC)"
+#         description = f"Inicio: {hora['fecha_inicio'].strftime('%H:%M')} - Fin: {hora['fecha_fin'].strftime('%H:%M')}"
+#         start = hora['fecha_inicio'].strftime("%Y-%m-%d")
+#         end = hora['fecha_fin'].strftime("%Y-%m-%d")
+#         color = "#f39c12"
+#         eventos.append({
+#             "title": title,
+#             "start": start,
+#             "end": end,
+#             "description": description,
+#             "color": color
+#         })
+
+#     for incapacidad in incapacidades_aprobadas:
+#         nombre_completo = f"{incapacidad['usuario__first_name']} {incapacidad['usuario__last_name']}"
+#         title = f"{nombre_completo} (Incapacidad)"
+#         description = f'Inicio: {incapacidad["fecha_inicio"].strftime("%Y-%m-%d")} - Fin: {incapacidad["fecha_fin"].strftime("%Y-%m-%d")}'
+#         start = incapacidad['fecha_inicio'].strftime("%Y-%m-%d")
+#         end = (incapacidad['fecha_fin'] + timedelta(days=1)).strftime("%Y-%m-%d")
+#         color = "#9b9b9b"
+
+#         eventos.append({
+#             "title": title,
+#             "start": start,
+#             "end": end,
+#             "description": description,
+#             "color": color
+#         })
+
+#     context = {
+#         'user': usuario,
+#         'dias_vacaciones_disponibles': dias_disponibles,
+#         'horas_extra':horas_extra,
+#         'horas_compensatorias':horas_compensatorias,
+#         'eventos': json.dumps(eventos),
+#     }
+#     return render(request, 'dashboard.html', context)
+
+
+
 @login_required
 def dashboard(request):
     usuario = request.user
-    fecha_actual =(now() - timedelta(hours=6)).date()
-    # fecha_actual = now().date()
-    fecha_limite = fecha_actual + timedelta(days=30)
-    dias_data = calcular_dias_disponibles(usuario)
-    dias_disponibles = dias_data['dias_disponibles']
-    horas_data = calcular_horas_individuales(usuario)
-    horas_extra = horas_data['HE']
-    horas_compensatorias = horas_data['HC']
+    fecha_actual = (now() - timedelta(hours=6)).date()
+    fecha_hora_actual = (now() - timedelta(hours=6))
 
+    # Obtener todos los feriados
+    feriados = FeriadoNacional.objects.all()
+    feriados_fechas = {feriado.fecha for feriado in feriados}  # Set para optimización
 
-    solicitudes_aprobadas = Solicitud.objects.filter(
-        estado='A',
-        fecha_fin__gte=fecha_actual
-    ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin', 'tipo')
+    # Función para verificar si una fecha es válida (no es fin de semana ni feriado)
+    def es_fecha_valida(fecha):
+        return fecha.weekday() < 5 and fecha not in feriados_fechas  # Lunes-Viernes y no feriado
 
-    incapacidades_aprobadas = Incapacidad.objects.filter(
-        fecha_fin__gte=fecha_actual
-    ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin')
+    # Generar eventos finales solo con fechas válidas
+    def generar_eventos_validos(nombre, tipo, fecha_inicio, fecha_fin, descripcion, color):
+        eventos_validos = []
+        fecha_actual = fecha_inicio
+        while fecha_actual <= fecha_fin:
+            if es_fecha_valida(fecha_actual):
+                eventos_validos.append({
+                    "title": f"{nombre} ({tipo})",
+                    "start": fecha_actual.strftime("%Y-%m-%d"),
+                    "end": (fecha_actual + timedelta(days=1)).strftime("%Y-%m-%d"),
+                    "description": descripcion,
+                    "color": color
+                })
+            fecha_actual += timedelta(days=1)
+        return eventos_validos
 
     eventos = []
 
-    for solicitud in solicitudes_aprobadas:
-        nombre_completo = f"{solicitud['usuario__first_name']} {solicitud['usuario__last_name']}"
-        if solicitud['tipo'] == 'V':
-            title = f"{nombre_completo} (Vacaciones)"
-            description = f'Inicio: {solicitud["fecha_inicio"].strftime("%Y-%m-%d")} - Fin: {solicitud["fecha_fin"].strftime("%Y-%m-%d")}'
-            start = solicitud['fecha_inicio'].strftime("%Y-%m-%d") 
-            end = (solicitud['fecha_fin'] + timedelta(days=1)).strftime("%Y-%m-%d")
-            color = "#e74c3c"
-        else:
-            title = f"{nombre_completo} (HC)"
-            description = f"Inicio: {solicitud['fecha_inicio'].strftime('%H:%M')} - Fin: {solicitud['fecha_fin'].strftime('%H:%M')}"
-            start = solicitud['fecha_inicio'].strftime("%Y-%m-%d")
-            end = solicitud['fecha_fin'].strftime("%Y-%m-%d")
-            color = "#f39c12"
+    # Procesar vacaciones aprobadas
+    for vacacion in Solicitud.objects.filter(estado='A', tipo='V', fecha_fin__gte=fecha_actual):
+        nombre_completo = f"{vacacion.usuario.first_name} {vacacion.usuario.last_name}"
+        fecha_inicio = vacacion.fecha_inicio.date()
+        fecha_fin = vacacion.fecha_fin.date()
+        descripcion = f"Inicio: {fecha_inicio} - Fin: {fecha_fin}"
+        eventos += generar_eventos_validos(nombre_completo, "Vacaciones", fecha_inicio, fecha_fin, descripcion, "#e74c3c")
+
+    # Procesar horas compensatorias aprobadas
+    for hora in Solicitud.objects.filter(estado='A', tipo='HC', fecha_fin__gte=fecha_hora_actual):
+        nombre_completo = f"{hora.usuario.first_name} {hora.usuario.last_name}"
+        fecha_inicio = hora.fecha_inicio.date()
+        fecha_fin = hora.fecha_fin.date()
+        descripcion = f"Inicio: {hora.fecha_inicio.strftime('%H:%M')} - Fin: {hora.fecha_fin.strftime('%H:%M')}"
+        eventos += generar_eventos_validos(nombre_completo, "HC", fecha_inicio, fecha_fin, descripcion, "#f39c12")
+
+    # Procesar incapacidades aprobadas
+    for incapacidad in Incapacidad.objects.filter(fecha_fin__gte=fecha_actual):
+        nombre_completo = f"{incapacidad.usuario.first_name} {incapacidad.usuario.last_name}"
+        fecha_inicio = incapacidad.fecha_inicio.date()
+        fecha_fin = incapacidad.fecha_fin.date()
+        descripcion = f"Inicio: {fecha_inicio} - Fin: {fecha_fin}"
+        eventos += generar_eventos_validos(nombre_completo, "Incapacidad", fecha_inicio, fecha_fin, descripcion, "#9b9b9b")
+
+    # Incluir los feriados como eventos
+    for feriado in feriados:
         eventos.append({
-            "title": title,
-            "start": start,
-            "end": end,
-            "description": description,
-            "color": color
+            "title": feriado.descripcion,  # Usar el campo descripción del feriado como título
+            "start": feriado.fecha.strftime("%Y-%m-%d"),
+            "end": (feriado.fecha + timedelta(days=1)).strftime("%Y-%m-%d"),
+            "description": f"Feriado: {feriado.descripcion}",
+            "color": "#09C1E6"  # Color gris claro para identificar feriados
         })
 
-    for incapacidad in incapacidades_aprobadas:
-        nombre_completo = f"{incapacidad['usuario__first_name']} {incapacidad['usuario__last_name']}"
-        title = f"{nombre_completo} (Incapacidad)"
-        description = f'Inicio: {incapacidad["fecha_inicio"].strftime("%Y-%m-%d")} - Fin: {incapacidad["fecha_fin"].strftime("%Y-%m-%d")}'
-        start = incapacidad['fecha_inicio'].strftime("%Y-%m-%d")
-        end = (incapacidad['fecha_fin'] + timedelta(days=1)).strftime("%Y-%m-%d")
-        color = "#9b9b9b"
-
-        eventos.append({
-            "title": title,
-            "start": start,
-            "end": end,
-            "description": description,
-            "color": color
-        })
-
+    # Pasar contexto al template
     context = {
         'user': usuario,
-        'dias_vacaciones_disponibles': dias_disponibles,
-        'horas_extra':horas_extra,
-        'horas_compensatorias':horas_compensatorias,
         'eventos': json.dumps(eventos),
     }
     return render(request, 'dashboard.html', context)
+
+
+
+
+
+
+
 
 def PerfilUsuario(request):
     usuario = request.user
