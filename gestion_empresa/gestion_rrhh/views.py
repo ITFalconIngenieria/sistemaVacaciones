@@ -174,6 +174,12 @@ def dashboard(request):
     feriados = FeriadoNacional.objects.all()
     feriados_fechas = {feriado.fecha for feriado in feriados}  # Set para optimización
 
+    dias_data = calcular_dias_disponibles(usuario)
+    dias_disponibles = dias_data['dias_disponibles']
+    horas_data = calcular_horas_individuales(usuario)
+    horas_extra = horas_data['HE']
+    horas_compensatorias = horas_data['HC']
+
     # Función para verificar si una fecha es válida (no es fin de semana ni feriado)
     def es_fecha_valida(fecha):
         return fecha.weekday() < 5 and fecha not in feriados_fechas  # Lunes-Viernes y no feriado
@@ -233,6 +239,9 @@ def dashboard(request):
     # Pasar contexto al template
     context = {
         'user': usuario,
+        'dias_vacaciones_disponibles': dias_disponibles,
+        'horas_extra':horas_extra,
+        'horas_compensatorias':horas_compensatorias,
         'eventos': json.dumps(eventos),
     }
     return render(request, 'dashboard.html', context)
