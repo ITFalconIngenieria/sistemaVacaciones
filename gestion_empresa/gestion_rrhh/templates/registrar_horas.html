@@ -51,31 +51,64 @@
             locale: 'es'
         });
 
-        function calcularHoras() {
+        let diasFeriados = [];
+
+        async function obtenerFeriados(fechaInicio, fechaFin) {
+            const fechaInicioSinHora = fechaInicio.split(' ')[0];
+            const fechaFinSinHora = fechaFin.split(' ')[0];
+
+            const response = await fetch(`/getferiados/?fecha_inicio=${fechaInicioSinHora}&fecha_fin=${fechaFinSinHora}`);
+            const feriados = await response.ok
+                ? (await response.json()).feriados.map(fecha => new Date(fecha))
+                : [];
+
+            console.log('Feriados obtenidos:', feriados);
+            return feriados;
+        }
+
+        async function calcularHoras() {
             const fechaInicio = new Date(fechaInicioInput.value);
             const fechaFin = new Date(fechaFinInput.value);
 
             if (fechaInicio && fechaFin && fechaFin > fechaInicio) {
                 let horas = (fechaFin - fechaInicio) / (1000 * 60 * 60);
 
-                // Descontar la hora de almuerzo si está incluida en el rango
-                const almuerzoInicio = new Date(fechaInicio);
-                almuerzoInicio.setHours(12, 0, 0, 0); // 12:00 PM
+                // Inicializar variables para verificar días excluidos
+                const esSabadoODomingo = (fecha) => fecha.getDay() === 0 || fecha.getDay() === 6;
+                let esFeriado = false;
 
-                const almuerzoFin = new Date(fechaInicio);
-                almuerzoFin.setHours(13, 0, 0, 0); // 1:00 PM
+                // Obtener feriados
+                diasFeriados = await obtenerFeriados(
+                    fechaInicio.toISOString().split('T')[0],
+                    fechaFin.toISOString().split('T')[0]
+                );
 
-                if (fechaInicio <= almuerzoInicio && fechaFin >= almuerzoFin) {
-                    horas -= 1; // Descontar 1 hora de almuerzo
+                // Verificar si la fecha inicial o final están dentro de los feriados
+                esFeriado = diasFeriados.some(
+                    (feriado) => fechaInicio <= feriado && fechaFin >= feriado
+                );
+
+                // Descontar la hora de almuerzo si no es sábado, domingo o feriado
+                if (!esSabadoODomingo(fechaInicio) && !esFeriado) {
+                    const almuerzoInicio = new Date(fechaInicio);
+                    almuerzoInicio.setHours(12, 0, 0, 0); // 12:00 PM
+
+                    const almuerzoFin = new Date(fechaInicio);
+                    almuerzoFin.setHours(13, 0, 0, 0); // 1:00 PM
+
+                    if (fechaInicio <= almuerzoInicio && fechaFin >= almuerzoFin) {
+                        horas -= 1; // Descontar 1 hora de almuerzo
+                    }
                 }
 
+                // Duplicar horas si es domingo y tipoHoras es 'HC'
                 if (fechaInicio.getDay() === 0 && fechaFin.getDay() === 0 && tipoHorasInput.value === 'HC') {
                     horas *= 2;
                 }
 
+                // Mostrar mensaje si es 'HEF'
                 if (tipoHorasInput.value === 'HEF') {
                     mensajeFeriadosDiv.style.display = 'block';
-
                 }
 
                 // Mostrar las horas calculadas con 2 decimales
@@ -96,6 +129,7 @@
         fechaInicioInput.addEventListener('change', calcularHoras);
         fechaFinInput.addEventListener('change', calcularHoras);
         tipoHorasInput.addEventListener('change', calcularHoras);
+
     });
 </script>
 {% endblock %}
