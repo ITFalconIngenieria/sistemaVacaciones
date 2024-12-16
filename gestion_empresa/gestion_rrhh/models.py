@@ -4,8 +4,6 @@ from datetime import date
 from decimal import Decimal
 from .validators import validate_username
 from django.conf import settings
-from datetime import datetime, time
-from django.utils.timezone import make_aware , get_current_timezone
 import random
 import string
 from django.template.loader import render_to_string

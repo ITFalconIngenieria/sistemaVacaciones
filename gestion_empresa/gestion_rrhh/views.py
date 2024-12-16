@@ -29,6 +29,7 @@ from django.utils.timezone import make_aware , get_current_timezone
 from django.http import JsonResponse
 import uuid
 import pytz
+
 def es_jefe(user):
     return user.rol in ['GG', 'JI', 'JD']
 
@@ -74,95 +75,6 @@ def calcular_horas_individuales(usuario):
     horas_por_tipo['HC'] -= horas_solicitudes_hc
     return horas_por_tipo
 
-# @login_required
-# def dashboard(request):
-#     usuario = request.user
-#     fecha_actual =(now() - timedelta(hours=6)).date()
-#     fecha_hora_actual =(now() - timedelta(hours=6))
-#     # fecha_actual = now().date()
-#     fecha_limite = fecha_actual + timedelta(days=30)
-#     dias_data = calcular_dias_disponibles(usuario)
-#     dias_disponibles = dias_data['dias_disponibles']
-#     horas_data = calcular_horas_individuales(usuario)
-#     horas_extra = horas_data['HE']
-#     horas_compensatorias = horas_data['HC']
-
-#     vacaciones_aprobadas = Solicitud.objects.filter(
-#         estado='A',
-#         tipo='V',
-#         fecha_fin__gte=fecha_actual
-#     ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin', 'tipo')
-
-#     horas_aprobadas = Solicitud.objects.filter(
-#         estado='A',
-#         tipo='HC',
-#         fecha_fin__gte=fecha_hora_actual
-#     ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin', 'tipo')
-
-#     incapacidades_aprobadas = Incapacidad.objects.filter(
-#         fecha_fin__gte=fecha_actual
-#     ).values('usuario__first_name', 'usuario__last_name', 'fecha_inicio', 'fecha_fin')
-
-#     eventos = []
-
-#     for vacacion in vacaciones_aprobadas:
-#         nombre_completo = f"{vacacion['usuario__first_name']} {vacacion['usuario__last_name']}"
-        
-#         title = f"{nombre_completo} (Vacaciones)"
-#         description = f'Inicio: {vacacion["fecha_inicio"].strftime("%Y-%m-%d")} - Fin: {vacacion["fecha_fin"].strftime("%Y-%m-%d")}'
-#         start = vacacion['fecha_inicio'].strftime("%Y-%m-%d") 
-#         end = (vacacion['fecha_fin'] + timedelta(days=1)).strftime("%Y-%m-%d")
-#         color = "#e74c3c"
-#         eventos.append({
-#             "title": title,
-#             "start": start,
-#             "end": end,
-#             "description": description,
-#             "color": color
-#         })
-
-#     for hora in horas_aprobadas:
-#         nombre_completo = f"{hora['usuario__first_name']} {hora['usuario__last_name']}"
-        
-#         title = f"{nombre_completo} (HC)"
-#         description = f"Inicio: {hora['fecha_inicio'].strftime('%H:%M')} - Fin: {hora['fecha_fin'].strftime('%H:%M')}"
-#         start = hora['fecha_inicio'].strftime("%Y-%m-%d")
-#         end = hora['fecha_fin'].strftime("%Y-%m-%d")
-#         color = "#f39c12"
-#         eventos.append({
-#             "title": title,
-#             "start": start,
-#             "end": end,
-#             "description": description,
-#             "color": color
-#         })
-
-#     for incapacidad in incapacidades_aprobadas:
-#         nombre_completo = f"{incapacidad['usuario__first_name']} {incapacidad['usuario__last_name']}"
-#         title = f"{nombre_completo} (Incapacidad)"
-#         description = f'Inicio: {incapacidad["fecha_inicio"].strftime("%Y-%m-%d")} - Fin: {incapacidad["fecha_fin"].strftime("%Y-%m-%d")}'
-#         start = incapacidad['fecha_inicio'].strftime("%Y-%m-%d")
-#         end = (incapacidad['fecha_fin'] + timedelta(days=1)).strftime("%Y-%m-%d")
-#         color = "#9b9b9b"
-
-#         eventos.append({
-#             "title": title,
-#             "start": start,
-#             "end": end,
-#             "description": description,
-#             "color": color
-#         })
-
-#     context = {
-#         'user': usuario,
-#         'dias_vacaciones_disponibles': dias_disponibles,
-#         'horas_extra':horas_extra,
-#         'horas_compensatorias':horas_compensatorias,
-#         'eventos': json.dumps(eventos),
-#     }
-#     return render(request, 'dashboard.html', context)
-
-
 
 @login_required
 def dashboard(request):
@@ -172,7 +84,7 @@ def dashboard(request):
 
     # Obtener todos los feriados
     feriados = FeriadoNacional.objects.all()
-    feriados_fechas = {feriado.fecha for feriado in feriados}  # Set para optimización
+    feriados_fechas = {feriado.fecha for feriado in feriados} 
 
     dias_data = calcular_dias_disponibles(usuario)
     dias_disponibles = dias_data['dias_disponibles']
@@ -182,7 +94,7 @@ def dashboard(request):
 
     # Función para verificar si una fecha es válida (no es fin de semana ni feriado)
     def es_fecha_valida(fecha):
-        return fecha.weekday() < 5 and fecha not in feriados_fechas  # Lunes-Viernes y no feriado
+        return fecha.weekday() < 5 and fecha not in feriados_fechas
 
     # Generar eventos finales solo con fechas válidas
     def generar_eventos_validos(nombre, tipo, fecha_inicio, fecha_fin, descripcion, color):
@@ -233,10 +145,9 @@ def dashboard(request):
             "start": feriado.fecha.strftime("%Y-%m-%d"),
             "end": (feriado.fecha + timedelta(days=1)).strftime("%Y-%m-%d"),
             "description": f"Feriado: {feriado.descripcion}",
-            "color": "#09C1E6"  # Color gris claro para identificar feriados
+            "color": "#09C1E6"
         })
 
-    # Pasar contexto al template
     context = {
         'user': usuario,
         'dias_vacaciones_disponibles': dias_disponibles,
@@ -1418,18 +1329,14 @@ def ajuste_vacaciones(request):
 
 
 @login_required
-
 def historial_ajustes_vacaciones(request):
     if request.user.rol != 'GG':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
     
     ajustes = AjusteVacaciones.objects.select_related('usuario', 'ajustado_por').order_by('-fecha_ajuste')
 
-    paginator = Paginator(ajustes, 8)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    return render(request, 'historial_ajustes_vacaciones.html', {'ajustes': ajustes})
 
-    return render(request, 'historial_ajustes_vacaciones.html', {'page_obj': page_obj})
 
 
 @login_required
@@ -1890,14 +1797,11 @@ def colaboradores_info(request):
             'horas_data': horas_data,
         })
 
-    paginator = Paginator(colaboradores_data, 8)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-
     context = {
-        'page_obj': page_obj,
+        'colaboradores_data': colaboradores_data,
     }
     return render(request, 'colaboradores_info.html', context)
+
 
 
 
