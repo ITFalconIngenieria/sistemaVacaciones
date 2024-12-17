@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}Registrar Licencia{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Registrar Licencia</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+
+                        <div class="alert alert-info" id="mensaje-info" style="display: none;">
+                            <strong>Información:</strong> La fecha de fin se calculará automáticamente para Licencia de Lactancia y Matrimonio.
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100">Guardar Licencia</button>
+                        <a href="{% url 'dashboard' %}" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const tipoSelect = document.getElementById('id_tipo');
+        const fechaFinInput = document.getElementById('id_fecha_fin');
+        const mensajeInfo = document.getElementById('mensaje-info');
+
+        flatpickr('.flatpickr-datetime', {
+            enableTime: true,
+            dateFormat: 'Y-m-d H:i',
+            time_24hr: true,
+            locale: 'es'
+        });
+
+        function manejarTipoSeleccionado() {
+            if (tipoSelect.value === 'LAC' || tipoSelect.value === 'MAT') {
+                fechaFinInput.disabled = true;
+                mensajeInfo.style.display = 'block';
+            } else if (tipoSelect.value === 'CAL') {
+                fechaFinInput.disabled = false;
+                mensajeInfo.style.display = 'none';
+            } else {
+                fechaFinInput.disabled = false;
+                mensajeInfo.style.display = 'none';
+            }
+        }
+
+        tipoSelect.addEventListener('change', manejarTipoSeleccionado);
+        manejarTipoSeleccionado();
+    });
+</script>
+{% endblock %}

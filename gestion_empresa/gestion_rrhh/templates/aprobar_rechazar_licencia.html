@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}Aprobar/Rechazar Licencia{% endblock %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Aprobar/Rechazar Licencia</h2>
+    
+    <form method="post" class="shadow p-4 bg-white rounded">
+        {% csrf_token %}
+        <!-- Información general de la licencia -->
+        <div class="mb-3">
+            <p><strong>Colaborador:</strong> {{ object.usuario.get_full_name }}</p>
+            <p><strong>Tipo de Licencia:</strong> {{ object.get_tipo_display }}</p>
+            <p><strong>Fecha y Hora de Inicio:</strong> {{ object.fecha_inicio|date:"d/M/Y H:i" }}</p>
+            <p><strong>Fecha y Hora de Fin:</strong> {{ object.fecha_fin|date:"d/M/Y H:i" }}</p>
+            {% if object.horas_totales %}
+                <p><strong>Horas Totales:</strong> {{ object.horas_totales }}</p>
+            {% endif %}
+            <p><strong>Descripción:</strong> {{ object.descripcion|default:"-" }}</p>
+        </div>
+
+        <!-- Campo para actualizar el estado -->
+        <div class="mb-3">
+            <label for="id_estado" class="form-label">Estado:</label>
+            {{ form.estado|add_class:"form-select" }}
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="d-flex justify-content-end gap-2">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a href="{% url 'lista_solicitudes' %}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

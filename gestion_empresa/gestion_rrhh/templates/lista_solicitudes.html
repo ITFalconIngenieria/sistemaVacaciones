@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 
-{% block title %}Lista de Solicitudes y Registros de Horas Pendientes de Aprobrar / Rechazar{% endblock %}
+{% block title %}Lista de Solicitudes, Registros de Horas y Licencias Pendientes{% endblock %}
 
 {% block content %}
-<h2>Lista de Solicitudes y Registros de Horas Pendientes de Aprobar / Rechazar</h2>
+<h2>Lista de Solicitudes, Registros de Horas y Licencias Pendientes</h2>
 
 <table class="table">
     <thead>
@@ -28,48 +28,68 @@
 
             <td>
                 {% if item.tipo_objeto == 'registro' %}
-                {{ item.numero_registro}}
+                    {{ item.numero_registro }}
+                {% elif item.tipo_objeto == 'solicitud' %}
+                    {{ item.numero_solicitud }}
+                {% elif item.tipo_objeto == 'licencia' %}
+                    N/A
                 {% endif %}
+            </td>
 
-                {% if item.tipo_objeto == 'solicitud' %}
-                {{ item.numero_solicitud}}
-                {% endif %}
-            </td>
             <td>
-                {{ item.numero_proyecto |default:"NA" }}
+                {{ item.numero_proyecto|default:"NA" }}
             </td>
-            <td>
-                {% if item.tipo_objeto == 'solicitud' %}
-                {{ item.get_tipo_display }}
-                {% endif %}
 
-                {% if item.tipo_objeto == 'registro' %}
-                {{ item.get_tipo_display }}
+            <td>
+                {% if item.tipo_objeto == 'solicitud' %}
+                    {{ item.get_tipo_display }}
+                {% elif item.tipo_objeto == 'registro' %}
+                    {{ item.get_tipo_display }}
+                {% elif item.tipo_objeto == 'licencia' %}
+                    {{ item.get_tipo_display }}
                 {% endif %}
             </td>
+
             <td>{{ item.fecha_inicio|date:"d/M/Y H:i" }}</td>
-            <td>{{ item.fecha_fin|date:"d/M/Y H:i"}}</td>
-            <td>{{ item.horas | default:0}}</td>
-            <td>
-                {{ item.dias_solicitados | default:0 }}
+            <td>{{ item.fecha_fin|date:"d/M/Y H:i" }}</td>
 
-            </td>
             <td>
-                {{ item.descripcion | default:'-'}}
+                {% if item.tipo_objeto == 'registro' or item.tipo_objeto == 'licencia' %}
+                    {{ item.horas_totales|default:0 }}
+                {% else %}
+                    0
+                {% endif %}
             </td>
+
+            <td>
+                {{ item.dias_solicitados|default:0 }}
+            </td>
+
+            <td>
+                {{ item.descripcion|default:'-' }}
+            </td>
+
             <td>{{ item.get_estado_display }}</td>
+
             <td>
                 {% if item.tipo_objeto == 'solicitud' %}
-                <a href="{% url 'aprobar_rechazar_solicitud' item.pk %}"
-                    class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
-                {% else %}
-                <a href="{% url 'aprobar_rechazar_horas' item.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
+                    <a href="{% url 'aprobar_rechazar_solicitud' item.pk %}" class="btn btn-sm btn-primary">
+                        Aprobar/Rechazar
+                    </a>
+                {% elif item.tipo_objeto == 'registro' %}
+                    <a href="{% url 'aprobar_rechazar_horas' item.pk %}" class="btn btn-sm btn-primary">
+                        Aprobar/Rechazar
+                    </a>
+                {% elif item.tipo_objeto == 'licencia' %}
+                    <a href="{% url 'aprobar_licencia' item.pk %}" class="btn btn-sm btn-primary">
+                        Aprobar/Rechazar
+                    </a>
                 {% endif %}
             </td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="8">No hay solicitudes ni registros de horas pendientes.</td>
+            <td colspan="11" class="text-center">No hay solicitudes, registros de horas ni licencias pendientes.</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -78,63 +98,35 @@
 <!-- Controles de Paginación -->
 <nav aria-label="Page navigation">
     <ul class="pagination">
-        <!-- Enlace a la primera página -->
         {% if page_obj.has_previous %}
         <li class="page-item">
-            <a class="page-link" href="?page=1" aria-label="Primera">
-                Primera
-            </a>
+            <a class="page-link" href="?page=1" aria-label="Primera">Primera</a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Anterior">
-                Anterior
-            </a>
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Anterior">Anterior</a>
         </li>
         {% else %}
-        <li class="page-item disabled">
-            <a class="page-link" href="#" aria-label="Primera">
-                Primera
-            </a>
-        </li>
-        <li class="page-item disabled">
-            <a class="page-link" href="#" aria-label="Anterior">
-                Anterior
-            </a>
-        </li>
+        <li class="page-item disabled"><a class="page-link">Primera</a></li>
+        <li class="page-item disabled"><a class="page-link">Anterior</a></li>
         {% endif %}
 
-        <!-- Páginas intermedias -->
         {% for num in page_obj.paginator.page_range %}
         <li class="page-item {% if page_obj.number == num %}active{% endif %}">
             <a class="page-link" href="?page={{ num }}">{{ num }}</a>
         </li>
         {% endfor %}
 
-        <!-- Enlace a la última página -->
         {% if page_obj.has_next %}
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Siguiente">
-                Siguiente
-            </a>
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Siguiente">Siguiente</a>
         </li>
         <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Última">
-                Última
-            </a>
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Última">Última</a>
         </li>
         {% else %}
-        <li class="page-item disabled">
-            <a class="page-link" href="#" aria-label="Siguiente">
-                Siguiente
-            </a>
-        </li>
-        <li class="page-item disabled">
-            <a class="page-link" href="#" aria-label="Última">
-                Última
-            </a>
-        </li>
+        <li class="page-item disabled"><a class="page-link">Siguiente</a></li>
+        <li class="page-item disabled"><a class="page-link">Última</a></li>
         {% endif %}
     </ul>
 </nav>
-
 {% endblock %}

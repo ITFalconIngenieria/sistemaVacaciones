@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from datetime import date
+from datetime import date, timedelta, datetime, time
 from decimal import Decimal
 from .validators import validate_username
 from django.conf import settings
@@ -10,6 +10,8 @@ from django.template.loader import render_to_string
 from django.conf import settings
 from .utils import MicrosoftGraphEmail 
 
+
+from dateutil.relativedelta import relativedelta
 class Usuario(AbstractUser):
     recalcular_vacaciones = True
     ROLES = (
@@ -192,7 +194,6 @@ class RegistroHoras(models.Model):
     def calcular_horas(self):
         feriados = FeriadoNacional.objects.values_list('fecha', flat=True)
 
-        print("feriados ", feriados)
         
         delta = self.fecha_fin - self.fecha_inicio
         total_horas = delta.total_seconds() / 3600
@@ -286,3 +287,79 @@ class FeriadoNacional(models.Model):
 
     def __str__(self):
         return f"{self.fecha} - {self.descripcion}"
+    
+
+class Licencia(models.Model):
+    TIPOS = (
+        ('LAC', 'Lactancia'),
+        ('MAT', 'Matrimonio'),
+        ('CAL', 'Calamidad Doméstica'),
+    )
+
+    ESTADOS = (
+        ('P', 'Pendiente'),
+        ('A', 'Aprobado'),
+        ('R', 'Rechazado'),
+    )
+
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    tipo = models.CharField(max_length=3, choices=TIPOS)
+    fecha_inicio = models.DateTimeField()
+    fecha_fin = models.DateTimeField(null=True, blank=True)
+    horas_totales = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    descripcion = models.TextField(null=True, blank=True)
+    estado = models.CharField(max_length=1, choices=ESTADOS, default='P') 
+
+    def calcular_fecha_lactancia(self):
+
+        # Sumar 6 meses exactos
+        fecha_final = self.fecha_inicio + relativedelta(months=6)
+        # Sumar 1 hora a la hora de inicio
+        fecha_final = fecha_final.replace(hour=self.fecha_inicio.hour + 1, minute=self.fecha_inicio.minute)
+        return fecha_final
+
+    def calcular_fecha_matrimonio(self):
+        fecha_actual = self.fecha_inicio.date()
+        total_dias = 0
+
+        while total_dias < 3:
+            if fecha_actual.weekday() < 5 and not self.es_feriado(fecha_actual):
+                total_dias += 1
+                if total_dias == 3:
+                    break 
+            fecha_actual += timedelta(days=1)
+
+        return datetime.combine(fecha_actual, datetime.min.time())
+
+
+
+
+
+    def es_feriado(self, fecha):
+        if isinstance(fecha, datetime):  # Si es datetime, convertir a date
+            fecha = fecha.date()
+        return FeriadoNacional.objects.filter(fecha=fecha).exists()
+
+
+    def calcular_horas_calamidad(self):
+        delta = self.fecha_fin - self.fecha_inicio
+        return delta.total_seconds() / 3600
+
+    def save(self, *args, **kwargs):
+        if self.tipo == 'LAC':  # Lactancia
+            self.fecha_fin = self.calcular_fecha_lactancia()
+            self.horas_totales = 1
+        elif self.tipo == 'MAT':  # Matrimonio
+            # Ajustar la fecha de inicio a las 00:00
+            self.fecha_inicio = datetime.combine(self.fecha_inicio.date(), time(0, 0, 0))
+            self.fecha_fin = self.calcular_fecha_matrimonio()
+        elif self.tipo == 'CAL':  # Calamidad Doméstica
+            horas_calamidad = self.calcular_horas_calamidad()
+            if horas_calamidad > 135:
+                raise ValueError("No se pueden registrar más de 135 horas para Calamidad Doméstica")
+            self.horas_totales = horas_calamidad
+        super().save(*args, **kwargs)
+
+
+    def __str__(self):
+        return f"{self.usuario} - {self.get_tipo_display()} ({self.fecha_inicio} a {self.fecha_fin})"

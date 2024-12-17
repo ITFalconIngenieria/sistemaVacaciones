@@ -50,4 +50,10 @@ urlpatterns = [
 
     path('getferiados/', views.obtener_dias_feriados, name='obtener_dias_feriados'),
     path('colaboradores-info/', views.colaboradores_info, name='colaboradores_info'),
+
+    path('crear-licencia/', views.CrearLicenciaView.as_view(), name='crear_licencia'),
+    path('mis-licencias/', views.MisLicenciasView.as_view(), name='mis_licencias'),
+    path('aprobar-licencia/<int:pk>/', views.AprobarRechazarLicenciaView.as_view(), name='aprobar_licencia'),
+
+
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import render, redirect,  redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView, View, DeleteView
-from .models import FeriadoNacional, Usuario, Solicitud, HistorialVacaciones, AjusteVacaciones, RegistroHoras,Solicitud, Incapacidad
+from .models import FeriadoNacional, Usuario, Solicitud, HistorialVacaciones, AjusteVacaciones, RegistroHoras,Solicitud, Incapacidad 
 from .forms import UsuarioCreationForm, SolicitudForm, FeriadoNacionalForm, RegistrarHorasForm,RegistroHorasFilterForm, AjusteVacacionesForm, IncapacidadForm
 from django.contrib import messages
 from django.contrib.auth import logout
@@ -29,7 +29,9 @@ from django.utils.timezone import make_aware , get_current_timezone
 from django.http import JsonResponse
 import uuid
 import pytz
-
+from .models import Licencia
+from .forms import LicenciaForm
+from django.contrib.messages.views import SuccessMessageMixin
 def es_jefe(user):
     return user.rol in ['GG', 'JI', 'JD']
 
@@ -128,7 +130,7 @@ def dashboard(request):
         fecha_inicio = hora.fecha_inicio.date()
         fecha_fin = hora.fecha_fin.date()
         descripcion = f"Inicio: {hora.fecha_inicio.strftime('%H:%M')} - Fin: {hora.fecha_fin.strftime('%H:%M')}"
-        eventos += generar_eventos_validos(nombre_completo, "HC", fecha_inicio, fecha_fin, descripcion, "#f39c12")
+        eventos += generar_eventos_validos(nombre_completo, "Horas Comp", fecha_inicio, fecha_fin, descripcion, "#f39c12")
 
     # Procesar incapacidades aprobadas
     for incapacidad in Incapacidad.objects.filter(fecha_fin__gte=fecha_actual):
@@ -147,6 +149,58 @@ def dashboard(request):
             "description": f"Feriado: {feriado.descripcion}",
             "color": "#09C1E6"
         })
+    
+    # Procesar licencias aprobadas
+
+    for licencia in Licencia.objects.filter(estado='A', fecha_fin__gte=fecha_hora_actual):
+        nombre_completo = f"{licencia.usuario.first_name} {licencia.usuario.last_name}"
+        fecha_inicio = licencia.fecha_inicio.date()
+        fecha_fin = licencia.fecha_fin.date()
+
+        # Definir colores y tipo de evento según el tipo de licencia
+        if licencia.tipo == 'LAC':
+            color = "#1abc9c"  # Verde claro
+            tipo_evento = "Lactancia"
+            descripcion = f"Inicio: {licencia.fecha_inicio.strftime('%H:%M')} - Fin: {(licencia.fecha_inicio + timedelta(hours=1)).strftime('%H:%M')}"
+
+            # Generar eventos válidos con hora de inicio y fin diaria
+            eventos += generar_eventos_validos(
+                nombre_completo,
+                tipo_evento,
+                fecha_inicio,
+                fecha_fin,
+                descripcion,
+                color,
+            )
+
+        elif licencia.tipo == 'MAT':
+            color = "#3498db"  # Azul
+            tipo_evento = "Matrimonio"
+            descripcion = f"Inicio: {licencia.fecha_inicio.strftime('%d-%m-%Y')} - Fin: {licencia.fecha_fin.strftime('%d-%m-%Y')}"
+
+            # Generar eventos válidos solo con fecha (sin hora)
+            eventos += generar_eventos_validos(
+                nombre_completo,
+                tipo_evento,
+                fecha_inicio,
+                fecha_fin,
+                descripcion,
+                color
+            )
+
+        elif licencia.tipo == 'CAL':
+            color = "#e67e22"  # Naranja
+            tipo_evento = "Calamidad Doméstica"
+            descripcion = f"Inicio: {licencia.fecha_inicio.strftime('%H:%M')} - Fin: {licencia.fecha_fin.strftime('%H:%M')}"
+
+            eventos += generar_eventos_validos(
+                nombre_completo,
+                tipo_evento,
+                fecha_inicio,
+                fecha_fin,
+                descripcion,
+                color,
+            )
 
     context = {
         'user': usuario,
@@ -1003,20 +1057,36 @@ class ListaSolicitudesRegistrosPendientesView(ListView):
 
         registros_queryset = RegistroHoras.objects.filter(estado='P')
         solicitudes_queryset = Solicitud.objects.filter(estado='P')
+        licencias_queryset = Licencia.objects.filter(estado='P')
+
+        print(licencias_queryset)
 
         if user.rol in ['GG', 'JI', 'JD']:
             registros_queryset = registros_queryset.filter(usuario__in=user.subordinados.all())
             solicitudes_queryset = solicitudes_queryset.filter(usuario__in=user.subordinados.all())
+            licencias_queryset = licencias_queryset.filter(usuario__in=user.subordinados.all())
         else:
             registros_queryset = RegistroHoras.objects.none()
             solicitudes_queryset = Solicitud.objects.none()
+            licencias_queryset = Licencia.objects.none()
 
-        pendientes = list(solicitudes_queryset) + list(registros_queryset)
+        print("no entiendo ", list(solicitudes_queryset))
+
+        pendientes = list(solicitudes_queryset) + list(registros_queryset) + list(licencias_queryset)
 
         estado_prioridad = {'P': 1, 'R': 2, 'A': 3} 
         for item in pendientes:
-            item.tipo_objeto = 'solicitud' if isinstance(item, Solicitud) else 'registro'
+            if isinstance(item, Solicitud):
+                item.tipo_objeto = 'solicitud'
+            elif isinstance(item, RegistroHoras):
+                item.tipo_objeto = 'registro'
+            elif isinstance(item, Licencia):
+                item.tipo_objeto = 'licencia'
+            else:
+                item.tipo_objeto = 'desconocido'
+                
             item.estado_orden = estado_prioridad.get(item.estado, 4)
+
 
         pendientes = sorted(pendientes, key=attrgetter('estado_orden', 'fecha_inicio'))
         paginator = Paginator(pendientes,8)
@@ -1805,7 +1875,70 @@ def colaboradores_info(request):
 
 
 
-
 def logout_view(request):
     logout(request)
     return redirect('login')
+
+
+
+
+
+class CrearLicenciaView(SuccessMessageMixin, LoginRequiredMixin, CreateView):
+    model = Licencia
+    form_class = LicenciaForm
+    template_name = 'crear_licencia.html'
+    success_url = reverse_lazy('mis_licencias')
+    success_message = "La licencia se ha registrado correctamente."
+
+    def form_valid(self, form):
+        form.instance.usuario = self.request.user  # Asignar el usuario actual
+        if form.instance.tipo == 'MAT':  # Si el tipo es Matrimonio
+            form.instance.estado = 'P'  # Estado Pendiente
+        else:  # Para Lactancia y Calamidad
+            form.instance.estado = 'A'  # Estado Aprobado
+        return super().form_valid(form)
+    
+
+class MisLicenciasView(ListView):
+    model = Licencia
+    template_name = 'mis_licencias.html'
+    context_object_name = 'licencias'
+    paginate_by = 10  # Paginación opcional
+
+    def get_queryset(self):
+        # Filtra solo las licencias del usuario que ha iniciado sesión
+        return Licencia.objects.filter(usuario=self.request.user).order_by('-fecha_inicio')
+
+
+
+class AprobarRechazarLicenciaView(UserPassesTestMixin, UpdateView):
+    model = Licencia
+    fields = ['estado']
+    template_name = 'aprobar_rechazar_licencia.html'
+    success_url = reverse_lazy('lista_solicitudes')
+
+    def test_func(self):
+        licencia = self.get_object()
+        return self.request.user.rol in ['GG', 'JI', 'JD'] and licencia.usuario != self.request.user
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        usuario = self.get_object().usuario
+        return context
+
+    def form_valid(self, form):
+        form.instance.aprobado_por = self.request.user
+        messages.success(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
+        return super().form_valid(form)
+
+
+
+#para el historial de licencias    
+# class ListaLicenciasView(ListView):
+#     model = Licencia
+#     template_name = 'lista_licencias.html'
+#     context_object_name = 'licencias'
+#     paginate_by = 10  # Paginación opcional
+
+#     def get_queryset(self):
+#         return Licencia.objects.all().order_by('-fecha_inicio')

@@ -6,16 +6,11 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django import forms
 from datetime import date
+from .models import Licencia
 class UsuarioCreationForm(forms.ModelForm):
     class Meta:
         model = Usuario
         fields = ['first_name', 'last_name', 'email', 'rol', 'departamento', 'jefe', 'fecha_entrada', 'fecha_salida']
-
-        # widgets = {
-        #     'fecha_entrada': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-        #     'fecha_salida': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-        # }
-
 
 
 class UsuarioChangeForm(UserChangeForm):
@@ -278,8 +273,6 @@ class IncapacidadForm(forms.ModelForm):
         return cleaned_data
     
 
-
-
 class FeriadoNacionalForm(forms.ModelForm):
     class Meta:
         model = FeriadoNacional
@@ -294,3 +287,55 @@ class FeriadoNacionalForm(forms.ModelForm):
             'fecha': 'Fecha del Feriado',
             'descripcion': 'Descripción',
         }
+
+
+
+
+
+class LicenciaForm(forms.ModelForm):
+    class Meta:
+        model = Licencia
+        fields = ['tipo', 'fecha_inicio', 'fecha_fin', 'descripcion']
+        labels = {
+            'tipo': 'Tipo de Licencia',
+            'fecha_inicio': 'Fecha y Hora de Inicio',
+            'fecha_fin': 'Fecha y Hora de Fin',
+            'descripcion': 'Descripción (opcional)',
+        }
+        widgets = {
+            'tipo': forms.Select(attrs={'class': 'form-control'}),
+            'fecha_inicio': forms.TextInput(attrs={
+                'class': 'form-control flatpickr-datetime',
+                'placeholder': 'Selecciona fecha y hora de inicio'
+            }),
+            'fecha_fin': forms.TextInput(attrs={
+                'class': 'form-control flatpickr-datetime',
+                'placeholder': 'Selecciona fecha y hora de fin'
+            }),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Opcional'}),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        tipo = cleaned_data.get('tipo')
+        fecha_inicio = cleaned_data.get('fecha_inicio')
+        fecha_fin = cleaned_data.get('fecha_fin')
+
+        if not fecha_inicio:
+            raise forms.ValidationError("La fecha de inicio es obligatoria.")
+
+        # Validaciones por tipo de licencia
+        if tipo == 'LAC':  # Lactancia
+            if fecha_fin:
+                raise forms.ValidationError("La fecha de fin para Lactancia se calculará automáticamente.")
+        elif tipo == 'MAT':  # Matrimonio
+            if fecha_fin:
+                raise forms.ValidationError("La fecha de fin para Matrimonio se calculará automáticamente.")
+        elif tipo == 'CAL':  # Calamidad Doméstica
+            if not fecha_fin:
+                raise forms.ValidationError("La fecha de fin es obligatoria para Calamidad Doméstica.")
+            if fecha_inicio >= fecha_fin:
+                raise forms.ValidationError("La fecha de fin debe ser posterior a la fecha de inicio.")
+
+        return cleaned_data
+
