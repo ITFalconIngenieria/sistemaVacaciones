@@ -32,6 +32,8 @@ import pytz
 from .models import Licencia
 from .forms import LicenciaForm
 from django.contrib.messages.views import SuccessMessageMixin
+from django.db import models
+
 def es_jefe(user):
     return user.rol in ['GG', 'JI', 'JD']
 
@@ -1070,8 +1072,6 @@ class ListaSolicitudesRegistrosPendientesView(ListView):
             solicitudes_queryset = Solicitud.objects.none()
             licencias_queryset = Licencia.objects.none()
 
-        print("no entiendo ", list(solicitudes_queryset))
-
         pendientes = list(solicitudes_queryset) + list(registros_queryset) + list(licencias_queryset)
 
         estado_prioridad = {'P': 1, 'R': 2, 'A': 3} 
@@ -1098,7 +1098,6 @@ class ListaSolicitudesRegistrosPendientesView(ListView):
 
         return context
 
-
 class ListaSolicitudesRegistrosDosNivelesView(ListView):
     template_name = 'lista_solicitudes_dos_niveles.html'
     context_object_name = 'pendientes'
@@ -1114,33 +1113,38 @@ class ListaSolicitudesRegistrosDosNivelesView(ListView):
         return subordinados_nivel_2
 
     def get_queryset(self):
-        return []
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
         user = self.request.user
-
         registros_queryset = RegistroHoras.objects.filter(estado='P')
         solicitudes_queryset = Solicitud.objects.filter(estado='P')
+        licencias_queryset = Licencia.objects.filter(estado='P')
 
         if user.rol in ['GG', 'JI', 'JD']:
             subordinados = self.obtener_subordinados_dos_niveles(user)
             registros_queryset = registros_queryset.filter(usuario__in=subordinados)
             solicitudes_queryset = solicitudes_queryset.filter(usuario__in=subordinados)
+            licencias_queryset = licencias_queryset.filter(usuario__in=subordinados)
         else:
             registros_queryset = RegistroHoras.objects.none()
             solicitudes_queryset = Solicitud.objects.none()
+            licencias_queryset = Licencia.objects.none()
 
-        pendientes = list(solicitudes_queryset) + list(registros_queryset)
+        pendientes = list(solicitudes_queryset) + list(registros_queryset) + list(licencias_queryset)
 
         estado_prioridad = {'P': 1, 'R': 2, 'A': 3}
         for item in pendientes:
-            item.tipo_objeto = 'solicitud' if isinstance(item, Solicitud) else 'registro'
+            if isinstance(item, Solicitud):
+                item.tipo_objeto = 'solicitud'
+            elif isinstance(item, RegistroHoras):
+                item.tipo_objeto = 'registro'
+            elif isinstance(item, Licencia):
+                item.tipo_objeto = 'licencia'
             item.estado_orden = estado_prioridad.get(item.estado, 4)
 
-        pendientes = sorted(pendientes, key=attrgetter('estado_orden', 'fecha_inicio'))
+        return sorted(pendientes, key=attrgetter('estado_orden', 'fecha_inicio'))
 
-        paginator = Paginator(pendientes, 8)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        paginator = Paginator(self.get_queryset(), 8)
         page_number = self.request.GET.get('page')
         page_obj = paginator.get_page(page_number)
 
@@ -1149,20 +1153,16 @@ class ListaSolicitudesRegistrosDosNivelesView(ListView):
         return context
 
 
-
-class HistorialCombinadoView(LoginRequiredMixin,ListView):
+class HistorialCombinadoView(LoginRequiredMixin, ListView):
     template_name = 'historial_solicitudes.html'
     context_object_name = 'registros_y_solicitudes'
+
     def dispatch(self, request, *args, **kwargs):
         if request.user.rol not in ['GG', 'JI', 'JD']:
             raise PermissionDenied("No tienes permiso para acceder a esta página.")
         return super().dispatch(request, *args, **kwargs)
-    
-    def get_queryset(self):
-        return []
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+    def get_queryset(self):
         user = self.request.user
         estado = self.request.GET.get('estado')
         tipo = self.request.GET.get('tipo')
@@ -1170,33 +1170,47 @@ class HistorialCombinadoView(LoginRequiredMixin,ListView):
         
         registros_queryset = RegistroHoras.objects.filter(usuario__in=user.subordinados.all())
         solicitudes_queryset = Solicitud.objects.filter(usuario__in=user.subordinados.all())
+        licencias_queryset = Licencia.objects.filter(usuario__in=user.subordinados.all())
 
         if estado:
             registros_queryset = registros_queryset.filter(estado=estado)
             solicitudes_queryset = solicitudes_queryset.filter(estado=estado)
+            licencias_queryset = licencias_queryset.filter(estado=estado)
         if tipo:
             solicitudes_queryset = solicitudes_queryset.filter(tipo=tipo)
+            licencias_queryset = licencias_queryset.filter(tipo=tipo)
         if usuario_id:
             registros_queryset = registros_queryset.filter(usuario_id=usuario_id)
             solicitudes_queryset = solicitudes_queryset.filter(usuario_id=usuario_id)
+            licencias_queryset = licencias_queryset.filter(usuario_id=usuario_id)
 
-        registros_y_solicitudes = list(registros_queryset) + list(solicitudes_queryset)
-
+        registros_y_solicitudes = list(registros_queryset) + list(solicitudes_queryset) + list(licencias_queryset)
         estado_prioridad = {'P': 1, 'R': 2, 'A': 3}
+
+        print(registros_y_solicitudes)
+        
         for item in registros_y_solicitudes:
-            item.tipo_objeto = 'solicitud' if isinstance(item, Solicitud) else 'registro'
+            if isinstance(item, Solicitud):
+                item.tipo_objeto = 'solicitud'
+            elif isinstance(item, RegistroHoras):
+                item.tipo_objeto = 'registro'
+            elif isinstance(item, Licencia):
+                item.tipo_objeto = 'licencia'
             item.estado_orden = estado_prioridad.get(item.estado, 4)
 
-        registros_y_solicitudes = sorted(registros_y_solicitudes, key=attrgetter('estado_orden', 'fecha_inicio'))
-        paginator = Paginator(registros_y_solicitudes, 8)
+        return sorted(registros_y_solicitudes, key=attrgetter('estado_orden', 'fecha_inicio'))
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        paginator = Paginator(self.get_queryset(), 8)
         page_number = self.request.GET.get('page')
         page_obj = paginator.get_page(page_number)
-        context['registros_y_solicitudes'] = page_obj
+
         context['page_obj'] = page_obj
         context['subordinados'] = user.subordinados.all()
         context['filter_form'] = RegistroHorasFilterForm(self.request.GET or None, user=user)
         return context
-    
 
 @login_required
 def reporte_solicitudes(request):
@@ -1327,14 +1341,8 @@ def ajuste_vacaciones(request):
 
     usuarios = Usuario.objects.filter(is_superuser=False)
     usuarios_vacaciones = []
-
-    # Zona horaria UTC-6
     timezone_utc_minus_6 = pytz.timezone('Etc/GMT+6')
-
-    # Hora actual en UTC-6
     utc_minus_6 = datetime.now(timezone_utc_minus_6)
-
-    # Formatear la fecha y hora
     formatted_time = utc_minus_6.strftime('%d/%m/%Y %H:%M')
 
     for usuario in usuarios:
@@ -1364,7 +1372,6 @@ def ajuste_vacaciones(request):
             ajuste.año = date.today().year
             ajuste.save()
 
-            # Enviar correos electrónicos de notificación
             context = {
                 'ajustado_por': request.user.get_full_name(),
                 'usuario': usuario.get_full_name(),
@@ -1402,11 +1409,8 @@ def ajuste_vacaciones(request):
 def historial_ajustes_vacaciones(request):
     if request.user.rol != 'GG':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
-    
     ajustes = AjusteVacaciones.objects.select_related('usuario', 'ajustado_por').order_by('-fecha_ajuste')
-
     return render(request, 'historial_ajustes_vacaciones.html', {'ajustes': ajustes})
-
 
 
 @login_required
@@ -1444,7 +1448,6 @@ def reporte_horas_extra_html(request):
             request.session['reporte_horas_extra'] = seleccionados
             return redirect('generar_pdf')
 
-    # Paginación
     paginator = Paginator(list(registros_por_usuario.items()), 5)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -1531,11 +1534,9 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
             form.add_error(None, "Imposible registrar una incapacidad para el futuro.")
             return self.form_invalid(form)
         
-
         feriados = FeriadoNacional.objects.filter(
             fecha__range=[fecha_inicio, fecha_fin]
         )
-
 
         non_working_dates = [
             date for date in (fecha_inicio + timedelta(n) for n in range((fecha_fin - fecha_inicio).days + 1)) 
@@ -1688,7 +1689,6 @@ def lista_incapacidades(request):
     })
 
 
-
 class MisIncapacidadesView(LoginRequiredMixin, ListView):
     model = Incapacidad
     template_name = 'mis_incapacidades.html'
@@ -1759,7 +1759,6 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
         feriados = FeriadoNacional.objects.filter(
             fecha__range=[fecha_inicio, fecha_fin]
         )
-
 
         non_working_dates = [
             date for date in (fecha_inicio + timedelta(n) for n in range((fecha_fin - fecha_inicio).days + 1)) 
@@ -1873,42 +1872,110 @@ def colaboradores_info(request):
     return render(request, 'colaboradores_info.html', context)
 
 
-
-
 def logout_view(request):
     logout(request)
     return redirect('login')
 
 
-
-
-
-class CrearLicenciaView(SuccessMessageMixin, LoginRequiredMixin, CreateView):
+class CrearLicenciaView(CreateView):
     model = Licencia
     form_class = LicenciaForm
     template_name = 'crear_licencia.html'
     success_url = reverse_lazy('mis_licencias')
-    success_message = "La licencia se ha registrado correctamente."
 
     def form_valid(self, form):
-        form.instance.usuario = self.request.user  # Asignar el usuario actual
-        if form.instance.tipo == 'MAT':  # Si el tipo es Matrimonio
-            form.instance.estado = 'P'  # Estado Pendiente
-        else:  # Para Lactancia y Calamidad
-            form.instance.estado = 'A'  # Estado Aprobado
+        licencia = form.save(commit=False)
+
+        licencia.usuario = self.request.user
+
+        if licencia.tipo == 'MAT':
+            licencia.estado = 'P'
+        else: 
+            licencia.estado = 'A'
+
+        if licencia.tipo == 'LAC':
+            almuerzo_inicio = licencia.fecha_inicio.replace(hour=12, minute=0, second=0)
+            almuerzo_fin = licencia.fecha_inicio.replace(hour=13, minute=0, second=0)
+            if almuerzo_inicio <= licencia.fecha_inicio < almuerzo_fin:
+                form.add_error('fecha_inicio', "La hora de inicio no puede ser durante el almuerzo (12:00 - 13:00).")
+                return self.form_invalid(form)
+            licencia.fecha_fin = licencia.calcular_fecha_lactancia()
+
+        if licencia.tipo == 'CAL':
+            horas_acumuladas = Licencia.objects.filter(
+                usuario=licencia.usuario,
+                tipo='CAL',
+                fecha_inicio__year=licencia.fecha_inicio.year
+            ).exclude(pk=licencia.pk).aggregate(models.Sum('horas_totales'))['horas_totales__sum'] or 0
+
+            if horas_acumuladas + licencia.calcular_horas_calamidad() > 135:
+                form.add_error('fecha_fin', "No puedes exceder las 135 horas anuales para Calamidad Doméstica.")
+                return self.form_invalid(form)
+
+        licencia.save()
+        messages.success(self.request, "La licencia se ha registrado correctamente.")
+        jefe = self.request.user.jefe
+        if jefe and jefe.email:
+            fecha_ajustada = now() - timedelta(hours=6)
+            year = fecha_ajustada.year
+            context = {
+                "jefe": jefe.first_name,
+                "usuario": self.request.user.get_full_name(),
+                "tipo": form.instance.get_tipo_display(),
+                "fecha_inicio": licencia.fecha_inicio,
+                "fecha_fin": licencia.fecha_fin,
+                "descripcion": form.instance.descripcion,
+                "year": year,
+                "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+                "enlace_revisar":settings.ENLACE_DEV 
+            }
+
+            html_content = render_to_string("mail_licencia.html", context)
+            email_sender = MicrosoftGraphEmail()
+            subject = "Nueva licencia agregada"
+            content=html_content
+
+            try:
+                email_sender.send_email(
+                    subject=subject,
+                    content=content,
+                    to_recipients=[jefe.email],
+                )
+            except Exception as e:
+                print(f"Error al enviar correo al jefe {jefe.email}: {e}")
         return super().form_valid(form)
-    
+
 
 class MisLicenciasView(ListView):
     model = Licencia
     template_name = 'mis_licencias.html'
     context_object_name = 'licencias'
-    paginate_by = 10  # Paginación opcional
+    paginate_by = 10
 
     def get_queryset(self):
-        # Filtra solo las licencias del usuario que ha iniciado sesión
         return Licencia.objects.filter(usuario=self.request.user).order_by('-fecha_inicio')
 
+
+# class AprobarRechazarLicenciaView(UserPassesTestMixin, UpdateView):
+#     model = Licencia
+#     fields = ['estado']
+#     template_name = 'aprobar_rechazar_licencia.html'
+#     success_url = reverse_lazy('lista_solicitudes')
+
+#     def test_func(self):
+#         licencia = self.get_object()
+#         return self.request.user.rol in ['GG', 'JI', 'JD'] and licencia.usuario != self.request.user
+
+#     def get_context_data(self, **kwargs):
+#         context = super().get_context_data(**kwargs)
+#         usuario = self.get_object().usuario
+#         return context
+
+#     def form_valid(self, form):
+#         form.instance.aprobado_por = self.request.user
+#         messages.success(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
+
+#         return super().form_valid(form)
 
 
 class AprobarRechazarLicenciaView(UserPassesTestMixin, UpdateView):
@@ -1927,11 +1994,124 @@ class AprobarRechazarLicenciaView(UserPassesTestMixin, UpdateView):
         return context
 
     def form_valid(self, form):
-        form.instance.aprobado_por = self.request.user
-        messages.success(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
+        licencia = self.get_object()
+        usuario = licencia.usuario
+
+        # Ajustar el estado
+        if form.instance.estado == 'A':  # Aprobada
+            form.instance.aprobado_por = self.request.user
+            messages.success(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
+        elif form.instance.estado == 'R':  # Rechazada
+            messages.warning(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
+        elif form.instance.estado == 'P':  # Pendiente
+            messages.info(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
+
+        # Preparar datos para el correo
+        fecha_ajustada = now() - timedelta(hours=6)
+        year = fecha_ajustada.year
+        estados = {
+            'A': "Aprobada",
+            'R': "Rechazada",
+            'P': "Pendiente",
+        }
+        context = {
+            "usuario": usuario.first_name,
+            "tipo": licencia.get_tipo_display(),
+            "fecha_inicio": licencia.fecha_inicio,
+            "fecha_fin": licencia.fecha_fin,
+            "estado": estados.get(form.instance.estado, "Desconocido"),
+            "aprobado_por": self.request.user.get_full_name(),
+            "year": year,
+            "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+            "enlace_revisar": settings.ENLACE_DEV,
+        }
+
+        html_content = render_to_string("mail_estado_licencia.html", context)
+        email_sender = MicrosoftGraphEmail()
+        subject = f"Tu licencia ha sido {context['estado']}"
+
+        # Enviar correo
+        try:
+            email_sender.send_email(
+                subject=subject,
+                content=html_content,
+                to_recipients=[usuario.email],
+            )
+        except Exception as e:
+            print(f"Error al enviar correo al usuario {usuario.email}: {e}")
+
         return super().form_valid(form)
 
 
+
+class EditarLicenciaView(UpdateView):
+    model = Licencia
+    form_class = LicenciaForm
+    template_name = 'editar_licencia.html'
+    success_url = reverse_lazy('mis_licencias')
+
+    def dispatch(self, request, *args, **kwargs):
+        licencia = self.get_object()
+        # Validar si la licencia es editable
+        if not licencia.es_eliminable():
+            messages.error(request, "No puedes editar una licencia con fecha de inicio pasada.")
+            return redirect('mis_licencias')
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        licencia = form.save(commit=False)
+        if licencia.tipo == 'MAT':
+            licencia.estado = 'P'
+        licencia.save()
+        messages.success(self.request, "La licencia ha sido actualizada correctamente.")
+
+        jefe = self.request.user.jefe
+        if jefe and jefe.email:
+            fecha_ajustada = now() - timedelta(hours=6)
+            year = fecha_ajustada.year
+            context = {
+                "jefe": jefe.first_name,
+                "usuario": self.request.user.get_full_name(),
+                "tipo": form.instance.get_tipo_display(),
+                "fecha_inicio": licencia.fecha_inicio,
+                "fecha_fin": licencia.fecha_fin,
+                "descripcion": form.instance.descripcion,
+                "year": year,
+                "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+                "enlace_revisar":settings.ENLACE_DEV 
+            }
+
+            html_content = render_to_string("mail_editar_licencia.html", context)
+            email_sender = MicrosoftGraphEmail()
+            subject = "Edición de licencia registrada"
+            content=html_content
+
+            try:
+                email_sender.send_email(
+                    subject=subject,
+                    content=content,
+                    to_recipients=[jefe.email],
+                )
+            except Exception as e:
+                print(f"Error al enviar correo al jefe {jefe.email}: {e}")
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, "Hubo un error al actualizar la licencia.")
+        return super().form_invalid(form)
+
+class EliminarLicenciaView(DeleteView):
+    model = Licencia
+    template_name = 'confirmar_eliminacion_licencia.html'
+    success_url = reverse_lazy('mis_licencias')
+
+    def delete(self, request, *args, **kwargs):
+        licencia = self.get_object()
+        if not licencia.es_eliminable():
+            messages.error(request, "No puedes eliminar una licencia con fecha de inicio pasada.")
+            return redirect('mis_licencias')
+        messages.success(request, "La licencia ha sido eliminada correctamente.")
+        return super().delete(request, *args, **kwargs)
 
 #para el historial de licencias    
 # class ListaLicenciasView(ListView):

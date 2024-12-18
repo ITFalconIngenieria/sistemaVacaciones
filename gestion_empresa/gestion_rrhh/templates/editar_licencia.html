@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Editar Licencia{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning text-white">
+            <h4 class="mb-0">Editar Licencia</h4>
+        </div>
+        <div class="card-body">
+            <form method="post" id="licencia-form">
+                {% csrf_token %}
+                {{ form|crispy }}
+
+                <div class="alert alert-info" id="alerta-fecha-fin" style="display: none;">
+                    La fecha de fin se calculará automáticamente para el tipo seleccionado.
+                </div>
+
+                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                <a href="{% url 'mis_licencias' %}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const tipoSelect = document.getElementById('id_tipo');
+        const fechaFinInput = document.getElementById('id_fecha_fin');
+        const alertaFechaFin = document.getElementById('alerta-fecha-fin');
+
+        function manejarFechaFin() {
+            const tipo = tipoSelect.value;
+            if (tipo === 'LAC' || tipo === 'MAT') {
+                fechaFinInput.setAttribute('readonly', true);
+                fechaFinInput.setAttribute('disabled', true);  // Bloquear completamente
+                fechaFinInput.value = '';
+                fechaFinInput.style.backgroundColor = '#e9ecef';
+                alertaFechaFin.style.display = 'block';
+            } else {
+                fechaFinInput.removeAttribute('readonly');
+                fechaFinInput.removeAttribute('disabled');  // Habilitar si no es LAC o MAT
+                fechaFinInput.style.backgroundColor = '';
+                alertaFechaFin.style.display = 'none';
+            }
+        }
+
+
+        // Ejecutar al cargar la página
+        manejarFechaFin();
+
+        // Evento para detectar cambio en tipo de licencia
+        tipoSelect.addEventListener('change', manejarFechaFin);
+
+        // Inicializar Flatpickr
+        flatpickr('.flatpickr-datetime', {
+            enableTime: true,
+            dateFormat: 'Y-m-d H:i',
+            time_24hr: true,
+            locale: 'es'
+        });
+    });
+</script>
+{% endblock %}

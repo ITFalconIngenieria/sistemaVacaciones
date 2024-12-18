@@ -102,7 +102,6 @@ class SolicitudForm(forms.ModelForm):
 
 
 
-
 class RegistrarHorasForm(forms.ModelForm):
     class Meta:
         model = RegistroHoras
@@ -315,6 +314,19 @@ class LicenciaForm(forms.ModelForm):
             'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Opcional'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Si el formulario está en modo edición, deshabilitar el campo 'tipo'
+        if self.instance and self.instance.pk:
+            self.fields['tipo'].widget.attrs['readonly'] = True
+            self.fields['tipo'].widget.attrs['style'] = 'pointer-events: none;'  # Bloquear interacción visual
+
+            # Deshabilitar fecha_fin para Matrimonio y Lactancia
+            if self.instance.tipo in ['LAC', 'MAT']:
+                self.fields['fecha_fin'].widget.attrs['readonly'] = True
+                self.fields['fecha_fin'].widget.attrs['style'] = 'background-color: #e9ecef;'
+
     def clean(self):
         cleaned_data = super().clean()
         tipo = cleaned_data.get('tipo')
@@ -324,18 +336,19 @@ class LicenciaForm(forms.ModelForm):
         if not fecha_inicio:
             raise forms.ValidationError("La fecha de inicio es obligatoria.")
 
-        # Validaciones por tipo de licencia
-        if tipo == 'LAC':  # Lactancia
+        # Validación para Lactancia y Matrimonio: Fecha Fin debe ser nula
+        if tipo == 'LAC' or tipo == 'MAT':
             if fecha_fin:
-                raise forms.ValidationError("La fecha de fin para Lactancia se calculará automáticamente.")
-        elif tipo == 'MAT':  # Matrimonio
-            if fecha_fin:
-                raise forms.ValidationError("La fecha de fin para Matrimonio se calculará automáticamente.")
-        elif tipo == 'CAL':  # Calamidad Doméstica
+                raise forms.ValidationError("No puedes establecer manualmente la fecha de fin para este tipo de licencia. Se calculará automáticamente.")
+            cleaned_data['fecha_fin'] = None  # Garantizar que fecha_fin quede vacía
+
+        # Validación para Calamidad Doméstica
+        elif tipo == 'CAL':
             if not fecha_fin:
                 raise forms.ValidationError("La fecha de fin es obligatoria para Calamidad Doméstica.")
             if fecha_inicio >= fecha_fin:
                 raise forms.ValidationError("La fecha de fin debe ser posterior a la fecha de inicio.")
 
         return cleaned_data
+
 

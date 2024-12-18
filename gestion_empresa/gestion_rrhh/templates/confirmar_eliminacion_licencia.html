@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block title %}Eliminar Licencia{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0">Confirmar Eliminación</h4>
+        </div>
+        <div class="card-body">
+            <p>¿Estás seguro de que deseas eliminar la licencia de tipo <strong>{{ object.get_tipo_display }}</strong> 
+            con fecha de inicio <strong>{{ object.fecha_inicio|date:"d/M/Y H:i" }}</strong> y fecha de fin <strong>{{ object.fecha_fin|date:"d/M/Y H:i" }}</strong>?</p>
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Eliminar</button>
+                <a href="{% url 'mis_licencias' %}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

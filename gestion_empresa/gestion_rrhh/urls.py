@@ -54,6 +54,7 @@ urlpatterns = [
     path('crear-licencia/', views.CrearLicenciaView.as_view(), name='crear_licencia'),
     path('mis-licencias/', views.MisLicenciasView.as_view(), name='mis_licencias'),
     path('aprobar-licencia/<int:pk>/', views.AprobarRechazarLicenciaView.as_view(), name='aprobar_licencia'),
-
+    path('editar-licencia/<int:pk>/', views.EditarLicenciaView.as_view(), name='editar_licencia'),
+    path('eliminar-licencia/<int:pk>/', views.EliminarLicenciaView.as_view(), name='eliminar_licencia'),
 
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

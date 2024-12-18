@@ -25,53 +25,67 @@
         {% for item in pendientes %}
         <tr>
             <td>{{ item.usuario.get_full_name }}</td>
-            
+    
             <td>
                 {% if item.tipo_objeto == 'registro' %}
-                    {{ item.numero_registro}}
-                {% endif %}
- 
-                {% if item.tipo_objeto == 'solicitud' %}
-                    {{ item.numero_solicitud}}
+                    {{ item.numero_registro }}
+                {% elif item.tipo_objeto == 'solicitud' %}
+                    {{ item.numero_solicitud }}
+                {% elif item.tipo_objeto == 'licencia' %}
+                    N/A
                 {% endif %}
             </td>
             <td>
-                    {{ item.numero_proyecto |default:"NA" }}
+                {% if item.tipo_objeto != 'licencia' %}
+                    {{ item.numero_proyecto | default:"NA" }}
+                {% else %}
+                    N/A
+                {% endif %}
             </td>
             <td>
                 {% if item.tipo_objeto == 'solicitud' %}
                     {{ item.get_tipo_display }}
-                {% endif %}
-
-                {% if item.tipo_objeto == 'registro' %}
+                {% elif item.tipo_objeto == 'registro' %}
+                    {{ item.get_tipo_display }}
+                {% elif item.tipo_objeto == 'licencia' %}
                     {{ item.get_tipo_display }}
                 {% endif %}
             </td>
-            <td>{{ item.fecha_inicio|date:"d/M/Y H:i"}}</td>
-            <td>{{ item.fecha_fin|date:"d/M/Y H:i"}}</td>
-            <td>{{ item.horas | default:0}}</td>
+            <td>{{ item.fecha_inicio|date:"d/M/Y H:i" }}</td>
+            <td>{{ item.fecha_fin|date:"d/M/Y H:i" }}</td>
             <td>
-                    {{ item.dias_solicitados | default:0  }}
-
+                {% if item.tipo_objeto != 'licencia' %}
+                    {{ item.horas }}
+                {% else %}
+                    {{ item.horas_totales | default:"-" }}
+                {% endif %}
             </td>
             <td>
-                {{ item.descripcion | default:'-'}}
+                {% if item.tipo_objeto == 'licencia' %}
+                    {{ item.dias_totales | default:"-" }}
+                {% else %}
+                    {{ item.dias_solicitados | default:0 }}
+                {% endif %}
             </td>
+            <td>{{ item.descripcion | default:'-' }}</td>
             <td>{{ item.get_estado_display }}</td>
             <td>
                 {% if item.tipo_objeto == 'solicitud' %}
-                    <a href="{% url 'aprobar_rechazar_solicitud' item.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
-                {% else %}
-                    <a href="{% url 'aprobar_rechazar_horas' item.pk %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
+                    <a href="{% url 'aprobar_rechazar_solicitud' item.id %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
+                {% elif item.tipo_objeto == 'registro' %}
+                    <a href="{% url 'aprobar_rechazar_horas' item.id %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
+                {% elif item.tipo_objeto == 'licencia' %}
+                    <a href="{% url 'aprobar_licencia' item.id %}" class="btn btn-sm btn-primary">Aprobar/Rechazar</a>
                 {% endif %}
             </td>
         </tr>
         {% empty %}
         <tr>
-            <td colspan="8">No hay solicitudes ni registros de horas pendientes.</td>
+            <td colspan="11">No hay solicitudes, registros de horas ni licencias pendientes.</td>
         </tr>
         {% endfor %}
     </tbody>
+    
 </table>
 
 <!-- Controles de Paginación -->
@@ -135,9 +149,5 @@
         {% endif %}
     </ul>
 </nav>
-
-
-
-
 
 {% endblock %}

@@ -72,10 +72,43 @@
                 <td>{{ item.get_estado_display }}</td>
                 <td>
                     {% if item.estado == 'P' %}
-                    <a href="{% if item.tipo_objeto == 'solicitud' %}{% url 'editar_solicitud' item.id %}{% else %}{% url 'editar_registro_horas' item.id %}{% endif %}" class="btn btn-warning btn-sm">Editar</a>
-                    <a href="{% if item.tipo_objeto == 'solicitud' %}{% url 'eliminar_solicitud' item.id %}{% else %}{% url 'eliminar_registro_horas' item.id %}{% endif %}" class="btn btn-danger btn-sm">Eliminar</a>
+                        {% if item.tipo_objeto == 'solicitud' %}
+                            <!-- Botones para Solicitud -->
+                            <a href="{% url 'editar_solicitud' item.id %}" class="btn btn-warning btn-sm">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                            <a href="{% url 'eliminar_solicitud' item.id %}" class="btn btn-danger btn-sm">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </a>
+                        {% elif item.tipo_objeto == 'registro' %}
+                            <!-- Botones para Registro de Horas -->
+                            <a href="{% url 'editar_registro_horas' item.id %}" class="btn btn-warning btn-sm">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                            <a href="{% url 'eliminar_registro_horas' item.id %}" class="btn btn-danger btn-sm">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </a>
+                        {% elif item.tipo_objeto == 'licencia' %}
+                            <!-- Botones para Licencia -->
+                            <a href="{% url 'editar_licencia' item.id %}" class="btn btn-warning btn-sm">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                            <a href="{% url 'eliminar_licencia' item.id %}" class="btn btn-danger btn-sm">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </a>
+                        {% endif %}
+                    {% else %}
+                        <!-- Botones deshabilitados si no está en estado 'P' -->
+                        <button class="btn btn-secondary btn-sm" disabled>
+                            <i class="fas fa-edit"></i> No Editable
+                        </button>
+                        <button class="btn btn-secondary btn-sm" disabled>
+                            <i class="fas fa-trash"></i> No Eliminable
+                        </button>
                     {% endif %}
                 </td>
+                
+                
             </tr>
             {% empty %}
             <tr>
