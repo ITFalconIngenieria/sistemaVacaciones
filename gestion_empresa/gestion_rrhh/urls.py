@@ -56,5 +56,6 @@ urlpatterns = [
     path('aprobar-licencia/<int:pk>/', views.AprobarRechazarLicenciaView.as_view(), name='aprobar_licencia'),
     path('editar-licencia/<int:pk>/', views.EditarLicenciaView.as_view(), name='editar_licencia'),
     path('eliminar-licencia/<int:pk>/', views.EliminarLicenciaView.as_view(), name='eliminar_licencia'),
-
+     path('reporte-licencias/', views.reporte_licencias, name='reporte_licencias'),
+    path('reporte-licencias-pdf/', views.generar_reporte_licencias_pdf, name='generar_reporte_licencias_pdf'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

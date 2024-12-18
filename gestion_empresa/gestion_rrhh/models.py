@@ -311,7 +311,8 @@ class Licencia(models.Model):
     descripcion = models.TextField(null=True, blank=True)
     dias_totales = models.IntegerField(null=True, blank=True)  # Para almacenar los días en Matrimonio
     estado = models.CharField(max_length=1, choices=ESTADOS, default='P')
-
+    estado_cierre = models.BooleanField(default=False) 
+    
     def es_feriado(self, fecha):
         return FeriadoNacional.objects.filter(fecha=fecha).exists()
 

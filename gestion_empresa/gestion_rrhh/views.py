@@ -96,11 +96,9 @@ def dashboard(request):
     horas_extra = horas_data['HE']
     horas_compensatorias = horas_data['HC']
 
-    # Función para verificar si una fecha es válida (no es fin de semana ni feriado)
     def es_fecha_valida(fecha):
         return fecha.weekday() < 5 and fecha not in feriados_fechas
 
-    # Generar eventos finales solo con fechas válidas
     def generar_eventos_validos(nombre, tipo, fecha_inicio, fecha_fin, descripcion, color):
         eventos_validos = []
         fecha_actual = fecha_inicio
@@ -118,7 +116,6 @@ def dashboard(request):
 
     eventos = []
 
-    # Procesar vacaciones aprobadas
     for vacacion in Solicitud.objects.filter(estado='A', tipo='V', fecha_fin__gte=fecha_actual):
         nombre_completo = f"{vacacion.usuario.first_name} {vacacion.usuario.last_name}"
         fecha_inicio = vacacion.fecha_inicio.date()
@@ -126,7 +123,6 @@ def dashboard(request):
         descripcion = f"Inicio: {fecha_inicio} - Fin: {fecha_fin}"
         eventos += generar_eventos_validos(nombre_completo, "Vacaciones", fecha_inicio, fecha_fin, descripcion, "#e74c3c")
 
-    # Procesar horas compensatorias aprobadas
     for hora in Solicitud.objects.filter(estado='A', tipo='HC', fecha_fin__gte=fecha_hora_actual):
         nombre_completo = f"{hora.usuario.first_name} {hora.usuario.last_name}"
         fecha_inicio = hora.fecha_inicio.date()
@@ -134,7 +130,6 @@ def dashboard(request):
         descripcion = f"Inicio: {hora.fecha_inicio.strftime('%H:%M')} - Fin: {hora.fecha_fin.strftime('%H:%M')}"
         eventos += generar_eventos_validos(nombre_completo, "Horas Comp", fecha_inicio, fecha_fin, descripcion, "#f39c12")
 
-    # Procesar incapacidades aprobadas
     for incapacidad in Incapacidad.objects.filter(fecha_fin__gte=fecha_actual):
         nombre_completo = f"{incapacidad.usuario.first_name} {incapacidad.usuario.last_name}"
         fecha_inicio = incapacidad.fecha_inicio.date()
@@ -142,7 +137,6 @@ def dashboard(request):
         descripcion = f"Inicio: {fecha_inicio} - Fin: {fecha_fin}"
         eventos += generar_eventos_validos(nombre_completo, "Incapacidad", fecha_inicio, fecha_fin, descripcion, "#9b9b9b")
 
-    # Incluir los feriados como eventos
     for feriado in feriados:
         eventos.append({
             "title": feriado.descripcion,  # Usar el campo descripción del feriado como título
@@ -152,20 +146,17 @@ def dashboard(request):
             "color": "#09C1E6"
         })
     
-    # Procesar licencias aprobadas
 
     for licencia in Licencia.objects.filter(estado='A', fecha_fin__gte=fecha_hora_actual):
         nombre_completo = f"{licencia.usuario.first_name} {licencia.usuario.last_name}"
         fecha_inicio = licencia.fecha_inicio.date()
         fecha_fin = licencia.fecha_fin.date()
 
-        # Definir colores y tipo de evento según el tipo de licencia
         if licencia.tipo == 'LAC':
-            color = "#1abc9c"  # Verde claro
+            color = "#1abc9c"
             tipo_evento = "Lactancia"
             descripcion = f"Inicio: {licencia.fecha_inicio.strftime('%H:%M')} - Fin: {(licencia.fecha_inicio + timedelta(hours=1)).strftime('%H:%M')}"
 
-            # Generar eventos válidos con hora de inicio y fin diaria
             eventos += generar_eventos_validos(
                 nombre_completo,
                 tipo_evento,
@@ -176,11 +167,10 @@ def dashboard(request):
             )
 
         elif licencia.tipo == 'MAT':
-            color = "#3498db"  # Azul
+            color = "#3498db"
             tipo_evento = "Matrimonio"
             descripcion = f"Inicio: {licencia.fecha_inicio.strftime('%d-%m-%Y')} - Fin: {licencia.fecha_fin.strftime('%d-%m-%Y')}"
 
-            # Generar eventos válidos solo con fecha (sin hora)
             eventos += generar_eventos_validos(
                 nombre_completo,
                 tipo_evento,
@@ -191,7 +181,7 @@ def dashboard(request):
             )
 
         elif licencia.tipo == 'CAL':
-            color = "#e67e22"  # Naranja
+            color = "#e67e22"
             tipo_evento = "Calamidad Doméstica"
             descripcion = f"Inicio: {licencia.fecha_inicio.strftime('%H:%M')} - Fin: {licencia.fecha_fin.strftime('%H:%M')}"
 
@@ -212,10 +202,6 @@ def dashboard(request):
         'eventos': json.dumps(eventos),
     }
     return render(request, 'dashboard.html', context)
-
-
-
-
 
 
 
@@ -1956,28 +1942,6 @@ class MisLicenciasView(ListView):
         return Licencia.objects.filter(usuario=self.request.user).order_by('-fecha_inicio')
 
 
-# class AprobarRechazarLicenciaView(UserPassesTestMixin, UpdateView):
-#     model = Licencia
-#     fields = ['estado']
-#     template_name = 'aprobar_rechazar_licencia.html'
-#     success_url = reverse_lazy('lista_solicitudes')
-
-#     def test_func(self):
-#         licencia = self.get_object()
-#         return self.request.user.rol in ['GG', 'JI', 'JD'] and licencia.usuario != self.request.user
-
-#     def get_context_data(self, **kwargs):
-#         context = super().get_context_data(**kwargs)
-#         usuario = self.get_object().usuario
-#         return context
-
-#     def form_valid(self, form):
-#         form.instance.aprobado_por = self.request.user
-#         messages.success(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
-
-#         return super().form_valid(form)
-
-
 class AprobarRechazarLicenciaView(UserPassesTestMixin, UpdateView):
     model = Licencia
     fields = ['estado']
@@ -1997,16 +1961,14 @@ class AprobarRechazarLicenciaView(UserPassesTestMixin, UpdateView):
         licencia = self.get_object()
         usuario = licencia.usuario
 
-        # Ajustar el estado
-        if form.instance.estado == 'A':  # Aprobada
+        if form.instance.estado == 'A':
             form.instance.aprobado_por = self.request.user
             messages.success(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
-        elif form.instance.estado == 'R':  # Rechazada
+        elif form.instance.estado == 'R':
             messages.warning(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
-        elif form.instance.estado == 'P':  # Pendiente
+        elif form.instance.estado == 'P':
             messages.info(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
 
-        # Preparar datos para el correo
         fecha_ajustada = now() - timedelta(hours=6)
         year = fecha_ajustada.year
         estados = {
@@ -2030,7 +1992,6 @@ class AprobarRechazarLicenciaView(UserPassesTestMixin, UpdateView):
         email_sender = MicrosoftGraphEmail()
         subject = f"Tu licencia ha sido {context['estado']}"
 
-        # Enviar correo
         try:
             email_sender.send_email(
                 subject=subject,
@@ -2113,12 +2074,88 @@ class EliminarLicenciaView(DeleteView):
         messages.success(request, "La licencia ha sido eliminada correctamente.")
         return super().delete(request, *args, **kwargs)
 
-#para el historial de licencias    
-# class ListaLicenciasView(ListView):
-#     model = Licencia
-#     template_name = 'lista_licencias.html'
-#     context_object_name = 'licencias'
-#     paginate_by = 10  # Paginación opcional
+@login_required
+def reporte_licencias(request):
+    if not request.user.departamento or request.user.departamento.nombre != 'ADMON':
+        raise PermissionDenied("No tienes permiso para acceder a esta página.")
+    
+    licencias = Licencia.objects.filter(
+        estado_cierre=False,
+        estado='A'
+    ).order_by('usuario', 'fecha_inicio')
 
-#     def get_queryset(self):
-#         return Licencia.objects.all().order_by('-fecha_inicio')
+    licencias_por_usuario = {}
+    for licencia in licencias:
+        usuario = licencia.usuario
+        if usuario not in licencias_por_usuario:
+            licencias_por_usuario[usuario] = {'licencias': [], 'total_dias': 0, 'total_horas': 0}
+        
+        licencias_por_usuario[usuario]['licencias'].append(licencia)
+        licencias_por_usuario[usuario]['total_dias'] += licencia.dias_totales or 0
+        licencias_por_usuario[usuario]['total_horas'] += licencia.horas_totales or 0
+
+    hay_licencias_pendientes = licencias.exists()
+
+    if request.method == "POST":
+        seleccionados = request.POST.getlist('seleccionados')
+        if 'marcar_cerrado' in request.POST:
+            if seleccionados:
+                licencias_actualizadas = Licencia.objects.filter(id__in=seleccionados).update(estado_cierre=True)
+                messages.success(request, f"{licencias_actualizadas} licencias han sido marcadas como cerradas.")
+                return redirect('reporte_licencias')
+            else:
+                messages.warning(request, "Por favor selecciona al menos una licencia para marcar como cerrada.")
+        
+        elif 'generar_reporte' in request.POST:
+            request.session['reporte_licencias'] = seleccionados
+            return redirect('generar_reporte_licencias_pdf')
+
+    paginator = Paginator(list(licencias_por_usuario.items()), 5)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'reporte_licencias.html', {
+        'page_obj': page_obj,
+        'hay_licencias_pendientes': hay_licencias_pendientes,
+        'fecha_reporte': now(),
+    })
+
+
+@login_required
+def generar_reporte_licencias_pdf(request):
+    if not request.user.departamento or request.user.departamento.nombre != 'ADMON':
+        raise PermissionDenied("No tienes permiso para acceder a esta página.")
+
+    licencias = Licencia.objects.filter(estado='A', estado_cierre=False).order_by('usuario', 'fecha_inicio')
+
+    licencias_por_usuario = {}
+    for licencia in licencias:
+        usuario = licencia.usuario
+        if usuario not in licencias_por_usuario:
+            licencias_por_usuario[usuario] = {
+                'licencias': [],
+                'total_dias': 0,
+                'total_horas': 0,
+            }
+        licencias_por_usuario[usuario]['licencias'].append(licencia)
+        if licencia.dias_totales:
+            licencias_por_usuario[usuario]['total_dias'] += licencia.dias_totales
+        if licencia.horas_totales:
+            licencias_por_usuario[usuario]['total_horas'] += licencia.horas_totales
+
+    context = {
+        'licencias_por_usuario': licencias_por_usuario,
+        'fecha_reporte': now(),
+    }
+
+    template = get_template('reporte_licencias_pdf.html')
+    html = template.render(context)
+    fecha_actual = datetime.now().strftime("%Y:%m:%d")
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="reporte_licencias_{fecha_actual}.pdf"'
+    pisa_status = pisa.CreatePDF(html, dest=response, encoding='UTF-8')
+
+    if pisa_status.err:
+        return HttpResponse('Error al generar el PDF', status=400)
+
+    return response

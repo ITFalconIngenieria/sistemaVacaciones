@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Licencias</title>
+    <style>
+        @page {
+            size: letter;
+            margin: 2cm;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            line-height: 1.3;
+            color: #333;
+        }
+    
+        h1 {
+            font-size: 24px;
+            margin-bottom: 25px;
+            color: #333;
+            font-weight: normal;
+        }
+    
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            table-layout: fixed; /* Fija el ancho de las columnas */
+        }
+    
+        th
+        {
+            padding: 8px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        td {
+            padding-top: 5px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+            border-bottom: 1px solid #ddd;
+        }
+    
+        th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            color: #000;
+            border-bottom: 2px solid #ddd;
+        }
+    
+        td {
+            vertical-align: middle;
+        }
+    
+        /* Ancho de cada columna */
+
+    
+        .usuario {
+            color: #005dad;
+        }
+    
+        .footer {
+            margin-top: 20px;
+            text-align: left;
+            font-size: 11px;
+            color: #666;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+    
+        .numero {
+            font-family: "Courier New", monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Reporte de Licencias</h1>
+    <h2>Fecha del Reporte: {{ fecha_reporte|date:"d/m/Y" }}</h2>
+
+    {% for usuario, data in licencias_por_usuario.items %}
+    <h3>Colaborador: {{ usuario.get_full_name }}</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Tipo</th>
+                <th>Fecha Inicio</th>
+                <th>Fecha Fin</th>
+                <th>Días Totales</th>
+                <th>Horas Totales</th>
+                <th>Descripción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for licencia in data.licencias %}
+            <tr>
+                <td>{{ licencia.get_tipo_display }}</td>
+                <td>{{ licencia.fecha_inicio|date:"d/m/Y" }}</td>
+                <td>{{ licencia.fecha_fin|date:"d/m/Y" }}</td>
+                <td>{{ licencia.dias_totales|default:0 }}</td>
+                <td>{{ licencia.horas_totales|default:0 }}</td>
+                <td>{{ licencia.descripcion|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td colspan="3">Totales para {{ usuario.get_full_name }}</td>
+                <td>{{ data.total_dias }}</td>
+                <td>{{ data.total_horas }}</td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+    {% endfor %}
+</body>
+</html>
