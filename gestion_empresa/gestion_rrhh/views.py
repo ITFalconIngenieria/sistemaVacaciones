@@ -1887,7 +1887,7 @@ class CrearLicenciaView(CreateView):
                     break
             fecha_actual += timedelta(days=1)
 
-        return datetime.combine(fecha_actual, time(0, 0, 0))
+        return datetime.combine(fecha_actual, time(23,59, 59))
 
     def calcular_horas_calamidad(self, fecha_inicio, fecha_fin):
 
@@ -2089,7 +2089,7 @@ class EditarLicenciaView(UpdateView):
                     break
             fecha_actual += timedelta(days=1)
 
-        return datetime.combine(fecha_actual, time(0, 0, 0))
+        return datetime.combine(fecha_actual, time(23, 59, 59))
 
     def calcular_horas_calamidad(self, fecha_inicio, fecha_fin):
 

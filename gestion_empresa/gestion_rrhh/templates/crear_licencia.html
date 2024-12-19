@@ -61,6 +61,15 @@
                 : [];
         }
 
+        function limpiarCampos() {
+            // Restablecer los campos
+            fechaInicioInput.value = '';
+            fechaFinInput.value = '';
+            resultadoFechaFin.textContent = '';
+            resultadoHoras.textContent = '';
+            resultadoCalculo.style.display = 'none';
+        }
+
         async function calcularResultados() {
             const tipo = tipoSelect.value;
             const fechaInicio = fechaInicioInput.value;
@@ -171,14 +180,20 @@
 
             // Mostrar los resultados
             if (fechaFinCalculada) {
-                resultadoFechaFin.textContent = fechaFinCalculada.toLocaleString();
-                resultadoHoras.textContent = horasCalculadas;
-                resultadoCalculo.style.display = 'block';
-            }
+    // Formatear la fecha fin si el tipo es MAT (Matrimonio)
+    if (tipo === 'MAT') {
+        fechaFinCalculada.setHours(23, 59, 59); // Establecer hora a las 23:59
+    }
+
+    resultadoFechaFin.textContent = fechaFinCalculada.toLocaleString();
+    resultadoHoras.textContent = horasCalculadas;
+    resultadoCalculo.style.display = 'block';
+}
+
         }
 
-
         tipoSelect.addEventListener('change', () => {
+            limpiarCampos();
             manejarTipoSeleccionado();
             calcularResultados();
         });
@@ -202,5 +217,6 @@
         manejarTipoSeleccionado();
     });
 </script>
+
 
 {% endblock %}

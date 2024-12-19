@@ -14,8 +14,14 @@
                 {% csrf_token %}
                 {{ form|crispy }}
 
-                <div class="alert alert-info" id="alerta-fecha-fin" style="display: none;">
-                    La fecha de fin se calculará automáticamente para el tipo seleccionado.
+                <div class="alert alert-info" id="mensaje-info" style="display: none;">
+                    <strong>Información:</strong> La fecha de fin y las horas se calcularán automáticamente para
+                    Licencia de Lactancia y Matrimonio.
+                </div>
+
+                <div class="alert alert-secondary" id="resultado-calculo" style="display: none;">
+                    <p><strong>Fecha de Fin Calculada:</strong> <span id="resultado-fecha-fin"></span></p>
+                    <p><strong>Horas Calculadas:</strong> <span id="resultado-horas"></span></p>
                 </div>
 
                 <button type="submit" class="btn btn-primary">Guardar Cambios</button>
@@ -28,39 +34,185 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const tipoSelect = document.getElementById('id_tipo');
+        const fechaInicioInput = document.getElementById('id_fecha_inicio');
         const fechaFinInput = document.getElementById('id_fecha_fin');
-        const alertaFechaFin = document.getElementById('alerta-fecha-fin');
+        const mensajeInfo = document.getElementById('mensaje-info');
+        const resultadoCalculo = document.getElementById('resultado-calculo');
+        const resultadoFechaFin = document.getElementById('resultado-fecha-fin');
+        const resultadoHoras = document.getElementById('resultado-horas');
 
-        function manejarFechaFin() {
-            const tipo = tipoSelect.value;
-            if (tipo === 'LAC' || tipo === 'MAT') {
-                fechaFinInput.setAttribute('readonly', true);
-                fechaFinInput.setAttribute('disabled', true);  // Bloquear completamente
-                fechaFinInput.value = '';
-                fechaFinInput.style.backgroundColor = '#e9ecef';
-                alertaFechaFin.style.display = 'block';
-            } else {
-                fechaFinInput.removeAttribute('readonly');
-                fechaFinInput.removeAttribute('disabled');  // Habilitar si no es LAC o MAT
-                fechaFinInput.style.backgroundColor = '';
-                alertaFechaFin.style.display = 'none';
-            }
-        }
-
-
-        // Ejecutar al cargar la página
-        manejarFechaFin();
-
-        // Evento para detectar cambio en tipo de licencia
-        tipoSelect.addEventListener('change', manejarFechaFin);
-
-        // Inicializar Flatpickr
         flatpickr('.flatpickr-datetime', {
             enableTime: true,
             dateFormat: 'Y-m-d H:i',
             time_24hr: true,
             locale: 'es'
         });
+
+        async function obtenerFeriados(fechaInicio, fechaFin) {
+            const fechaInicioSinHora = fechaInicio.split(' ')[0];
+            const fechaFinSinHora = fechaFin.split(' ')[0];
+
+            const response = await fetch(`/getferiados/?fecha_inicio=${fechaInicioSinHora}&fecha_fin=${fechaFinSinHora}`);
+            return response.ok
+                ? (await response.json()).feriados.map(fecha => new Date(fecha))
+                : [];
+        }
+
+        function limpiarCampos() {
+            // Restablecer los campos
+            fechaInicioInput.value = '';
+            fechaFinInput.value = '';
+            resultadoFechaFin.textContent = '';
+            resultadoHoras.textContent = '';
+            resultadoCalculo.style.display = 'none';
+        }
+
+        async function calcularResultados() {
+            const tipo = tipoSelect.value;
+            const fechaInicio = fechaInicioInput.value;
+            const fechaFinUsuario = fechaFinInput.value; // Fecha fin ingresada por el usuario
+
+            // Limpiar resultados previos
+            resultadoFechaFin.textContent = '';
+            resultadoHoras.textContent = '';
+            resultadoCalculo.style.display = 'none';
+
+            if (!fechaInicio) return;
+
+            const fechaInicioDate = new Date(fechaInicio);
+            let fechaFinCalculada = '';
+            let horasCalculadas = '';
+
+            if (tipo === 'LAC') {
+                // Validación de horario de almuerzo
+                const almuerzoInicio = new Date(fechaInicioDate);
+                almuerzoInicio.setHours(12, 0, 0);
+
+                const almuerzoFin = new Date(fechaInicioDate);
+                almuerzoFin.setHours(13, 0, 0);
+
+                if (fechaInicioDate >= almuerzoInicio && fechaInicioDate < almuerzoFin) {
+                    alert("La hora de inicio no puede ser durante el almuerzo (12:00 - 13:00).");
+                    return;
+                }
+
+                // Fecha de fin para Lactancia (6 meses después con 1 hora adicional)
+                fechaFinCalculada = new Date(fechaInicioDate);
+                fechaFinCalculada.setMonth(fechaFinCalculada.getMonth() + 6);
+                fechaFinCalculada.setHours(fechaInicioDate.getHours() + 1);
+                horasCalculadas = '1 Hora';
+            } else if (tipo === 'MAT') {
+                // Cálculo de días hábiles para Matrimonio
+                let fechaActual = new Date(fechaInicioDate);
+                let totalDias = 0;
+
+                // Preliminarmente calcula una fecha fin tentativa para obtener feriados
+                fechaFinCalculada = new Date(fechaInicioDate);
+                fechaFinCalculada.setDate(fechaInicioDate.getDate() + 10); // Asume un máximo de 10 días para contar 3 días hábiles
+                const diasFeriados = await obtenerFeriados(fechaInicio, fechaFinCalculada.toISOString().split('T')[0]);
+
+                while (totalDias < 3) {
+                    const esFeriado = diasFeriados.some(dia => dia.toDateString() === fechaActual.toDateString());
+                    const esFinDeSemana = fechaActual.getDay() === 0 || fechaActual.getDay() === 6;
+
+                    if (!esFeriado && !esFinDeSemana) {
+                        totalDias++;
+                    }
+                    if (totalDias === 3) break;
+                    fechaActual.setDate(fechaActual.getDate() + 1);
+                }
+
+                fechaFinCalculada = fechaActual;
+                horasCalculadas = '3 Días';
+            } else if (tipo === 'CAL') {
+                // Usa la fecha fin ingresada por el usuario
+                if (!fechaFinUsuario) return;
+
+                const fechaFinDate = new Date(fechaFinUsuario);
+                const diasFeriados = await obtenerFeriados(fechaInicio, fechaFinUsuario);
+
+                fechaFinCalculada = fechaFinDate;
+
+                // Cálculo de horas laborales
+                let fechaActual = new Date(fechaInicioDate);
+                let totalHoras = 0;
+
+                while (fechaActual <= fechaFinDate) {
+                    const esFeriado = diasFeriados.some(dia => dia.toDateString() === fechaActual.toDateString());
+                    const esFinDeSemana = fechaActual.getDay() === 0 || fechaActual.getDay() === 6;
+
+                    if (!esFeriado && !esFinDeSemana) {
+                        const inicioDia = new Date(fechaActual);
+                        inicioDia.setHours(7, 0, 0);
+
+                        const finDia = new Date(fechaActual);
+                        finDia.setHours(17, 0, 0);
+
+                        const inicioValido = Math.max(fechaInicioDate.getTime(), inicioDia.getTime());
+                        const finValido = Math.min(fechaFinDate.getTime(), finDia.getTime());
+
+                        if (inicioValido < finValido) {
+                            let horasDia = (finValido - inicioValido) / (1000 * 60 * 60);
+
+                            const almuerzoInicio = new Date(fechaActual);
+                            almuerzoInicio.setHours(12, 0, 0);
+
+                            const almuerzoFin = new Date(fechaActual);
+                            almuerzoFin.setHours(13, 0, 0);
+
+                            if (inicioValido <= almuerzoInicio.getTime() && finValido > almuerzoInicio.getTime()) {
+                                horasDia -= 1;
+                            }
+
+                            horasDia = Math.min(horasDia, 9);
+                            totalHoras += horasDia;
+                        }
+                    }
+
+                    fechaActual.setDate(fechaActual.getDate() + 1);
+                }
+
+                horasCalculadas = `${totalHoras.toFixed(2)} Horas`;
+            }
+
+            // Mostrar los resultados
+            if (fechaFinCalculada) {
+    // Formatear la fecha fin si el tipo es MAT (Matrimonio)
+    if (tipo === 'MAT') {
+        fechaFinCalculada.setHours(23, 59, 59); // Establecer hora a las 23:59
+    }
+
+    resultadoFechaFin.textContent = fechaFinCalculada.toLocaleString();
+    resultadoHoras.textContent = horasCalculadas;
+    resultadoCalculo.style.display = 'block';
+}
+
+        }
+
+        tipoSelect.addEventListener('change', () => {
+            limpiarCampos();
+            manejarTipoSeleccionado();
+            calcularResultados();
+        });
+
+        fechaInicioInput.addEventListener('change', calcularResultados);
+        fechaFinInput.addEventListener('change', calcularResultados);
+
+        function manejarTipoSeleccionado() {
+            if (tipoSelect.value === 'LAC' || tipoSelect.value === 'MAT') {
+                fechaFinInput.disabled = true;
+                mensajeInfo.style.display = 'block';
+            } else if (tipoSelect.value === 'CAL') {
+                fechaFinInput.disabled = false;
+                mensajeInfo.style.display = 'none';
+            } else {
+                fechaFinInput.disabled = false;
+                mensajeInfo.style.display = 'none';
+            }
+        }
+
+        manejarTipoSeleccionado();
     });
 </script>
+
 {% endblock %}
