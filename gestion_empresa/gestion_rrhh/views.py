@@ -33,6 +33,8 @@ from .models import Licencia
 from .forms import LicenciaForm
 from django.db import models
 from dateutil.relativedelta import relativedelta
+from decimal import Decimal
+
 
 def es_jefe(user):
     return user.rol in ['GG', 'JI', 'JD']
@@ -1888,14 +1890,41 @@ class CrearLicenciaView(CreateView):
         return datetime.combine(fecha_actual, time(0, 0, 0))
 
     def calcular_horas_calamidad(self, fecha_inicio, fecha_fin):
-        almuerzo_inicio = fecha_inicio.replace(hour=12, minute=0, second=0)
-        almuerzo_fin = fecha_inicio.replace(hour=13, minute=0, second=0)
-        delta = fecha_fin - fecha_inicio
-        total_horas = delta.total_seconds() / 3600
 
-        if fecha_inicio < almuerzo_fin and fecha_fin > almuerzo_inicio:
-            total_horas -= 1
-        return total_horas
+        feriados = FeriadoNacional.objects.filter(
+            fecha__range=[fecha_inicio.date(), fecha_fin.date()]
+        )
+        horas_totales = Decimal(0)
+        fecha_actual = fecha_inicio.date()
+        tz = get_current_timezone()
+
+        while fecha_actual <= fecha_fin.date():
+            if (fecha_actual.weekday() < 5 and 
+                fecha_actual not in [feriado.fecha for feriado in feriados]):
+
+                inicioDia = make_aware(datetime.combine(fecha_actual, time(7, 0)), tz)
+                finDia = make_aware(datetime.combine(fecha_actual, time(17, 0)), tz)
+
+                inicioValido = max(fecha_inicio, inicioDia)
+                finValido = min(fecha_fin, finDia)
+
+                if inicioValido < finValido:
+                    horasDia = Decimal((finValido - inicioValido).total_seconds() / 3600)
+
+                    almuerzoInicio = make_aware(datetime.combine(fecha_actual, time(12, 0)), tz)
+                    almuerzoFin = make_aware(datetime.combine(fecha_actual, time(13, 0)), tz)
+
+                    if inicioValido <= almuerzoInicio < finValido or inicioValido < almuerzoFin <= finValido:
+                        horasDia -= Decimal(1)
+
+                    horasDia = min(horasDia, Decimal(9))
+                    horas_totales += horasDia
+
+            fecha_actual += timedelta(days=1)
+
+        return horas_totales
+
+
 
     def form_valid(self, form):
         licencia = form.save(commit=False)
@@ -1918,15 +1947,15 @@ class CrearLicenciaView(CreateView):
             licencia.dias_totales = 3
             licencia.estado = 'P'
 
-        elif licencia.tipo == 'CAL':
+        elif licencia.tipo == 'CAL':  # Lógica para Calamidad
             licencia.horas_totales = self.calcular_horas_calamidad(licencia.fecha_inicio, licencia.fecha_fin)
             horas_acumuladas = Licencia.objects.filter(
                 usuario=licencia.usuario,
                 tipo='CAL',
                 fecha_inicio__year=licencia.fecha_inicio.year
-            ).exclude(pk=licencia.pk).aggregate(models.Sum('horas_totales'))['horas_totales__sum'] or 0
+            ).exclude(pk=licencia.pk).aggregate(models.Sum('horas_totales'))['horas_totales__sum'] or Decimal(0)
 
-            if horas_acumuladas + licencia.horas_totales > 135:
+            if Decimal(horas_acumuladas) + licencia.horas_totales > Decimal(135):
                 form.add_error('fecha_fin', "No puedes exceder las 135 horas anuales para Calamidad Doméstica.")
                 return self.form_invalid(form)
 
@@ -2063,14 +2092,41 @@ class EditarLicenciaView(UpdateView):
         return datetime.combine(fecha_actual, time(0, 0, 0))
 
     def calcular_horas_calamidad(self, fecha_inicio, fecha_fin):
-        almuerzo_inicio = fecha_inicio.replace(hour=12, minute=0, second=0)
-        almuerzo_fin = fecha_inicio.replace(hour=13, minute=0, second=0)
-        delta = fecha_fin - fecha_inicio
-        total_horas = delta.total_seconds() / 3600
 
-        if fecha_inicio < almuerzo_fin and fecha_fin > almuerzo_inicio:
-            total_horas -= 1
-        return total_horas
+        feriados = FeriadoNacional.objects.filter(
+            fecha__range=[fecha_inicio.date(), fecha_fin.date()]
+        )
+        horas_totales = Decimal(0)
+        fecha_actual = fecha_inicio.date()
+        tz = get_current_timezone()
+
+        while fecha_actual <= fecha_fin.date():
+            if (fecha_actual.weekday() < 5 and 
+                fecha_actual not in [feriado.fecha for feriado in feriados]):
+
+                inicioDia = make_aware(datetime.combine(fecha_actual, time(7, 0)), tz)
+                finDia = make_aware(datetime.combine(fecha_actual, time(17, 0)), tz)
+
+                inicioValido = max(fecha_inicio, inicioDia)
+                finValido = min(fecha_fin, finDia)
+
+                if inicioValido < finValido:
+                    horasDia = Decimal((finValido - inicioValido).total_seconds() / 3600)
+
+                    almuerzoInicio = make_aware(datetime.combine(fecha_actual, time(12, 0)), tz)
+                    almuerzoFin = make_aware(datetime.combine(fecha_actual, time(13, 0)), tz)
+
+                    if inicioValido <= almuerzoInicio < finValido or inicioValido < almuerzoFin <= finValido:
+                        horasDia -= Decimal(1)
+
+                    horasDia = min(horasDia, Decimal(9))
+                    horas_totales += horasDia
+
+            fecha_actual += timedelta(days=1)
+
+        return horas_totales
+
+
 
     def form_valid(self, form):
         licencia = form.save(commit=False)
@@ -2093,15 +2149,15 @@ class EditarLicenciaView(UpdateView):
             licencia.dias_totales = 3
             licencia.estado = 'P'
 
-        elif licencia.tipo == 'CAL':
+        elif licencia.tipo == 'CAL':  # Lógica para Calamidad
             licencia.horas_totales = self.calcular_horas_calamidad(licencia.fecha_inicio, licencia.fecha_fin)
             horas_acumuladas = Licencia.objects.filter(
                 usuario=licencia.usuario,
                 tipo='CAL',
                 fecha_inicio__year=licencia.fecha_inicio.year
-            ).exclude(pk=licencia.pk).aggregate(models.Sum('horas_totales'))['horas_totales__sum'] or 0
+            ).exclude(pk=licencia.pk).aggregate(models.Sum('horas_totales'))['horas_totales__sum'] or Decimal(0)
 
-            if horas_acumuladas + licencia.horas_totales > 135:
+            if Decimal(horas_acumuladas) + licencia.horas_totales > Decimal(135):
                 form.add_error('fecha_fin', "No puedes exceder las 135 horas anuales para Calamidad Doméstica.")
                 return self.form_invalid(form)
 
