@@ -18,8 +18,10 @@
                     <p><strong>Horas compensatorias disponibles:</strong> {{ horas_compensatorias }}</p>
                     <p><strong>Horas extras:</strong> {{ horas_extra }}</p>
                     <hr>
-                    <a href="{% url 'cambiar_contrasena' %}" class="btn btn-warning">Cambiar Contraseña</a>
-                    <a href="{% url 'convertir_vacaciones' %}" class="btn btn-success mt-2">Convertir Días a Horas</a>
+                    <div class="d-flex justify-content-start">
+                        <a href="{% url 'cambiar_contrasena' %}" class="btn btn-warning me-2">Cambiar Contraseña</a>
+                        <a href="{% url 'convertir_vacaciones' %}" class="btn btn-success">Convertir Días a Horas</a>
+                    </div>
                 </div>
             </div>
         </div>
