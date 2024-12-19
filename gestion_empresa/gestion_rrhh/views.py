@@ -31,8 +31,8 @@ import uuid
 import pytz
 from .models import Licencia
 from .forms import LicenciaForm
-from django.contrib.messages.views import SuccessMessageMixin
 from django.db import models
+from dateutil.relativedelta import relativedelta
 
 def es_jefe(user):
     return user.rol in ['GG', 'JI', 'JD']
@@ -1869,32 +1869,64 @@ class CrearLicenciaView(CreateView):
     template_name = 'crear_licencia.html'
     success_url = reverse_lazy('mis_licencias')
 
+    def calcular_fecha_lactancia(self, fecha_inicio):
+        fecha_final = fecha_inicio + relativedelta(months=6)
+        fecha_final = fecha_final.replace(hour=fecha_inicio.hour + 1, minute=0, second=0)
+        return fecha_final
+
+    def calcular_fecha_matrimonio(self, fecha_inicio):
+        fecha_actual = fecha_inicio.date()
+        total_dias = 0
+
+        while total_dias < 3:
+            if fecha_actual.weekday() < 5 and not FeriadoNacional.objects.filter(fecha=fecha_actual).exists():
+                total_dias += 1
+                if total_dias == 3:
+                    break
+            fecha_actual += timedelta(days=1)
+
+        return datetime.combine(fecha_actual, time(0, 0, 0))
+
+    def calcular_horas_calamidad(self, fecha_inicio, fecha_fin):
+        almuerzo_inicio = fecha_inicio.replace(hour=12, minute=0, second=0)
+        almuerzo_fin = fecha_inicio.replace(hour=13, minute=0, second=0)
+        delta = fecha_fin - fecha_inicio
+        total_horas = delta.total_seconds() / 3600
+
+        if fecha_inicio < almuerzo_fin and fecha_fin > almuerzo_inicio:
+            total_horas -= 1
+        return total_horas
+
     def form_valid(self, form):
         licencia = form.save(commit=False)
-
         licencia.usuario = self.request.user
-
-        if licencia.tipo == 'MAT':
-            licencia.estado = 'P'
-        else: 
-            licencia.estado = 'A'
 
         if licencia.tipo == 'LAC':
             almuerzo_inicio = licencia.fecha_inicio.replace(hour=12, minute=0, second=0)
             almuerzo_fin = licencia.fecha_inicio.replace(hour=13, minute=0, second=0)
+
             if almuerzo_inicio <= licencia.fecha_inicio < almuerzo_fin:
                 form.add_error('fecha_inicio', "La hora de inicio no puede ser durante el almuerzo (12:00 - 13:00).")
                 return self.form_invalid(form)
-            licencia.fecha_fin = licencia.calcular_fecha_lactancia()
 
-        if licencia.tipo == 'CAL':
+            licencia.fecha_fin = self.calcular_fecha_lactancia(licencia.fecha_inicio)
+            licencia.horas_totales = 1
+
+        elif licencia.tipo == 'MAT':
+            licencia.fecha_inicio = datetime.combine(licencia.fecha_inicio.date(), time(0, 0, 0))
+            licencia.fecha_fin = self.calcular_fecha_matrimonio(licencia.fecha_inicio)
+            licencia.dias_totales = 3
+            licencia.estado = 'P'
+
+        elif licencia.tipo == 'CAL':
+            licencia.horas_totales = self.calcular_horas_calamidad(licencia.fecha_inicio, licencia.fecha_fin)
             horas_acumuladas = Licencia.objects.filter(
                 usuario=licencia.usuario,
                 tipo='CAL',
                 fecha_inicio__year=licencia.fecha_inicio.year
             ).exclude(pk=licencia.pk).aggregate(models.Sum('horas_totales'))['horas_totales__sum'] or 0
 
-            if horas_acumuladas + licencia.calcular_horas_calamidad() > 135:
+            if horas_acumuladas + licencia.horas_totales > 135:
                 form.add_error('fecha_fin', "No puedes exceder las 135 horas anuales para Calamidad Doméstica.")
                 return self.form_invalid(form)
 
@@ -1930,6 +1962,7 @@ class CrearLicenciaView(CreateView):
             except Exception as e:
                 print(f"Error al enviar correo al jefe {jefe.email}: {e}")
         return super().form_valid(form)
+
 
 
 class MisLicenciasView(ListView):
@@ -2011,18 +2044,67 @@ class EditarLicenciaView(UpdateView):
     template_name = 'editar_licencia.html'
     success_url = reverse_lazy('mis_licencias')
 
-    def dispatch(self, request, *args, **kwargs):
-        licencia = self.get_object()
-        # Validar si la licencia es editable
-        if not licencia.es_eliminable():
-            messages.error(request, "No puedes editar una licencia con fecha de inicio pasada.")
-            return redirect('mis_licencias')
-        return super().dispatch(request, *args, **kwargs)
+    def calcular_fecha_lactancia(self, fecha_inicio):
+        fecha_final = fecha_inicio + relativedelta(months=6)
+        fecha_final = fecha_final.replace(hour=fecha_inicio.hour + 1, minute=0, second=0)
+        return fecha_final
+
+    def calcular_fecha_matrimonio(self, fecha_inicio):
+        fecha_actual = fecha_inicio.date()
+        total_dias = 0
+
+        while total_dias < 3:
+            if fecha_actual.weekday() < 5 and not FeriadoNacional.objects.filter(fecha=fecha_actual).exists():
+                total_dias += 1
+                if total_dias == 3:
+                    break
+            fecha_actual += timedelta(days=1)
+
+        return datetime.combine(fecha_actual, time(0, 0, 0))
+
+    def calcular_horas_calamidad(self, fecha_inicio, fecha_fin):
+        almuerzo_inicio = fecha_inicio.replace(hour=12, minute=0, second=0)
+        almuerzo_fin = fecha_inicio.replace(hour=13, minute=0, second=0)
+        delta = fecha_fin - fecha_inicio
+        total_horas = delta.total_seconds() / 3600
+
+        if fecha_inicio < almuerzo_fin and fecha_fin > almuerzo_inicio:
+            total_horas -= 1
+        return total_horas
 
     def form_valid(self, form):
         licencia = form.save(commit=False)
-        if licencia.tipo == 'MAT':
+        licencia.usuario = self.request.user
+
+        if licencia.tipo == 'LAC':
+            almuerzo_inicio = licencia.fecha_inicio.replace(hour=12, minute=0, second=0)
+            almuerzo_fin = licencia.fecha_inicio.replace(hour=13, minute=0, second=0)
+
+            if almuerzo_inicio <= licencia.fecha_inicio < almuerzo_fin:
+                form.add_error('fecha_inicio', "La hora de inicio no puede ser durante el almuerzo (12:00 - 13:00).")
+                return self.form_invalid(form)
+
+            licencia.fecha_fin = self.calcular_fecha_lactancia(licencia.fecha_inicio)
+            licencia.horas_totales = 1
+
+        elif licencia.tipo == 'MAT':
+            licencia.fecha_inicio = datetime.combine(licencia.fecha_inicio.date(), time(0, 0, 0))
+            licencia.fecha_fin = self.calcular_fecha_matrimonio(licencia.fecha_inicio)
+            licencia.dias_totales = 3
             licencia.estado = 'P'
+
+        elif licencia.tipo == 'CAL':
+            licencia.horas_totales = self.calcular_horas_calamidad(licencia.fecha_inicio, licencia.fecha_fin)
+            horas_acumuladas = Licencia.objects.filter(
+                usuario=licencia.usuario,
+                tipo='CAL',
+                fecha_inicio__year=licencia.fecha_inicio.year
+            ).exclude(pk=licencia.pk).aggregate(models.Sum('horas_totales'))['horas_totales__sum'] or 0
+
+            if horas_acumuladas + licencia.horas_totales > 135:
+                form.add_error('fecha_fin', "No puedes exceder las 135 horas anuales para Calamidad Doméstica.")
+                return self.form_invalid(form)
+
         licencia.save()
         messages.success(self.request, "La licencia ha sido actualizada correctamente.")
 
@@ -2055,11 +2137,9 @@ class EditarLicenciaView(UpdateView):
                 )
             except Exception as e:
                 print(f"Error al enviar correo al jefe {jefe.email}: {e}")
+
         return super().form_valid(form)
 
-    def form_invalid(self, form):
-        messages.error(self.request, "Hubo un error al actualizar la licencia.")
-        return super().form_invalid(form)
 
 class EliminarLicenciaView(DeleteView):
     model = Licencia

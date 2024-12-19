@@ -289,8 +289,6 @@ class FeriadoNacional(models.Model):
         return f"{self.fecha} - {self.descripcion}"
     
 
-
-
 class Licencia(models.Model):
     TIPOS = (
         ('LAC', 'Lactancia'),
@@ -309,67 +307,12 @@ class Licencia(models.Model):
     fecha_fin = models.DateTimeField(null=True, blank=True)
     horas_totales = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     descripcion = models.TextField(null=True, blank=True)
-    dias_totales = models.IntegerField(null=True, blank=True)  # Para almacenar los días en Matrimonio
-    estado = models.CharField(max_length=1, choices=ESTADOS, default='P')
-    estado_cierre = models.BooleanField(default=False) 
-    
-    def es_feriado(self, fecha):
-        return FeriadoNacional.objects.filter(fecha=fecha).exists()
-
-    def calcular_fecha_lactancia(self):
-        fecha_final = self.fecha_inicio + relativedelta(months=6)
-        fecha_final = fecha_final.replace(hour=self.fecha_inicio.hour + 1, minute=0, second=0)
-        return fecha_final
-
-    def calcular_fecha_matrimonio(self):
-        fecha_actual = self.fecha_inicio.date()
-        total_dias = 0
-
-        while total_dias < 3:
-            if fecha_actual.weekday() < 5 and not self.es_feriado(fecha_actual):
-                total_dias += 1
-                if total_dias == 3:
-                    break
-            fecha_actual += timedelta(days=1)
-
-        return datetime.combine(fecha_actual, time(0, 0, 0))
-
-
-    def calcular_horas_calamidad(self):
-        almuerzo_inicio = self.fecha_inicio.replace(hour=12, minute=0, second=0)
-        almuerzo_fin = self.fecha_inicio.replace(hour=13, minute=0, second=0)
-        delta = self.fecha_fin - self.fecha_inicio
-        total_horas = delta.total_seconds() / 3600
-
-        if self.fecha_inicio < almuerzo_fin and self.fecha_fin > almuerzo_inicio:
-            total_horas -= 1 
-        return total_horas
+    dias_totales = models.IntegerField(null=True, blank=True)
+    estado = models.CharField(max_length=1, choices=ESTADOS, default='A')
+    estado_cierre = models.BooleanField(default=False)
 
     def es_eliminable(self):
         return date.today() < self.fecha_inicio.date()
 
-    def save(self, *args, **kwargs):
-        if self.tipo == 'LAC': 
-            self.fecha_fin = self.calcular_fecha_lactancia()
-            self.horas_totales = 1
-        elif self.tipo == 'MAT':
-            self.fecha_inicio = datetime.combine(self.fecha_inicio.date(), time(0, 0, 0))
-            self.fecha_fin = self.calcular_fecha_matrimonio()
-            self.dias_totales = 3
-        elif self.tipo == 'CAL':
-            self.horas_totales = self.calcular_horas_calamidad()
-            # Validar las horas acumuladas en el año
-            horas_acumuladas = Licencia.objects.filter(
-                usuario=self.usuario,
-                tipo='CAL',
-                fecha_inicio__year=self.fecha_inicio.year
-            ).exclude(pk=self.pk).aggregate(models.Sum('horas_totales'))['horas_totales__sum'] or 0
-
-            if horas_acumuladas + self.horas_totales > 135:
-                raise ValueError("No se pueden registrar más de 135 horas para Calamidad Doméstica en el año.")
-
-        super().save(*args, **kwargs)
-
     def __str__(self):
         return f"{self.usuario} - {self.get_tipo_display()} ({self.fecha_inicio} a {self.fecha_fin})"
-
