@@ -316,3 +316,14 @@ class Licencia(models.Model):
 
     def __str__(self):
         return f"{self.usuario} - {self.get_tipo_display()} ({self.fecha_inicio} a {self.fecha_fin})"
+
+
+
+class ConversionVacacionesHoras(models.Model):
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    dias_convertidos = models.DecimalField(max_digits=5, decimal_places=2)
+    horas_compensatorias = models.DecimalField(max_digits=6, decimal_places=2)
+    fecha_conversion = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.usuario} - {self.dias_convertidos} días -> {self.horas_compensatorias} horas"

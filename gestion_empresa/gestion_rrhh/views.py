@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import render, redirect,  redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView, View, DeleteView
-from .models import FeriadoNacional, Usuario, Solicitud, HistorialVacaciones, AjusteVacaciones, RegistroHoras,Solicitud, Incapacidad 
+from .models import FeriadoNacional, Usuario, Solicitud, HistorialVacaciones, ConversionVacacionesHoras, AjusteVacaciones, RegistroHoras,Solicitud, Incapacidad 
 from .forms import UsuarioCreationForm, SolicitudForm, FeriadoNacionalForm, RegistrarHorasForm,RegistroHorasFilterForm, AjusteVacacionesForm, IncapacidadForm
 from django.contrib import messages
 from django.contrib.auth import logout
@@ -43,17 +43,52 @@ def calcular_dias_disponibles(usuario):
     total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
     total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
     total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
-    dias_disponibles = total_dias_asignados + total_dias_ajustados - total_dias_tomados 
+    total_dias_convertidos = ConversionVacacionesHoras.objects.filter(usuario=usuario).aggregate(Sum('dias_convertidos'))['dias_convertidos__sum'] or 0
+
+    dias_disponibles = total_dias_asignados + total_dias_ajustados - total_dias_tomados - total_dias_convertidos
     return {
         'total_asignados': total_dias_asignados,
         'total_tomados': total_dias_tomados,
         'total_ajustados': total_dias_ajustados,
+        'total_convertidos': total_dias_convertidos,
         'dias_disponibles': dias_disponibles
     }
 
+
+# def calcular_horas_individuales(usuario):
+#     tipos = ['HE', 'HC'] 
+#     horas_por_tipo = {'HE': 0, 'HC': 0}
+#     for tipo in tipos:
+#         total_horas = RegistroHoras.objects.filter(
+#             usuario=usuario,
+#             tipo=tipo,
+#             estado='A',
+#             estado_pago='NP'
+#         ).aggregate(Sum('horas'))['horas__sum'] or 0
+#         horas_por_tipo[tipo] = total_horas
+#     horas_hef = RegistroHoras.objects.filter(
+#         usuario=usuario,
+#         tipo='HEF',
+#         estado='A',
+#         estado_pago='NP'  
+#     ).aggregate(
+#         total_horas=Sum('horas'),
+#         horas_compensatorias_feriado=Sum('horas_compensatorias_feriado')
+#     )
+#     horas_por_tipo['HE'] += horas_hef['total_horas'] or 0
+#     horas_por_tipo['HC'] += horas_hef['horas_compensatorias_feriado'] or 0
+#     horas_solicitudes_hc = Solicitud.objects.filter(
+#         usuario=usuario,
+#         tipo='HC',
+#         estado='A'
+#     ).aggregate(Sum('horas'))['horas__sum'] or 0
+#     horas_por_tipo['HC'] -= horas_solicitudes_hc
+#     return horas_por_tipo
+
 def calcular_horas_individuales(usuario):
-    tipos = ['HE', 'HC'] 
+    tipos = ['HE', 'HC']
     horas_por_tipo = {'HE': 0, 'HC': 0}
+
     for tipo in tipos:
         total_horas = RegistroHoras.objects.filter(
             usuario=usuario,
@@ -62,24 +97,34 @@ def calcular_horas_individuales(usuario):
             estado_pago='NP'
         ).aggregate(Sum('horas'))['horas__sum'] or 0
         horas_por_tipo[tipo] = total_horas
+
     horas_hef = RegistroHoras.objects.filter(
         usuario=usuario,
         tipo='HEF',
         estado='A',
-        estado_pago='NP'  
+        estado_pago='NP'
     ).aggregate(
         total_horas=Sum('horas'),
         horas_compensatorias_feriado=Sum('horas_compensatorias_feriado')
     )
+
     horas_por_tipo['HE'] += horas_hef['total_horas'] or 0
     horas_por_tipo['HC'] += horas_hef['horas_compensatorias_feriado'] or 0
+
     horas_solicitudes_hc = Solicitud.objects.filter(
         usuario=usuario,
         tipo='HC',
         estado='A'
     ).aggregate(Sum('horas'))['horas__sum'] or 0
+
     horas_por_tipo['HC'] -= horas_solicitudes_hc
+
+    # Incluir horas compensatorias generadas por la conversión
+    horas_conversion = ConversionVacacionesHoras.objects.filter(usuario=usuario).aggregate(Sum('horas_compensatorias'))['horas_compensatorias__sum'] or 0
+    horas_por_tipo['HC'] += horas_conversion
+
     return horas_por_tipo
+
 
 
 @login_required
@@ -2295,3 +2340,49 @@ def generar_reporte_licencias_pdf(request):
         return HttpResponse('Error al generar el PDF', status=400)
 
     return response
+
+
+
+
+def convertir_dias_a_horas(usuario, dias_a_convertir):
+    # Calcular días disponibles del usuario
+    dias_disponibles_data = calcular_dias_disponibles(usuario)
+    dias_disponibles = dias_disponibles_data['dias_disponibles']
+
+    if dias_a_convertir <= 0:
+        raise ValueError("La cantidad de días a convertir debe ser mayor a cero.")
+    if dias_a_convertir > dias_disponibles:
+        raise ValueError("No puedes convertir más días de los disponibles.")
+
+    # Calcular horas compensatorias (9 horas por día)
+    horas_compensatorias = Decimal(dias_a_convertir) * Decimal(9)
+
+    # Registrar la conversión en el modelo
+    conversion = ConversionVacacionesHoras.objects.create(
+        usuario=usuario,
+        dias_convertidos=dias_a_convertir,
+        horas_compensatorias=horas_compensatorias
+    )
+
+    # Actualizar el cálculo de horas compensatorias
+    return conversion
+
+
+def convertir_vacaciones_a_horas_view(request):
+    if request.method == 'POST':
+        try:
+            dias_a_convertir = int(request.POST.get('dias_a_convertir', 0))  # Convertir a entero
+
+            if dias_a_convertir <= 0:
+                raise ValueError("La cantidad de días debe ser un número entero mayor a cero.")
+
+            conversion = convertir_dias_a_horas(request.user, dias_a_convertir)
+            messages.success(request, f"Has convertido {conversion.dias_convertidos} días a {conversion.horas_compensatorias} horas compensatorias.")
+            
+            # Redirigir al dashboard después de una conversión exitosa
+            return redirect(reverse_lazy('dashboard'))
+        except ValueError as e:
+            messages.error(request, str(e))
+
+    dias_disponibles = calcular_dias_disponibles(request.user)['dias_disponibles']
+    return render(request, 'convertir_vacaciones.html', {'dias_disponibles': dias_disponibles})
