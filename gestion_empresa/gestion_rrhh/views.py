@@ -356,6 +356,7 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                 return self.form_invalid(form)
 
         if tipo_solicitud == 'V':
+            form.instance.descripcion="Vacaciones"
             total_days_no_work=0
             feriados = FeriadoNacional.objects.filter(
             fecha__range=[fecha_inicio.date(), fecha_fin.date()]
@@ -505,9 +506,10 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
     def test_func(self):
         solicitud = self.get_object()
 
-        if solicitud.usuario == self.request.user:
+        if (self.request.user.rol != 'GG' and solicitud.usuario == self.request.user):
             messages.error(self.request, 'No puedes aprobar o rechazar tu propia solicitud.')
             return False
+
 
         if self.request.user.is_superuser or self.request.user.rol == 'GG':
             return True
