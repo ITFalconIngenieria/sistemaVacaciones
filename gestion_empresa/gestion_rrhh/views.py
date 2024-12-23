@@ -290,41 +290,68 @@ class CrearUsuarioView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         return self.request.user.is_superuser or self.request.user.rol in ['GG', 'JI', 'JD']
 
 
+# def obtener_dias_feriados(request):
+#     fecha_inicio = request.GET.get('fecha_inicio', '').split()[0]
+#     fecha_fin = request.GET.get('fecha_fin', '').split()[0]
+
+#     try:
+#         fecha_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+#         fecha_fin = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+
+#         feriados = FeriadoNacional.objects.filter(fecha__range=[fecha_inicio, fecha_fin])
+#         feriados_list = [feriado.fecha.strftime("%Y-%m-%d") for feriado in feriados]
+
+#         return JsonResponse({'feriados': feriados_list})
+#     except (ValueError, TypeError):
+#         return JsonResponse({'error': 'Fechas inválidas'}, status=400)
+
 def obtener_dias_feriados(request):
     try:
-        # Obtener y validar que existan los parámetros
+        # Obtener parámetros
         fecha_inicio = request.GET.get('fecha_inicio')
         fecha_fin = request.GET.get('fecha_fin')
         
         if not fecha_inicio or not fecha_fin:
             return JsonResponse({
-                'error': 'Los parámetros fecha_inicio y fecha_fin son requeridos'
-            }, status=400)
+                'success': False,
+                'message': 'Por favor ingrese las fechas de inicio y fin',
+                'feriados': []
+            })
 
-        # Intentar convertir las fechas
+        # Convertir fechas
         fecha_inicio = datetime.strptime(fecha_inicio.split()[0], "%Y-%m-%d").date()
         fecha_fin = datetime.strptime(fecha_fin.split()[0], "%Y-%m-%d").date()
 
-        # Validar que fecha_inicio no sea posterior a fecha_fin
+        # Validar orden de fechas
         if fecha_inicio > fecha_fin:
             return JsonResponse({
-                'error': 'La fecha de inicio no puede ser posterior a la fecha fin'
-            }, status=400)
+                'success': False,
+                'message': 'La fecha de inicio debe ser anterior a la fecha fin',
+                'feriados': []
+            })
 
-        # Obtener los feriados
+        # Obtener feriados
         feriados = FeriadoNacional.objects.filter(fecha__range=[fecha_inicio, fecha_fin])
         feriados_list = [feriado.fecha.strftime("%Y-%m-%d") for feriado in feriados]
 
-        return JsonResponse({'feriados': feriados_list})
+        return JsonResponse({
+            'success': True,
+            'message': 'Feriados obtenidos correctamente',
+            'feriados': feriados_list
+        })
 
-    except ValueError:
+    except (ValueError, TypeError):
         return JsonResponse({
-            'error': 'Formato de fecha inválido. Use YYYY-MM-DD'
-        }, status=400)
-    except Exception as e:
+            'success': False,
+            'message': 'No se pudieron obtener los feriados. Verifique el formato de las fechas (YYYY-MM-DD)',
+            'feriados': []
+        })
+    except Exception:
         return JsonResponse({
-            'error': f'Error inesperado: {str(e)}'
-        }, status=500)
+            'success': False,
+            'message': 'No se pudieron obtener los feriados. Por favor intente nuevamente',
+            'feriados': []
+        })
     
 class CrearSolicitudView(LoginRequiredMixin, CreateView):
     model = Solicitud
