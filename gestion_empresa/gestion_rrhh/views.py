@@ -291,20 +291,40 @@ class CrearUsuarioView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 
 
 def obtener_dias_feriados(request):
-    fecha_inicio = request.GET.get('fecha_inicio', '').split()[0]
-    fecha_fin = request.GET.get('fecha_fin', '').split()[0]
-
     try:
-        fecha_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
-        fecha_fin = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+        # Obtener y validar que existan los parámetros
+        fecha_inicio = request.GET.get('fecha_inicio')
+        fecha_fin = request.GET.get('fecha_fin')
+        
+        if not fecha_inicio or not fecha_fin:
+            return JsonResponse({
+                'error': 'Los parámetros fecha_inicio y fecha_fin son requeridos'
+            }, status=400)
 
+        # Intentar convertir las fechas
+        fecha_inicio = datetime.strptime(fecha_inicio.split()[0], "%Y-%m-%d").date()
+        fecha_fin = datetime.strptime(fecha_fin.split()[0], "%Y-%m-%d").date()
+
+        # Validar que fecha_inicio no sea posterior a fecha_fin
+        if fecha_inicio > fecha_fin:
+            return JsonResponse({
+                'error': 'La fecha de inicio no puede ser posterior a la fecha fin'
+            }, status=400)
+
+        # Obtener los feriados
         feriados = FeriadoNacional.objects.filter(fecha__range=[fecha_inicio, fecha_fin])
         feriados_list = [feriado.fecha.strftime("%Y-%m-%d") for feriado in feriados]
 
-
         return JsonResponse({'feriados': feriados_list})
-    except (ValueError, TypeError):
-        return JsonResponse({'error': 'Fechas inválidas'}, status=400)
+
+    except ValueError:
+        return JsonResponse({
+            'error': 'Formato de fecha inválido. Use YYYY-MM-DD'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'error': f'Error inesperado: {str(e)}'
+        }, status=500)
     
 class CrearSolicitudView(LoginRequiredMixin, CreateView):
     model = Solicitud
