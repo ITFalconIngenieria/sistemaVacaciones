@@ -54,6 +54,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django_ratelimit.middleware.RatelimitMiddleware',
+    'gestion_empresa.middleware.BlockMiningAttemptsMiddleware',
 ]
 
 ROOT_URLCONF = 'gestion_empresa.urls'
@@ -169,3 +171,26 @@ CLIENT_SECRET = config('CLIENT_SECRET')
 TENANT_ID = config('TENANT_ID')
 EMAIL_FROM = config('EMAIL_FROM')
 ENLACE_DEV = config('ENLACE_DEV') 
+
+
+
+
+# Configuraciones de seguridad básicas
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+
+# Rate limiting
+RATELIMIT_ENABLE = True
+RATELIMIT_USE_CACHE = 'default'
+RATELIMIT_DEFAULT_LIMIT = '100/h'  # 100 requests por hora por IP
+RATELIMIT_KEY_FUNCTION = 'django_ratelimit.utils.get_client_ip'
+
+
+# Configuración de seguridad adicional
+SECURE_SSL_REDIRECT = True  # Forzar HTTPS
+SECURE_HSTS_SECONDS = 31536000  # 1 año
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
