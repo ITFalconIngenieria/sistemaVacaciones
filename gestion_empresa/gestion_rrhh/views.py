@@ -55,36 +55,6 @@ def calcular_dias_disponibles(usuario):
     }
 
 
-# def calcular_horas_individuales(usuario):
-#     tipos = ['HE', 'HC'] 
-#     horas_por_tipo = {'HE': 0, 'HC': 0}
-#     for tipo in tipos:
-#         total_horas = RegistroHoras.objects.filter(
-#             usuario=usuario,
-#             tipo=tipo,
-#             estado='A',
-#             estado_pago='NP'
-#         ).aggregate(Sum('horas'))['horas__sum'] or 0
-#         horas_por_tipo[tipo] = total_horas
-#     horas_hef = RegistroHoras.objects.filter(
-#         usuario=usuario,
-#         tipo='HEF',
-#         estado='A',
-#         estado_pago='NP'  
-#     ).aggregate(
-#         total_horas=Sum('horas'),
-#         horas_compensatorias_feriado=Sum('horas_compensatorias_feriado')
-#     )
-#     horas_por_tipo['HE'] += horas_hef['total_horas'] or 0
-#     horas_por_tipo['HC'] += horas_hef['horas_compensatorias_feriado'] or 0
-#     horas_solicitudes_hc = Solicitud.objects.filter(
-#         usuario=usuario,
-#         tipo='HC',
-#         estado='A'
-#     ).aggregate(Sum('horas'))['horas__sum'] or 0
-#     horas_por_tipo['HC'] -= horas_solicitudes_hc
-#     return horas_por_tipo
-
 def calcular_horas_individuales(usuario):
     tipos = ['HE', 'HC']
     horas_por_tipo = {'HE': 0, 'HC': 0}
