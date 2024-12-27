@@ -200,7 +200,7 @@ def dashboard(request):
         elif licencia.tipo == 'CAL':
             color = "#575AE3"
             tipo_evento = "Calamidad Doméstica"
-            descripcion = f"Inicio: {licencia.fecha_inicio.strftime('%d-%m-%Y')} - Fin: {licencia.fecha_fin.strftime('%d-%m-%Y')}"
+            descripcion = f"Inicio: {licencia.fecha_inicio.strftime('%H:%M')} - Fin: {licencia.fecha_fin.strftime('%H:%M')}"
 
             eventos += generar_eventos_validos(
                 nombre_completo,
