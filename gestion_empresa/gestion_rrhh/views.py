@@ -170,7 +170,7 @@ def dashboard(request):
         fecha_fin = licencia.fecha_fin.date()
 
         if licencia.tipo == 'LAC':
-            color = "#1abc9c"
+            color = "#E4E60E"
             tipo_evento = "Lactancia"
             descripcion = f"Inicio: {licencia.fecha_inicio.strftime('%H:%M')} - Fin: {(licencia.fecha_inicio + timedelta(hours=1)).strftime('%H:%M')}"
 
@@ -184,7 +184,7 @@ def dashboard(request):
             )
 
         elif licencia.tipo == 'MAT':
-            color = "#3498db"
+            color = "#0BE3E2"
             tipo_evento = "Matrimonio"
             descripcion = f"Inicio: {licencia.fecha_inicio.strftime('%d-%m-%Y')} - Fin: {licencia.fecha_fin.strftime('%d-%m-%Y')}"
 
@@ -198,7 +198,7 @@ def dashboard(request):
             )
 
         elif licencia.tipo == 'CAL':
-            color = "#e67e22"
+            color = "#575AE3"
             tipo_evento = "Calamidad Doméstica"
             descripcion = f"Inicio: {licencia.fecha_inicio.strftime('%d-%m-%Y')} - Fin: {licencia.fecha_fin.strftime('%d-%m-%Y')}"
 
