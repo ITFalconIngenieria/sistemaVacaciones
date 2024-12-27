@@ -15,9 +15,24 @@
                         {% csrf_token %}
                         {{ form|crispy }}
 
-                        <div class="alert alert-info" id="mensaje-info" style="display: none;">
+                        <div class="alert alert-info" id="mensaje-info-lact" style="display: none;">
                             <strong>Información:</strong> La fecha de fin y las horas se calcularán automáticamente para
-                            Licencia de Lactancia y Matrimonio.
+                            Licencia de Lactancia.
+                        </div>
+
+                        <div class="alert alert-info" id="mensaje-info-matri" style="display: none;">
+                            <strong>Información:</strong> La fecha de fin y las horas se calcularán automáticamente para
+                            Licencia de Matrimonio.
+                        </div>
+
+                        <div class="alert alert-info" id="mensaje-info-cal" style="display: none;">
+                            <strong>Información:</strong> Situación de desgracia, adversidad o 
+                            infortunio que afecta a una persona en su entorno familiar y 
+                            que es de tal gravedad que interfiere con sus actividades cotidianas, 
+                            incluyendo las laborales. Ejemplos de calamidades domésticas 
+                            pueden incluir efallecimiento, enfermedad o lesión grave de sus 
+                            parientes hasta el segundo grado de consanguinidad o de afinidad, 
+                            accidentes, incendios, robos, o desastres naturales como terremotos.
                         </div>
 
                         <div class="alert alert-secondary" id="resultado-calculo" style="display: none;">
@@ -39,10 +54,13 @@
         const tipoSelect = document.getElementById('id_tipo');
         const fechaInicioInput = document.getElementById('id_fecha_inicio');
         const fechaFinInput = document.getElementById('id_fecha_fin');
-        const mensajeInfo = document.getElementById('mensaje-info');
+        const mensajeLactInfo = document.getElementById('mensaje-info-lact');
+        const mensajeMatriInfo = document.getElementById('mensaje-info-matri');
+        const mensajeCalInfo = document.getElementById('mensaje-info-cal');
         const resultadoCalculo = document.getElementById('resultado-calculo');
         const resultadoFechaFin = document.getElementById('resultado-fecha-fin');
         const resultadoHoras = document.getElementById('resultado-horas');
+
 
         flatpickr('.flatpickr-datetime', {
             enableTime: true,
@@ -202,15 +220,28 @@
         fechaFinInput.addEventListener('change', calcularResultados);
 
         function manejarTipoSeleccionado() {
-            if (tipoSelect.value === 'LAC' || tipoSelect.value === 'MAT') {
+            if (tipoSelect.value === 'LAC') {
                 fechaFinInput.disabled = true;
-                mensajeInfo.style.display = 'block';
-            } else if (tipoSelect.value === 'CAL') {
+                mensajeLactInfo.style.display = 'block';
+                mensajeMatriInfo.style.display = 'none';
+                mensajeCalInfo.style.display = 'none';
+
+            }else if(tipoSelect.value === 'MAT'){
+                fechaFinInput.disabled = true;
+                mensajeMatriInfo.style.display = 'block';
+                mensajeLactInfo.style.display = 'none';
+                mensajeCalInfo.style.display = 'none';                
+            } 
+            else if (tipoSelect.value === 'CAL') {
                 fechaFinInput.disabled = false;
-                mensajeInfo.style.display = 'none';
+                mensajeCalInfo.style.display = 'block';
+                mensajeLactInfo.style.display = 'none';
+                mensajeMatriInfo.style.display = 'none';
             } else {
                 fechaFinInput.disabled = false;
-                mensajeInfo.style.display = 'none';
+                mensajeLactInfo.style.display = 'none';
+                mensajeMatriInfo.style.display = 'none';
+                mensajeCalInfo.style.display = 'none';
             }
         }
 
