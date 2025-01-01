@@ -41,13 +41,16 @@ class Usuario(AbstractUser):
             return
         
         hoy = date.today()
+
+        # Determinar el último aniversario cumplido
         años_trabajados = hoy.year - self.fecha_entrada.year
+        aniversario_ultimo = self.fecha_entrada.replace(year=hoy.year)
+        
+        if hoy < aniversario_ultimo:
+            años_trabajados -= 1
+            aniversario_ultimo = self.fecha_entrada.replace(year=hoy.year - 1)
 
-        # Verificar si el usuario ya cumplió su aniversario laboral en el año actual
-        aniversario_este_año = self.fecha_entrada.replace(year=hoy.year)
-        if hoy < aniversario_este_año:
-            años_trabajados -= 1  # No ha cumplido el aniversario aún
-
+        # Cálculo de días de vacaciones en base a los años trabajados cumplidos
         dias_vacaciones = 0
         if años_trabajados < 1:
             dias_vacaciones = 0
@@ -59,9 +62,9 @@ class Usuario(AbstractUser):
             dias_vacaciones = 15
         else:
             dias_vacaciones = 20
-        
-        año_actual = hoy.year
-        historial, created = HistorialVacaciones.objects.get_or_create(usuario=self, año=año_actual)
+
+        # Asignar vacaciones solo si no se han asignado ya para el último aniversario
+        historial, created = HistorialVacaciones.objects.get_or_create(usuario=self, año=aniversario_ultimo.year)
         if created:
             historial.dias_asignados = dias_vacaciones
             historial.save()
