@@ -35,39 +35,39 @@ class Usuario(AbstractUser):
     fecha_entrada = models.DateField(null=True, blank=True)
     fecha_salida= models.DateField(null=True, blank=True)
     mostrar_en_dashboard = models.BooleanField(default=True, help_text="Determina si el usuario aparecerá en el dashboard.")
-    def asignar_vacaciones_anuales(self):
-        """Asigna días de vacaciones al usuario según los años trabajados."""
-        if not self.fecha_entrada:
-            return
+    # def asignar_vacaciones_anuales(self):
+    #     """Asigna días de vacaciones al usuario según los años trabajados."""
+    #     if not self.fecha_entrada:
+    #         return
         
-        hoy = date.today()
+    #     hoy = date.today()
 
-        # Determinar el último aniversario cumplido
-        años_trabajados = hoy.year - self.fecha_entrada.year
-        aniversario_ultimo = self.fecha_entrada.replace(year=hoy.year)
+    #     # Determinar el último aniversario cumplido
+    #     años_trabajados = hoy.year - self.fecha_entrada.year
+    #     aniversario_ultimo = self.fecha_entrada.replace(year=hoy.year)
         
-        if hoy < aniversario_ultimo:
-            años_trabajados -= 1
-            aniversario_ultimo = self.fecha_entrada.replace(year=hoy.year - 1)
+    #     if hoy < aniversario_ultimo:
+    #         años_trabajados -= 1
+    #         aniversario_ultimo = self.fecha_entrada.replace(year=hoy.year - 1)
 
-        # Cálculo de días de vacaciones en base a los años trabajados cumplidos
-        dias_vacaciones = 0
-        if años_trabajados < 1:
-            dias_vacaciones = 0
-        elif años_trabajados == 1:
-            dias_vacaciones = 10
-        elif años_trabajados == 2:
-            dias_vacaciones = 12
-        elif años_trabajados == 3:
-            dias_vacaciones = 15
-        else:
-            dias_vacaciones = 20
+    #     # Cálculo de días de vacaciones en base a los años trabajados cumplidos
+    #     dias_vacaciones = 0
+    #     if años_trabajados < 1:
+    #         dias_vacaciones = 0
+    #     elif años_trabajados == 1:
+    #         dias_vacaciones = 10
+    #     elif años_trabajados == 2:
+    #         dias_vacaciones = 12
+    #     elif años_trabajados == 3:
+    #         dias_vacaciones = 15
+    #     else:
+    #         dias_vacaciones = 20
 
-        # Asignar vacaciones solo si no se han asignado ya para el último aniversario
-        historial, created = HistorialVacaciones.objects.get_or_create(usuario=self, año=aniversario_ultimo.year)
-        if created:
-            historial.dias_asignados = dias_vacaciones
-            historial.save()
+    #     # Asignar vacaciones solo si no se han asignado ya para el último aniversario
+    #     historial, created = HistorialVacaciones.objects.get_or_create(usuario=self, año=aniversario_ultimo.year)
+    #     if created:
+    #         historial.dias_asignados = dias_vacaciones
+    #         historial.save()
 
     def _generate_random_password(self, length=10):
         characters = string.ascii_letters + string.digits + "!@#$%^&*()"
@@ -124,7 +124,7 @@ class Usuario(AbstractUser):
         elif is_new:
             print("Error: No se generó la contraseña para enviar el correo.")
 
-        self.asignar_vacaciones_anuales()
+        # self.asignar_vacaciones_anuales()
 
 
 class Departamento(models.Model):
