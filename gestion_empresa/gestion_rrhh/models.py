@@ -157,7 +157,7 @@ class Solicitud(models.Model):
     requisitos_confirmados = models.BooleanField(default=False)
 
     def es_eliminable(self):
-        return date.today() <= self.fecha_inicio.date()
+        return date.today() <= (self.fecha_inicio.date() + timedelta(days=1))
     
     def save(self, *args, **kwargs):
         if self.tipo == 'V':
