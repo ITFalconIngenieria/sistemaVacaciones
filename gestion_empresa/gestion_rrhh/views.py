@@ -148,11 +148,9 @@ def dashboard(request):
         eventos += generar_eventos_validos(nombre_completo, "Horas Comp", fecha_inicio, fecha_fin, descripcion, "#f39c12")
 
     for incapacidad in Incapacidad.objects.filter(fecha_fin__gte=fecha_actual):
-        print(type(incapacidad.fecha_inicio))
-
         nombre_completo = f"{incapacidad.usuario.first_name} {incapacidad.usuario.last_name}"
-        fecha_inicio = incapacidad.fecha_inicio.date()
-        fecha_fin = incapacidad.fecha_fin.date()
+        fecha_inicio = incapacidad.fecha_inicio
+        fecha_fin = incapacidad.fecha_fin
         descripcion = f"Inicio: {fecha_inicio} - Fin: {fecha_fin}"
         eventos += generar_eventos_validos(nombre_completo, "Incapacidad", fecha_inicio, fecha_fin, descripcion, "#9b9b9b")
 
