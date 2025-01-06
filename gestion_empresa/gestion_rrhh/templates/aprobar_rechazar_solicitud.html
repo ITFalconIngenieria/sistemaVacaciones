@@ -29,8 +29,8 @@
                     <p><strong>Tipo:</strong> {{ object.get_tipo_display }}</p>
                     <p><strong>Fecha Inicio:</strong> {{ object.fecha_inicio|date:"d/M/Y H:i" }}</p>
                     <p><strong>Fecha Fin:</strong> {{ object.fecha_fin|date:"d/M/Y H:i" }}</p>
-                    <p><strong>Horas:</strong> {{ object.horas }}</p>
-                    <p><strong>Días:</strong> {{ object.dias_solicitados }}</p>
+                    <p><strong>Horas:</strong> {{ object.horas |default:0 }}</p>
+                    <p><strong>Días:</strong> {{ object.dias_solicitados |default:0 }}</p>
                 </div>
                 <div class="mb-3">
                     <label for="id_estado" class="form-label">Estado:</label>
