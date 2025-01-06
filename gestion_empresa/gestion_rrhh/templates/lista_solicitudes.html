@@ -54,15 +54,21 @@
             <td>{{ item.fecha_fin|date:"d/M/Y H:i" }}</td>
 
             <td>
-                {% if item.tipo_objeto == 'registro' or item.tipo_objeto == 'licencia' %}
+                {% if item.tipo_objeto == 'solicitud' %}
+                {{ item.horas|default:0 }}
+                {% elif item.tipo_objeto == 'registro' %}
+                    {{ item.horas|default:0 }}
+                {% elif item.tipo_objeto == 'licencia' %}
                     {{ item.horas_totales|default:0 }}
-                {% else %}
-                    0
                 {% endif %}
             </td>
 
             <td>
+                {% if item.tipo_objeto == 'solicitud' %}
                 {{ item.dias_solicitados|default:0 }}
+                {% elif item.tipo_objeto == 'licencia' %}
+                    {{ item.dias_totales|default:0 }}
+                {% endif %}
             </td>
 
             <td>

@@ -461,6 +461,7 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                 "tipo": form.instance.get_tipo_display(),
                 "fecha_inicio": fecha_inicio,
                 "fecha_fin": fecha_fin,
+                "descripcion":form.instance.descripcion,
                 "year": year,
                 "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
                 "enlace_revisar":settings.ENLACE_DEV 
