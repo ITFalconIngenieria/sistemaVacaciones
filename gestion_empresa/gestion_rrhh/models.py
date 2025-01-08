@@ -10,8 +10,6 @@ from django.template.loader import render_to_string
 from django.conf import settings
 from .utils import MicrosoftGraphEmail 
 
-
-from dateutil.relativedelta import relativedelta
 class Usuario(AbstractUser):
     recalcular_vacaciones = True
     ROLES = (
@@ -35,39 +33,95 @@ class Usuario(AbstractUser):
     fecha_entrada = models.DateField(null=True, blank=True)
     fecha_salida= models.DateField(null=True, blank=True)
     mostrar_en_dashboard = models.BooleanField(default=True, help_text="Determina si el usuario aparecerá en el dashboard.")
-    # def asignar_vacaciones_anuales(self):
-    #     """Asigna días de vacaciones al usuario según los años trabajados."""
-    #     if not self.fecha_entrada:
-    #         return
+
+    def asignar_vacaciones_anuales(self):
+        if not self.fecha_entrada:
+            return
         
-    #     hoy = date.today()
-
-    #     # Determinar el último aniversario cumplido
-    #     años_trabajados = hoy.year - self.fecha_entrada.year
-    #     aniversario_ultimo = self.fecha_entrada.replace(year=hoy.year)
+        hoy = date.today()
         
-    #     if hoy < aniversario_ultimo:
-    #         años_trabajados -= 1
-    #         aniversario_ultimo = self.fecha_entrada.replace(year=hoy.year - 1)
+        # Aniversario para el año actual
+        aniversario_actual = date(
+            year=hoy.year,
+            month=self.fecha_entrada.month,
+            day=self.fecha_entrada.day
+        )
+        
+        # Calcular años trabajados considerando si el aniversario ya pasó
+        años_trabajados = hoy.year - self.fecha_entrada.year
+        if hoy < aniversario_actual:
+            años_trabajados -= 1
 
-    #     # Cálculo de días de vacaciones en base a los años trabajados cumplidos
-    #     dias_vacaciones = 0
-    #     if años_trabajados < 1:
-    #         dias_vacaciones = 0
-    #     elif años_trabajados == 1:
-    #         dias_vacaciones = 10
-    #     elif años_trabajados == 2:
-    #         dias_vacaciones = 12
-    #     elif años_trabajados == 3:
-    #         dias_vacaciones = 15
-    #     else:
-    #         dias_vacaciones = 20
+        # Determinar días de vacaciones según años trabajados
+        dias_vacaciones = 0
+        if años_trabajados < 1:
+            dias_vacaciones = 0
+        elif años_trabajados == 1:
+            dias_vacaciones = 10
+        elif años_trabajados == 2:
+            dias_vacaciones = 12
+        elif años_trabajados == 3:
+            dias_vacaciones = 15
+        else:
+            dias_vacaciones = 20
 
-    #     # Asignar vacaciones solo si no se han asignado ya para el último aniversario
-    #     historial, created = HistorialVacaciones.objects.get_or_create(usuario=self, año=aniversario_ultimo.year)
-    #     if created:
-    #         historial.dias_asignados = dias_vacaciones
-    #         historial.save()
+        # Buscar o crear historial para el año actual
+        historial, created = HistorialVacaciones.objects.get_or_create(
+            usuario=self,
+            año=aniversario_actual.year,
+            defaults={
+                'dias_asignados': dias_vacaciones,
+                'aniversario_notificado': False
+            }
+        )
+
+        # Si ya existe el registro pero los días asignados son 0, actualizarlo retroactivamente
+        if not created and historial.dias_asignados == 0:
+            historial.dias_asignados = dias_vacaciones
+            historial.save()
+
+        # Verificar si el aniversario ya pasó este año y no se ha notificado
+        if hoy > aniversario_actual and not historial.aniversario_notificado:
+            # Marcar como notificado retroactivamente
+            historial.aniversario_notificado = True
+            historial.save()
+
+        # Si es aniversario hoy, enviar notificación
+        if hoy == aniversario_actual and not historial.aniversario_notificado:
+            if self.email:
+                context = {
+                    "nombre_colab": self.get_full_name(),
+                    "anios_trabajados": años_trabajados,
+                    'dias_asignados': dias_vacaciones,
+                }
+
+                html_content = render_to_string("mail_aniversario.html", context)
+
+                email_sender = MicrosoftGraphEmail()
+                subject = "🎉 ¡FELIZ ANIVERSARIO LABORAL PARA " + self.get_full_name() + " !🎊"
+                content = html_content
+
+                # Obtener todos los emails de usuarios activos
+                emails_usuarios = Usuario.objects.filter(
+                    is_active=True,  # solo usuarios activos
+                    email__isnull=False,  # que tengan email
+                ).values_list('email', flat=True)
+
+                try:
+                    email_sender.send_email(
+                        subject=subject,
+                        content=content,
+                        to_recipients=list(emails_usuarios),  # convertir a lista
+                    )
+                except Exception as e:
+                    print(f"Error al enviar correo de aniversario: {e}")
+
+            # Marcar como notificado
+            historial.aniversario_notificado = True
+            historial.save()
+
+
+
 
     def _generate_random_password(self, length=10):
         characters = string.ascii_letters + string.digits + "!@#$%^&*()"
@@ -124,7 +178,7 @@ class Usuario(AbstractUser):
         elif is_new:
             print("Error: No se generó la contraseña para enviar el correo.")
 
-        # self.asignar_vacaciones_anuales()
+        self.asignar_vacaciones_anuales()
 
 
 class Departamento(models.Model):
@@ -237,6 +291,7 @@ class HistorialVacaciones(models.Model):
     año = models.IntegerField()
     dias_asignados = models.IntegerField(default=0)
     dias_tomados = models.IntegerField(default=0)
+    aniversario_notificado = models.BooleanField(default=False)  # Nuevo campo
 
     class Meta:
         unique_together = ('usuario', 'año')

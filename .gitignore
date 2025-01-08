@@ -58,3 +58,6 @@ media/
 dist/
 build/
 *.egg
+
+
+Scripts/script_logs.txt
