@@ -260,21 +260,6 @@ class CrearUsuarioView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         return self.request.user.is_superuser or self.request.user.rol in ['GG', 'JI', 'JD']
 
 
-# def obtener_dias_feriados(request):
-#     fecha_inicio = request.GET.get('fecha_inicio', '').split()[0]
-#     fecha_fin = request.GET.get('fecha_fin', '').split()[0]
-
-#     try:
-#         fecha_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
-#         fecha_fin = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
-
-#         feriados = FeriadoNacional.objects.filter(fecha__range=[fecha_inicio, fecha_fin])
-#         feriados_list = [feriado.fecha.strftime("%Y-%m-%d") for feriado in feriados]
-
-#         return JsonResponse({'feriados': feriados_list})
-#     except (ValueError, TypeError):
-#         return JsonResponse({'error': 'Fechas inválidas'}, status=400)
-
 def obtener_dias_feriados(request):
     try:
         # Obtener parámetros
@@ -411,9 +396,6 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
             horas_totales = 0
             fecha_actual = fecha_inicio.date()
             tz = get_current_timezone()
-
-            
-            print("aaaaa ",fecha_inicio, fecha_fin, fecha_actual)
             while fecha_actual <= fecha_fin.date():
                 
                 if (fecha_actual.weekday() < 5 and 
@@ -831,8 +813,7 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
 
-        anio_actual = date.today().year
-        feriados = FeriadoNacional.objects.filter(fecha__year=anio_actual)
+        feriados = FeriadoNacional.objects
 
         registros_en_conflicto = RegistroHoras.objects.filter(
             usuario=usuario,
@@ -848,7 +829,7 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
             
         if tipo_horas == 'HEF':
             if not feriados.filter(fecha=fecha_inicio.date()).exists():
-                form.add_error(None, "El día de inicio no coincide con ningún feriado registrado para este año.")
+                form.add_error(None, "El día de inicio no coincide con ningún feriado registrado.")
                 return self.form_invalid(form)    
 
         if rol_usuario == 'TE' and tipo_horas == 'HEF':
@@ -1018,8 +999,7 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
         usuario = self.request.user
         registro = self.get_object()
 
-        anio_actual = date.today().year
-        feriados = FeriadoNacional.objects.filter(fecha__year=anio_actual)
+        feriados = FeriadoNacional.objects
 
         registros_en_conflicto = RegistroHoras.objects.filter(
             usuario=usuario,
@@ -1035,7 +1015,7 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
             
         if tipo_horas == 'HEF':
             if not feriados.filter(fecha=fecha_inicio.date()).exists():
-                form.add_error(None, "El día de inicio no coincide con ningún feriado registrado para este año.")
+                form.add_error(None, "El día de inicio no coincide con ningún feriado registrado.")
                 return self.form_invalid(form)    
 
         if rol_usuario == 'TE' and tipo_horas == 'HEF':
