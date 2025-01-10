@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import render, redirect,  redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView, View, DeleteView
-from .models import FeriadoNacional, Usuario, Solicitud, HistorialVacaciones, ConversionVacacionesHoras, AjusteVacaciones, RegistroHoras,Solicitud, Incapacidad 
+from .models import FeriadoNacional, Usuario, Solicitud, HistorialVacaciones, ConversionVacacionesHoras, HorasCompensatoriasSieteDias ,AjusteVacaciones, RegistroHoras,Solicitud, Incapacidad 
 from .forms import UsuarioCreationForm, SolicitudForm, FeriadoNacionalForm, RegistrarHorasForm,RegistroHorasFilterForm, AjusteVacacionesForm, IncapacidadForm
 from django.contrib import messages
 from django.contrib.auth import logout
@@ -55,6 +55,47 @@ def calcular_dias_disponibles(usuario):
     }
 
 
+# def calcular_horas_individuales(usuario):
+#     tipos = ['HE', 'HC']
+#     horas_por_tipo = {'HE': 0, 'HC': 0}
+
+#     for tipo in tipos:
+#         total_horas = RegistroHoras.objects.filter(
+#             usuario=usuario,
+#             tipo=tipo,
+#             estado='A',
+#             estado_pago='NP'
+#         ).aggregate(Sum('horas'))['horas__sum'] or 0
+#         horas_por_tipo[tipo] = total_horas
+
+#     horas_hef = RegistroHoras.objects.filter(
+#         usuario=usuario,
+#         tipo='HEF',
+#         estado='A',
+#         estado_pago='NP'
+#     ).aggregate(
+#         total_horas=Sum('horas'),
+#         horas_compensatorias_feriado=Sum('horas_compensatorias_feriado')
+#     )
+
+#     horas_por_tipo['HE'] += horas_hef['total_horas'] or 0
+#     horas_por_tipo['HC'] += horas_hef['horas_compensatorias_feriado'] or 0
+
+#     horas_solicitudes_hc = Solicitud.objects.filter(
+#         usuario=usuario,
+#         tipo='HC',
+#         estado='A'
+#     ).aggregate(Sum('horas'))['horas__sum'] or 0
+
+#     horas_por_tipo['HC'] -= horas_solicitudes_hc
+
+#     # Incluir horas compensatorias generadas por la conversión
+#     horas_conversion = ConversionVacacionesHoras.objects.filter(usuario=usuario).aggregate(Sum('horas_compensatorias'))['horas_compensatorias__sum'] or 0
+#     horas_por_tipo['HC'] += horas_conversion
+
+#     return horas_por_tipo
+
+
 def calcular_horas_individuales(usuario):
     tipos = ['HE', 'HC']
     horas_por_tipo = {'HE': 0, 'HC': 0}
@@ -92,6 +133,10 @@ def calcular_horas_individuales(usuario):
     # Incluir horas compensatorias generadas por la conversión
     horas_conversion = ConversionVacacionesHoras.objects.filter(usuario=usuario).aggregate(Sum('horas_compensatorias'))['horas_compensatorias__sum'] or 0
     horas_por_tipo['HC'] += horas_conversion
+
+    # Incluir horas compensatorias asignadas por trabajar 7 días consecutivos
+    horas_siete_dias = HorasCompensatoriasSieteDias.objects.filter(usuario=usuario).aggregate(Sum('horas_compensatorias'))['horas_compensatorias__sum'] or 0
+    horas_por_tipo['HC'] += horas_siete_dias
 
     return horas_por_tipo
 
@@ -917,15 +962,87 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         
         return context
     
+
     def form_valid(self, form):
         registro = self.get_object()
         usuario = registro.usuario
+
         if form.instance.estado == 'A':  
-            if registro.tipo =='HEF':
-                registro.save()
+            if registro.fecha_inicio.weekday() == 6:
+                fecha_domingo = registro.fecha_inicio.date()
+                fecha_inicio_semana = fecha_domingo - timedelta(days=6)
+                fecha_fin_semana = fecha_domingo
+
+                print("fechaaas ",fecha_inicio_semana, fecha_fin_semana )
+                lunes_a_viernes_solicitudes_v = Solicitud.objects.filter(
+                    usuario=usuario,
+                    tipo='V',
+                    fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana),
+                    estado__in=['A', 'P']
+                )
+
+                lunes_a_viernes_solicitudes_hc = Solicitud.objects.filter(
+                    usuario=usuario,
+                    tipo='HC',
+                    fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana),
+                    horas__gte=9,
+                    estado__in=['A', 'P']
+                )
+
+                lunes_a_viernes_licencias = Licencia.objects.filter(
+                    usuario=usuario,
+                    fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana),
+                    estado__in=['A', 'P']
+                )
+
+                lunes_a_viernes_incapacidades = Incapacidad.objects.filter(
+                    usuario=usuario,
+                    fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana)
+                )
+
+                registros_fin_semana = RegistroHoras.objects.filter(
+                    usuario=usuario,
+                    tipo='HE' if usuario.rol == 'TE' else 'HC',
+                    fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana),
+                    estado='P'
+                )
+
+                sabado_pendientes = [registro for registro in registros_fin_semana if registro.fecha_inicio.weekday() == 5]  # Sábado es 5 en Python
+
+                lunes_a_viernes_solicitudes = list(lunes_a_viernes_solicitudes_v) + list(lunes_a_viernes_solicitudes_hc)
+
+                if any(solicitud.estado == 'P' for solicitud in lunes_a_viernes_solicitudes):
+                    messages.warning(
+                        self.request,
+                        "Existen solicitudes para días de semana en estado pendiente que necesitan ser aprobadas/rechazadas."
+                    )
+                    return self.form_invalid(form)
+
+                if lunes_a_viernes_licencias.filter(estado='P').exists():
+                    messages.warning(
+                        self.request,
+                        "Existen registros de licencias en días de semana en estado pendiente que necesitan ser aprobados/rechazados."
+                    )
+                    return self.form_invalid(form)
+
+                if sabado_pendientes:
+                    messages.warning(
+                        self.request,
+                        "Existen registros de horas en sábado en estado pendiente que necesitan ser aprobados/rechazados."
+                    )
+                    return self.form_invalid(form)
+
+                if not lunes_a_viernes_incapacidades.exists():
+                    HorasCompensatoriasSieteDias.objects.create(
+                        usuario=usuario,
+                        horas_compensatorias=9
+                    )
+                    messages.success(self.request, f"Se han asignado automáticamente 9 horas compensatorias al colaborador {usuario.get_full_name()} por haber trabajado 7 días consecutivos.")
+
+
             form.instance.aprobado_por = self.request.user
             messages.success(self.request, 'El registro de horas ha sido procesado Aprobado exitosamente.')
-        
+
         elif form.instance.estado == 'R':
             messages.warning(
                 self.request,
@@ -938,6 +1055,7 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
                 f"El registro de horas con el número {registro.numero_registro} ha sido marcado como pendiente."
             )
 
+        # Enviar notificación por correo
         fecha_ajustada = now() - timedelta(hours=6)
         year = fecha_ajustada.year
         estados = {
@@ -970,6 +1088,7 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
             )
         except Exception as e:
             print(f"Error al enviar correo al usuario {usuario.email}: {e}")
+        
         return super().form_valid(form)
 
 
