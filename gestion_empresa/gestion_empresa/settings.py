@@ -55,12 +55,13 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_ratelimit.middleware.RatelimitMiddleware',
-    'gestion_empresa.middleware.BlockMiningAttemptsMiddleware',
+    'gestion_empresa.middleware.SecurityMiddleware',
 ]
-
+SECURITY_MAX_REQUESTS = 50
+SECURITY_WINDOW_SECONDS = 60
 ROOT_URLCONF = 'gestion_empresa.urls'
-MEDIA_URL = '/media/'  # URL base para archivos
-MEDIA_ROOT = BASE_DIR / 'media'  # Carpeta donde se guardan los archivos subidos
+MEDIA_URL = '/media/'  
+MEDIA_ROOT = BASE_DIR / 'media' 
 
 TEMPLATES = [
     {
