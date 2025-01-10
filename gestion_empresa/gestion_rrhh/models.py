@@ -37,23 +37,22 @@ class Usuario(AbstractUser):
     def asignar_vacaciones_anuales(self):
         if not self.fecha_entrada:
             return
-        
+            
         hoy = date.today()
-        
-        # Aniversario para el año actual
         aniversario_actual = date(
             year=hoy.year,
             month=self.fecha_entrada.month,
             day=self.fecha_entrada.day
         )
         
-        # Calcular años trabajados considerando si el aniversario ya pasó
+        # Si no es el día exacto del aniversario, no hacemos nada
+        if hoy != aniversario_actual:
+            return
+            
+        # Calculamos los años trabajados
         años_trabajados = hoy.year - self.fecha_entrada.year
-        if hoy < aniversario_actual:
-            años_trabajados -= 1
-
-        # Determinar días de vacaciones según años trabajados
-        dias_vacaciones = 0
+        
+        # Cálculo de días de vacaciones
         if años_trabajados < 1:
             dias_vacaciones = 0
         elif años_trabajados == 1:
@@ -65,62 +64,43 @@ class Usuario(AbstractUser):
         else:
             dias_vacaciones = 20
 
-        # Buscar o crear historial para el año actual
+        # Solo creamos el registro en el día del aniversario
         historial, created = HistorialVacaciones.objects.get_or_create(
             usuario=self,
-            año=aniversario_actual.year,
+            año=hoy.year,
             defaults={
                 'dias_asignados': dias_vacaciones,
                 'aniversario_notificado': False
             }
         )
-
-        # Si ya existe el registro pero los días asignados son 0, actualizarlo retroactivamente
-        if not created and historial.dias_asignados == 0:
-            historial.dias_asignados = dias_vacaciones
-            historial.save()
-
-        # Verificar si el aniversario ya pasó este año y no se ha notificado
-        if hoy > aniversario_actual and not historial.aniversario_notificado:
-            # Marcar como notificado retroactivamente
+        
+        # Enviamos el correo de notificación
+        if self.email and not historial.aniversario_notificado:
+            context = {
+                "nombre_colab": self.get_full_name(),
+                "anios_trabajados": años_trabajados,
+                'dias_asignados': dias_vacaciones,
+            }
+            html_content = render_to_string("mail_aniversario.html", context)
+            email_sender = MicrosoftGraphEmail()
+            subject = f"🎉 ¡FELIZ ANIVERSARIO LABORAL PARA {self.get_full_name()} !🎊"
+            
+            emails_usuarios = Usuario.objects.filter(
+                is_active=True,
+                email__isnull=False,
+            ).values_list('email', flat=True)
+            
+            try:
+                email_sender.send_email(
+                    subject=subject,
+                    content=html_content,
+                    to_recipients=list(emails_usuarios),
+                )
+            except Exception as e:
+                print(f"Error al enviar correo de aniversario: {e}")
+            
             historial.aniversario_notificado = True
             historial.save()
-
-        # Si es aniversario hoy, enviar notificación
-        if hoy == aniversario_actual and not historial.aniversario_notificado:
-            if self.email:
-                context = {
-                    "nombre_colab": self.get_full_name(),
-                    "anios_trabajados": años_trabajados,
-                    'dias_asignados': dias_vacaciones,
-                }
-
-                html_content = render_to_string("mail_aniversario.html", context)
-
-                email_sender = MicrosoftGraphEmail()
-                subject = "🎉 ¡FELIZ ANIVERSARIO LABORAL PARA " + self.get_full_name() + " !🎊"
-                content = html_content
-
-                # Obtener todos los emails de usuarios activos
-                emails_usuarios = Usuario.objects.filter(
-                    is_active=True,  # solo usuarios activos
-                    email__isnull=False,  # que tengan email
-                ).values_list('email', flat=True)
-
-                try:
-                    email_sender.send_email(
-                        subject=subject,
-                        content=content,
-                        to_recipients=list(emails_usuarios),  # convertir a lista
-                    )
-                except Exception as e:
-                    print(f"Error al enviar correo de aniversario: {e}")
-
-            # Marcar como notificado
-            historial.aniversario_notificado = True
-            historial.save()
-
-
 
 
     def _generate_random_password(self, length=10):
@@ -390,3 +370,14 @@ class ConversionVacacionesHoras(models.Model):
 
     def __str__(self):
         return f"{self.usuario} - {self.dias_convertidos} días -> {self.horas_compensatorias} horas"
+    
+
+
+class HorasCompensatoriasSieteDias(models.Model):
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    fecha_asignacion = models.DateField(auto_now_add=True)
+    horas_compensatorias = models.DecimalField(max_digits=5, decimal_places=2, default=9)
+    descripcion = models.TextField(default="Horas compensatorias asignadas por trabajar 7 días consecutivos.")
+
+    def __str__(self):
+        return f"{self.usuario.get_full_name()} - {self.horas_compensatorias} horas asignadas el {self.fecha_asignacion}"
