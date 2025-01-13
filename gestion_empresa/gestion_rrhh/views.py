@@ -55,47 +55,6 @@ def calcular_dias_disponibles(usuario):
     }
 
 
-# def calcular_horas_individuales(usuario):
-#     tipos = ['HE', 'HC']
-#     horas_por_tipo = {'HE': 0, 'HC': 0}
-
-#     for tipo in tipos:
-#         total_horas = RegistroHoras.objects.filter(
-#             usuario=usuario,
-#             tipo=tipo,
-#             estado='A',
-#             estado_pago='NP'
-#         ).aggregate(Sum('horas'))['horas__sum'] or 0
-#         horas_por_tipo[tipo] = total_horas
-
-#     horas_hef = RegistroHoras.objects.filter(
-#         usuario=usuario,
-#         tipo='HEF',
-#         estado='A',
-#         estado_pago='NP'
-#     ).aggregate(
-#         total_horas=Sum('horas'),
-#         horas_compensatorias_feriado=Sum('horas_compensatorias_feriado')
-#     )
-
-#     horas_por_tipo['HE'] += horas_hef['total_horas'] or 0
-#     horas_por_tipo['HC'] += horas_hef['horas_compensatorias_feriado'] or 0
-
-#     horas_solicitudes_hc = Solicitud.objects.filter(
-#         usuario=usuario,
-#         tipo='HC',
-#         estado='A'
-#     ).aggregate(Sum('horas'))['horas__sum'] or 0
-
-#     horas_por_tipo['HC'] -= horas_solicitudes_hc
-
-#     # Incluir horas compensatorias generadas por la conversión
-#     horas_conversion = ConversionVacacionesHoras.objects.filter(usuario=usuario).aggregate(Sum('horas_compensatorias'))['horas_compensatorias__sum'] or 0
-#     horas_por_tipo['HC'] += horas_conversion
-
-#     return horas_por_tipo
-
-
 def calcular_horas_individuales(usuario):
     tipos = ['HE', 'HC']
     horas_por_tipo = {'HE': 0, 'HC': 0}
@@ -848,18 +807,49 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         initial['numero_registro'] = f"RGH-{uuid.uuid4().hex[:8].upper()}"
         return initial
 
-
     def form_valid(self, form):
         form.instance.usuario = self.request.user
         form.instance.estado = 'P'
-        rol_usuario = self.request.user.rol
+
+        # Datos del formulario
         tipo_horas = form.cleaned_data.get('tipo')
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
+
+        # Calcular horas
+        feriados = FeriadoNacional.objects.values_list('fecha', flat=True)
+        delta = fecha_fin - fecha_inicio
+        total_horas = delta.total_seconds() / 3600
+
+        almuerzo_inicio = fecha_inicio.replace(hour=12, minute=0, second=0, microsecond=0)
+        almuerzo_fin = fecha_inicio.replace(hour=13, minute=0, second=0, microsecond=0)
+
+        es_dia_especial = (
+            fecha_inicio.date() in feriados or
+            fecha_inicio.weekday() >= 5
+        )
+
+        # Resta hora de almuerzo si no es día especial
+        if not es_dia_especial:
+            if fecha_inicio <= almuerzo_inicio < fecha_fin or fecha_inicio < almuerzo_fin <= fecha_fin:
+                total_horas -= 1
+
+        total_horas = max(total_horas, 0)
+        horas_calculadas = Decimal(total_horas).quantize(Decimal('0.01'))
+
+        # Ajustar horas según el tipo
+        # if tipo_horas == 'HC' and fecha_inicio.weekday() == 6 and fecha_fin.weekday() == 6:
+        #     horas_calculadas *= 2
+
+        if tipo_horas == 'HEF':
+            diferencia_dias = (fecha_fin.date() - fecha_inicio.date()).days + 1
+            form.instance.horas_compensatorias_feriado = Decimal(9 * diferencia_dias).quantize(Decimal('0.01'))
+
+        # Asignar las horas calculadas
+        form.instance.horas = horas_calculadas
+
+        # Validar conflictos
         usuario = self.request.user
-
-        feriados = FeriadoNacional.objects
-
         registros_en_conflicto = RegistroHoras.objects.filter(
             usuario=usuario,
         )
@@ -867,31 +857,26 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         for registro in registros_en_conflicto:
             if (registro.fecha_inicio <= fecha_inicio <= registro.fecha_fin) or \
                (registro.fecha_inicio <= fecha_fin <= registro.fecha_fin) or \
-               (fecha_inicio<= registro.fecha_inicio and fecha_fin >= registro.fecha_fin):
-                print(f"Conflicto con registro: ID {registro.id}, Inicio {registro.fecha_inicio}, Fin {registro.fecha_fin}")
-                form.add_error(None, "Ya tienes un registro que se solapa con este rango. Por favor, selecciona otro rango")
+               (fecha_inicio <= registro.fecha_inicio and fecha_fin >= registro.fecha_fin):
+                form.add_error(None, "Ya tienes un registro que se solapa con este rango. Por favor, selecciona otro rango.")
                 return self.form_invalid(form)
-            
-        if tipo_horas == 'HEF':
-            if not feriados.filter(fecha=fecha_inicio.date()).exists():
-                form.add_error(None, "El día de inicio no coincide con ningún feriado registrado.")
-                return self.form_invalid(form)    
 
-        if rol_usuario == 'TE' and tipo_horas == 'HEF':
-            form.add_error(None, "Los Técnicos no pueden registrar horas extras para dias feriados.")
+        # Validaciones específicas
+        if tipo_horas == 'HEF' and not FeriadoNacional.objects.filter(fecha=fecha_inicio.date()).exists():
+            form.add_error(None, "El día de inicio no coincide con ningún feriado registrado.")
             return self.form_invalid(form)
 
-        elif rol_usuario in ['GG', 'JI', 'JD','IN','AST', 'FNZ'] and tipo_horas == 'HE':
+        if self.request.user.rol == 'TE' and tipo_horas == 'HEF':
+            form.add_error(None, "Los Técnicos no pueden registrar horas extras para días feriados.")
+            return self.form_invalid(form)
+
+        if self.request.user.rol in ['GG', 'JI', 'JD', 'IN', 'AST', 'FNZ'] and tipo_horas == 'HE':
             form.add_error(None, "Usted no puede registrar horas extras.")
             return self.form_invalid(form)
-        
-        form.instance.numero_registro = form.cleaned_data['numero_registro']
 
-
-        messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
-        
+        # Enviar notificación por correo
         jefe = self.request.user.jefe
-        if jefe and jefe.email: 
+        if jefe and jefe.email:
             fecha_ajustada = now() - timedelta(hours=6)
             year = fecha_ajustada.year
             context = {
@@ -901,26 +886,24 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
                 "tipo": form.instance.get_tipo_display(),
                 "fecha_inicio": form.instance.fecha_inicio,
                 "fecha_fin": form.instance.fecha_fin,
-                "descripcion":form.instance.descripcion,
+                "descripcion": form.instance.descripcion,
                 "year": year,
                 "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
-                "enlace_revisar": settings.ENLACE_DEV, 
+                "enlace_revisar": settings.ENLACE_DEV,
             }
 
             html_content = render_to_string("mail_solicitud.html", context)
             email_sender = MicrosoftGraphEmail()
-            subject = "Nuevo registro de horas pendiente de aprobación"
-            content=html_content
-
             try:
                 email_sender.send_email(
-                    subject=subject,
-                    content=content,
+                    subject="Nuevo registro de horas pendiente de aprobación",
+                    content=html_content,
                     to_recipients=[jefe.email],
                 )
             except Exception as e:
                 print(f"Error al enviar correo al jefe {jefe.email}: {e}")
-        
+
+        messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
         return super().form_valid(form)
     
     def get_context_data(self, **kwargs):
@@ -936,6 +919,8 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
             'horas_compensatorias':horas_compensatorias
         })
         return context
+
+
 
 class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
     model = RegistroHoras
@@ -962,18 +947,20 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         
         return context
     
-
     def form_valid(self, form):
         registro = self.get_object()
         usuario = registro.usuario
+        form.instance.aprobado_por = self.request.user
+        mensaje_compensatorio = ""
 
         if form.instance.estado == 'A':  
-            if registro.fecha_inicio.weekday() == 6:
+            if registro.fecha_inicio.weekday() == 6:  # Domingo
+                # Calcular rango de la semana previa
                 fecha_domingo = registro.fecha_inicio.date()
-                fecha_inicio_semana = fecha_domingo - timedelta(days=6)
-                fecha_fin_semana = fecha_domingo
+                fecha_inicio_semana = fecha_domingo - timedelta(days=6)  # Lunes
+                fecha_fin_semana = fecha_domingo  # Domingo
 
-                print("fechaaas ",fecha_inicio_semana, fecha_fin_semana )
+                # Validar solicitudes y registros dentro del rango de la semana
                 lunes_a_viernes_solicitudes_v = Solicitud.objects.filter(
                     usuario=usuario,
                     tipo='V',
@@ -1007,10 +994,21 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
                     estado='P'
                 )
 
-                sabado_pendientes = [registro for registro in registros_fin_semana if registro.fecha_inicio.weekday() == 5]  # Sábado es 5 en Python
+                sabado_pendientes = [registro for registro in registros_fin_semana if registro.fecha_inicio.weekday() == 5]
 
+                registros_fin_semana_aprobados = RegistroHoras.objects.filter(
+                    usuario=usuario,
+                    tipo='HE' if usuario.rol == 'TE' else 'HC',
+                    fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana),
+                    estado='A'
+                )
+
+                sabado_aprobados = [registro for registro in registros_fin_semana_aprobados if registro.fecha_inicio.weekday() == 5]
+
+                # Unir las solicitudes de lunes a viernes
                 lunes_a_viernes_solicitudes = list(lunes_a_viernes_solicitudes_v) + list(lunes_a_viernes_solicitudes_hc)
 
+                # Validaciones
                 if any(solicitud.estado == 'P' for solicitud in lunes_a_viernes_solicitudes):
                     messages.warning(
                         self.request,
@@ -1032,63 +1030,96 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
                     )
                     return self.form_invalid(form)
 
-                if not lunes_a_viernes_incapacidades.exists():
-                    HorasCompensatoriasSieteDias.objects.create(
-                        usuario=usuario,
-                        horas_compensatorias=9
-                    )
-                    messages.success(self.request, f"Se han asignado automáticamente 9 horas compensatorias al colaborador {usuario.get_full_name()} por haber trabajado 7 días consecutivos.")
+                
+                if not (lunes_a_viernes_incapacidades.exists() or lunes_a_viernes_solicitudes or lunes_a_viernes_licencias.exists()) and sabado_aprobados:
+                    if registro.horas * 2 > 9 and usuario.rol != 'TE':
+                        nuevas_horas = Decimal(str(registro.horas * 2))
+                        form.instance.horas = nuevas_horas
+                        messages.success(
+                            self.request,
+                            f"Se detectó trabajo por 7 dias consecutivos con una cantidad de horas mayor a 9 para el dia domingo. Se asignaron automáticamente {nuevas_horas} horas compensatorias al colaborador {usuario.get_full_name()}."
+                        )
+                        mensaje_compensatorio = f"Se detectó trabajo por 7 días consecutivos con una cantidad de horas mayor a 9 para el domingo. Se asignaron automáticamente {nuevas_horas} horas compensatorias."
+                    else:
+                        HorasCompensatoriasSieteDias.objects.create(
+                            usuario=usuario,
+                            horas_compensatorias=9
+                        )
+                        messages.success(
+                            self.request,
+                            f"Se han asignado automáticamente 9 horas compensatorias al colaborador {usuario.get_full_name()} por haber trabajado 7 días consecutivos."
+                        )
+                        mensaje_compensatorio = "Se han asignado automáticamente 9 horas compensatorias por haber trabajado 7 días consecutivos."
+                else:
+                    if usuario.rol != 'TE':
+                        nuevas_horas = Decimal(str(registro.horas * 2))
 
+                        form.instance.horas = nuevas_horas
+                        messages.warning(
+                            self.request,
+                            "No se asignaron 9 horas compensatorias porque no trabajó 7 dias consecutivos pero sí se multiplicaron * 2 por ser trabajo en dia domingo."
+                        )
+                        mensaje_compensatorio = "No se asignaron 9 horas compensatorias porque no trabajó 7 días consecutivos, pero se asignaron horas doble por ser trabajo en día domingo."
+                    else:
+                        nuevas_horas = Decimal(str(registro.horas))
+                        form.instance.horas = nuevas_horas
+                        messages.warning(
+                            self.request,
+                            "No se asignaron 9 horas compensatorias porque no trabajó 7 dias consecutivos"
+                        )
+                        mensaje_compensatorio = "No se asignaron 9 horas compensatorias porque no trabajó 7 días consecutivos."
 
-            form.instance.aprobado_por = self.request.user
-            messages.success(self.request, 'El registro de horas ha sido procesado Aprobado exitosamente.')
+                form.instance.aprobado_por = self.request.user
+                messages.success(self.request, 'El registro de horas ha sido procesado Aprobado exitosamente.')
 
-        elif form.instance.estado == 'R':
-            messages.warning(
-                self.request,
-                f"El registro de horas con el número {registro.numero_registro} ha sido rechazado."
-            )
+            elif form.instance.estado == 'R':
+                messages.warning(
+                    self.request,
+                    f"El registro de horas con el número {registro.numero_registro} ha sido rechazado."
+                )
 
-        elif form.instance.estado == 'P':
-            messages.warning(
-                self.request,
-                f"El registro de horas con el número {registro.numero_registro} ha sido marcado como pendiente."
-            )
+            elif form.instance.estado == 'P':
+                messages.warning(
+                    self.request,
+                    f"El registro de horas con el número {registro.numero_registro} ha sido marcado como pendiente."
+                )
 
-        # Enviar notificación por correo
-        fecha_ajustada = now() - timedelta(hours=6)
-        year = fecha_ajustada.year
-        estados = {
-            'A': "Aprobada",
-            'R': "Rechazada",
-            'P': "Pendiente",
-        }
-        context = {
-            "usuario": usuario.first_name,
-            "numero_solicitud": registro.numero_registro,
-            "tipo": registro.get_tipo_display(),
-            "fecha_inicio": registro.fecha_inicio,
-            "fecha_fin": registro.fecha_fin,
-            "estado": estados.get(form.instance.estado, "Desconocido"), 
-            "aprobado_por": form.instance.aprobado_por.get_full_name(),
-            "year": year,
-            "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
-            "enlace_revisar": settings.ENLACE_DEV
-        }
+            # Enviar notificación por correo
+            fecha_ajustada = now() - timedelta(hours=6)
+            year = fecha_ajustada.year
+            estados = {
+                'A': "Aprobada",
+                'R': "Rechazada",
+                'P': "Pendiente",
+            }
+            
+            context = {
+                "usuario": usuario.first_name,
+                "numero_solicitud": registro.numero_registro,
+                "tipo": registro.get_tipo_display(),
+                "fecha_inicio": registro.fecha_inicio,
+                "fecha_fin": registro.fecha_fin,
+                "estado": estados.get(form.instance.estado, "Desconocido"), 
+                "aprobado_por": form.instance.aprobado_por.get_full_name(),
+                "year": year,
+                "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+                "enlace_revisar": settings.ENLACE_DEV,
+                "mensaje": mensaje_compensatorio
+            }
 
-        html_content = render_to_string("mail_estado_solicitud.html", context)
-        email_sender = MicrosoftGraphEmail()
-        subject = f"Tu solicitud ha sido {context['estado']}"
+            html_content = render_to_string("mail_estado_solicitud.html", context)
+            email_sender = MicrosoftGraphEmail()
+            subject = f"Tu solicitud ha sido {context['estado']}"
 
-        try:
-            email_sender.send_email(
-                subject=subject,
-                content=html_content,
-                to_recipients=[usuario.email],
-            )
-        except Exception as e:
-            print(f"Error al enviar correo al usuario {usuario.email}: {e}")
-        
+            try:
+                email_sender.send_email(
+                    subject=subject,
+                    content=html_content,
+                    to_recipients=[usuario.email],
+                )
+            except Exception as e:
+                print(f"Error al enviar correo al usuario {usuario.email}: {e}")
+            
         return super().form_valid(form)
 
 
@@ -1111,15 +1142,46 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
     def form_valid(self, form):
         form.instance.usuario = self.request.user
         form.instance.estado = 'P'
-        rol_usuario = self.request.user.rol
+
+        # Datos del formulario
         tipo_horas = form.cleaned_data.get('tipo')
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
+
+        # Calcular horas
+        feriados = FeriadoNacional.objects.values_list('fecha', flat=True)
+        delta = fecha_fin - fecha_inicio
+        total_horas = delta.total_seconds() / 3600
+
+        almuerzo_inicio = fecha_inicio.replace(hour=12, minute=0, second=0, microsecond=0)
+        almuerzo_fin = fecha_inicio.replace(hour=13, minute=0, second=0, microsecond=0)
+
+        es_dia_especial = (
+            fecha_inicio.date() in feriados or
+            fecha_inicio.weekday() >= 5
+        )
+
+        # Resta la hora de almuerzo si no es día especial
+        if not es_dia_especial:
+            if fecha_inicio <= almuerzo_inicio < fecha_fin or fecha_inicio < almuerzo_fin <= fecha_fin:
+                total_horas -= 1
+
+        total_horas = max(total_horas, 0)
+        horas_calculadas = Decimal(total_horas).quantize(Decimal('0.01'))
+
+        # Ajustar horas según el tipo
+        # if tipo_horas == 'HC' and fecha_inicio.weekday() == 6 and fecha_fin.weekday() == 6:
+        #     horas_calculadas *= 2
+
+        if tipo_horas == 'HEF':
+            diferencia_dias = (fecha_fin.date() - fecha_inicio.date()).days + 1
+            form.instance.horas_compensatorias_feriado = Decimal(9 * diferencia_dias).quantize(Decimal('0.01'))
+
+        # Asignar las horas calculadas
+        form.instance.horas = horas_calculadas
+
+        # Validar conflictos
         usuario = self.request.user
-        registro = self.get_object()
-
-        feriados = FeriadoNacional.objects
-
         registros_en_conflicto = RegistroHoras.objects.filter(
             usuario=usuario,
         ).exclude(pk=self.object.pk)
@@ -1127,30 +1189,26 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
         for registro in registros_en_conflicto:
             if (registro.fecha_inicio <= fecha_inicio <= registro.fecha_fin) or \
                (registro.fecha_inicio <= fecha_fin <= registro.fecha_fin) or \
-               (fecha_inicio<= registro.fecha_inicio and fecha_fin >= registro.fecha_fin):
-                print(f"Conflicto con registro: ID {registro.id}, Inicio {registro.fecha_inicio}, Fin {registro.fecha_fin}")
-                form.add_error(None, "Ya tienes un registro que se solapa con este rango. Por favor, selecciona otro rango")
+               (fecha_inicio <= registro.fecha_inicio and fecha_fin >= registro.fecha_fin):
+                form.add_error(None, "Ya tienes un registro que se solapa con este rango. Por favor, selecciona otro rango.")
                 return self.form_invalid(form)
-            
-        if tipo_horas == 'HEF':
-            if not feriados.filter(fecha=fecha_inicio.date()).exists():
-                form.add_error(None, "El día de inicio no coincide con ningún feriado registrado.")
-                return self.form_invalid(form)    
 
-        if rol_usuario == 'TE' and tipo_horas == 'HEF':
-            form.add_error(None, "Los Técnicos no pueden registrar horas extras para dias feriados.")
+        # Validaciones específicas
+        if tipo_horas == 'HEF' and not FeriadoNacional.objects.filter(fecha=fecha_inicio.date()).exists():
+            form.add_error(None, "El día de inicio no coincide con ningún feriado registrado.")
             return self.form_invalid(form)
 
-        elif rol_usuario in ['GG', 'JI', 'JD','IN','AST', 'FNZ'] and tipo_horas == 'HE':
+        if self.request.user.rol == 'TE' and tipo_horas == 'HEF':
+            form.add_error(None, "Los Técnicos no pueden registrar horas extras para días feriados.")
+            return self.form_invalid(form)
+
+        if self.request.user.rol in ['GG', 'JI', 'JD', 'IN', 'AST', 'FNZ'] and tipo_horas == 'HE':
             form.add_error(None, "Usted no puede registrar horas extras.")
             return self.form_invalid(form)
-        
-        form.instance.numero_registro = form.cleaned_data['numero_registro']
 
-        messages.success(self.request, f"El registro de horas {registro.numero_registro} ha sido actualizado.")
-        
+        # Notificar al jefe
         jefe = self.request.user.jefe
-        if jefe and jefe.email: 
+        if jefe and jefe.email:
             fecha_ajustada = now() - timedelta(hours=6)
             year = fecha_ajustada.year
             context = {
@@ -1160,28 +1218,26 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
                 "tipo": form.instance.get_tipo_display(),
                 "fecha_inicio": form.instance.fecha_inicio,
                 "fecha_fin": form.instance.fecha_fin,
-                "descripcion":form.instance.descripcion,
+                "descripcion": form.instance.descripcion,
                 "year": year,
                 "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
-                "enlace_revisar": settings.ENLACE_DEV, 
+                "enlace_revisar": settings.ENLACE_DEV,
             }
 
             html_content = render_to_string("mail_editar_solicitud.html", context)
             email_sender = MicrosoftGraphEmail()
-            subject = "Edición de registro de horas pendiente de aprobación"
-            content=html_content
-
             try:
                 email_sender.send_email(
-                    subject=subject,
-                    content=content,
+                    subject="Edición de registro de horas pendiente de aprobación",
+                    content=html_content,
                     to_recipients=[jefe.email],
                 )
             except Exception as e:
                 print(f"Error al enviar correo al jefe {jefe.email}: {e}")
 
-        
+        messages.success(self.request, f"El registro de horas {form.instance.numero_registro} ha sido actualizado.")
         return super().form_valid(form)
+    
 
 class EliminarMiRegistroHorasView(LoginRequiredMixin, DeleteView):
     model = RegistroHoras

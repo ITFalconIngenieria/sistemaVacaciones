@@ -216,55 +216,24 @@ class RegistroHoras(models.Model):
         ('NP', 'No Pagado'),
         ('PG', 'Pagado'),
     )
-    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+
+    usuario = models.ForeignKey('Usuario', on_delete=models.CASCADE)
     tipo = models.CharField(max_length=3, choices=TIPOS_HORAS)
     numero_registro = models.CharField(max_length=50, unique=True, blank=True)
     fecha_inicio = models.DateTimeField()
-    fecha_fin = models.DateTimeField() 
+    fecha_fin = models.DateTimeField()
     horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     horas_compensatorias_feriado = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     numero_proyecto = models.IntegerField(null=True, blank=True)
-    descripcion = models.TextField(null=True, blank=True) 
-    estado = models.CharField(max_length=1, choices=ESTADOS, default='P') 
+    descripcion = models.TextField(null=True, blank=True)
+    estado = models.CharField(max_length=1, choices=ESTADOS, default='P')
     estado_pago = models.CharField(max_length=2, choices=ESTADOS_PAGO, default='NP')
-    aprobado_por = models.ForeignKey(Usuario, related_name='aprobador_horas', null=True, blank=True, on_delete=models.SET_NULL)
-    
+    aprobado_por = models.ForeignKey('Usuario', related_name='aprobador_horas', null=True, blank=True, on_delete=models.SET_NULL)
+
     def es_eliminable(self):
         return date.today() <= self.fecha_inicio.date()
 
 
-    def calcular_horas(self):
-        feriados = FeriadoNacional.objects.values_list('fecha', flat=True)
-
-        
-        delta = self.fecha_fin - self.fecha_inicio
-        total_horas = delta.total_seconds() / 3600
-
-        almuerzo_inicio = self.fecha_inicio.replace(hour=12, minute=0, second=0, microsecond=0)
-        almuerzo_fin = self.fecha_inicio.replace(hour=13, minute=0, second=0, microsecond=0)
-
-        es_dia_especial = (
-            self.fecha_inicio.date() in feriados or
-            self.fecha_inicio.weekday() >= 5
-        )
-
-        # Solo restar hora de almuerzo si NO es un día especial
-        if not es_dia_especial:
-            if self.fecha_inicio <= almuerzo_inicio < self.fecha_fin or self.fecha_inicio < almuerzo_fin <= self.fecha_fin:
-                total_horas -= 1 
-
-        total_horas = max(total_horas, 0) 
-        return Decimal(total_horas).quantize(Decimal('0.01'))
-
-    def save(self, *args, **kwargs):
-        self.horas = self.calcular_horas()
-        if self.tipo == 'HC' and self.fecha_inicio.weekday() == 6 and self.fecha_fin.weekday() == 6:
-            self.horas *= 2
-
-        if self.tipo == 'HEF':
-            diferencia_dias = (self.fecha_fin.date() - self.fecha_inicio.date()).days + 1
-            self.horas_compensatorias_feriado = 9 * diferencia_dias
-        super().save(*args, **kwargs)
 
 class HistorialVacaciones(models.Model):
     usuario = models.ForeignKey('Usuario', on_delete=models.CASCADE)
