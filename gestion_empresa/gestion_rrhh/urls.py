@@ -60,4 +60,7 @@ urlpatterns = [
     path('reporte-licencias-pdf/', views.generar_reporte_licencias_pdf, name='generar_reporte_licencias_pdf'),
 
     path('convertir-vacaciones/', views.convertir_vacaciones_a_horas_view, name='convertir_vacaciones'),
+
+    path('solicitar-restablecimiento/', views.solicitar_restablecimiento, name='solicitar_restablecimiento'),
+    path('verificar-codigo/', views.verificar_codigo, name='verificar_codigo'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

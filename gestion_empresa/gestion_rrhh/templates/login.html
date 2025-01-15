@@ -33,9 +33,10 @@
                             <input type="password" class="form-control" id="id_password" name="password" 
                                    placeholder="Contraseña" required>
                             <label for="id_password">Contraseña</label>
-                            <!-- <div class="form-text text-end">
-                                <a href="#" class="text-decoration-none">¿Olvidaste tu contraseña?</a>
-                            </div> -->
+                            <div class="form-text text-end">
+                                <a href="{% url 'solicitar_restablecimiento' %}" class="text-decoration-none">¿Olvidaste tu contraseña?</a>
+                            </div>
+                            
                         </div>
 
                         <!-- Checkbox Recordarme -->

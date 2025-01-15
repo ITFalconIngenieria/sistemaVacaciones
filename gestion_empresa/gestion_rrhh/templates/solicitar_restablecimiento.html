@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Solicitar Código de Restablecimiento - Falcon 365{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-center">Solicitar Código</h5>
+                    {% if messages %}
+                        <div>
+                        </div>
+                    {% endif %}
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Correo Electrónico</label>
+                            <input type="email" name="email" class="form-control" placeholder="Ingresa tu correo" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Solicitar Código</button>
+                    </form>
+                    <div class="form-text mt-3 text-center">
+                        <a href="{% url 'login' %}">Volver al login</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

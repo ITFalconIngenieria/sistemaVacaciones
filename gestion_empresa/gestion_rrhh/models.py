@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from datetime import date, timedelta, datetime, time
+from datetime import date, timedelta
+from django.utils.timezone import now, timedelta
 from decimal import Decimal
 from .validators import validate_username
 from django.conf import settings
@@ -350,3 +351,15 @@ class HorasCompensatoriasSieteDias(models.Model):
 
     def __str__(self):
         return f"{self.usuario.get_full_name()} - {self.horas_compensatorias} horas asignadas el {self.fecha_asignacion}"
+
+
+
+class CodigoRestablecimiento(models.Model):
+    usuario = models.ForeignKey('Usuario', on_delete=models.CASCADE, related_name='codigos_restablecimiento')
+    codigo = models.CharField(max_length=6, unique=True)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    expira_en = models.DateTimeField()
+    usado = models.BooleanField(default=False)
+
+    def es_valido(self):
+        return not self.usado and now() < self.expira_en

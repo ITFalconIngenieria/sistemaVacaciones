@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import render, redirect,  redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView, View, DeleteView
-from .models import FeriadoNacional, Usuario, Solicitud, HistorialVacaciones, ConversionVacacionesHoras, HorasCompensatoriasSieteDias ,AjusteVacaciones, RegistroHoras,Solicitud, Incapacidad 
+from .models import FeriadoNacional, Usuario, Solicitud, HistorialVacaciones, ConversionVacacionesHoras, HorasCompensatoriasSieteDias ,AjusteVacaciones, RegistroHoras,Solicitud, Incapacidad , CodigoRestablecimiento
 from .forms import UsuarioCreationForm, SolicitudForm, FeriadoNacionalForm, RegistrarHorasForm,RegistroHorasFilterForm, AjusteVacacionesForm, IncapacidadForm
 from django.contrib import messages
 from django.contrib.auth import logout
@@ -34,7 +34,8 @@ from .forms import LicenciaForm
 from django.db import models
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
-
+import random
+from django.contrib.auth.hashers import make_password
 
 def es_jefe(user):
     return user.rol in ['GG', 'JI', 'JD']
@@ -2554,10 +2555,103 @@ def convertir_vacaciones_a_horas_view(request):
             conversion = convertir_dias_a_horas(request.user, dias_a_convertir)
             messages.success(request, f"Has convertido {conversion.dias_convertidos} días a {conversion.horas_compensatorias} horas compensatorias.")
             
-            # Redirigir al dashboard después de una conversión exitosa
             return redirect(reverse_lazy('dashboard'))
         except ValueError as e:
             messages.error(request, str(e))
 
     dias_disponibles = calcular_dias_disponibles(request.user)['dias_disponibles']
     return render(request, 'convertir_vacaciones.html', {'dias_disponibles': dias_disponibles})
+
+
+
+
+
+def solicitar_restablecimiento(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        usuario = Usuario.objects.filter(email=email).first()
+        if usuario:
+            # Ajustar la hora actual a UTC-6
+            fecha_hora_actual = now() - timedelta(hours=6)
+            
+            # Verificar si ya existe un código válido
+            codigo_existente = CodigoRestablecimiento.objects.filter(
+                usuario=usuario,
+                usado=False,
+                expira_en__gt=fecha_hora_actual
+            ).first()
+            
+            if codigo_existente:
+                # Si existe un código válido, redirigir a la página de verificación
+                tiempo_restante = int((codigo_existente.expira_en - fecha_hora_actual).total_seconds())
+                return render(request, 'verificar_codigo.html', {
+                    'email': email,
+                    'tiempo_restante': tiempo_restante
+                })
+            
+            # Si no hay código válido, generar uno nuevo
+            codigo = str(random.randint(100000, 999999))
+            expira_en = fecha_hora_actual + timedelta(minutes=3)
+            CodigoRestablecimiento.objects.create(
+                usuario=usuario,
+                codigo=codigo,
+                expira_en=expira_en
+            )
+            
+            # Enviar correo con el código
+            context = {
+                "nombre_usuario": usuario.first_name,
+                "codigo": codigo,
+                "expira_en": expira_en.strftime('%H:%M:%S'),
+            }
+            html_content = render_to_string("mail_restablecimiento.html", context)
+            email_sender = MicrosoftGraphEmail()
+            try:
+                email_sender.send_email(
+                    subject="Código de Restablecimiento de Contraseña",
+                    content=html_content,
+                    to_recipients=[usuario.email],
+                )
+                messages.success(request, "El código de restablecimiento ha sido enviado a tu correo.")
+                return render(request, 'verificar_codigo.html', {
+                    'email': email,
+                    'tiempo_restante': 180  # 3 minutos en segundos
+                })
+            except Exception as e:
+                messages.error(request, "Error al enviar el correo. Intenta nuevamente.")
+        else:
+            messages.error(request, "No se encontró un usuario con ese correo.")
+    
+    return render(request, 'solicitar_restablecimiento.html')
+
+
+def verificar_codigo(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        codigo = request.POST.get('codigo')
+        nueva_contrasena = request.POST.get('nueva_contrasena')
+
+        # Verificar si el usuario existe
+        usuario = Usuario.objects.filter(email=email).first()
+        if not usuario:
+            messages.error(request, "Correo no válido.")
+            return redirect(f'{request.path}?next=/login/')  # Incluye el parámetro `next`
+
+        # Verificar si el código es válido
+        codigo_obj = CodigoRestablecimiento.objects.filter(usuario=usuario, codigo=codigo).first()
+        if not codigo_obj or not codigo_obj.es_valido():
+            messages.error(request, "Código inválido o expirado.")
+            return redirect(f'{request.path}?next=/login/')
+
+        # Setear la nueva contraseña usando set_password()
+        usuario.set_password(nueva_contrasena)
+        usuario.save()
+
+        # Marcar el código como usado
+        codigo_obj.usado = True
+        codigo_obj.save()
+
+        messages.success(request, "Contraseña actualizada correctamente.")
+        return redirect('login')
+
+    return redirect('login')

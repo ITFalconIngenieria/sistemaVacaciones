@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}Verificar Código - Falcon 365{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title text-center">Verificar Código de Restablecimiento</h5>
+                    <form method="post" action="{% url 'verificar_codigo' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Correo Electrónico</label>
+                            <input type="email" name="email" class="form-control" required value="{{ email }}" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="codigo" class="form-label">Código</label>
+                            <input type="text" name="codigo" class="form-control" maxlength="6" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="nueva_contrasena" class="form-label">Nueva Contraseña</label>
+                            <input type="password" name="nueva_contrasena" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Restablecer Contraseña</button>
+                    </form>
+                    <div class="mt-3 text-center">
+                        <span id="timer" class="text-danger">03:00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Temporizador de 3 minutos
+    let timer = 180; // 3 minutos en segundos
+    const timerDisplay = document.getElementById('timer');
+
+    const countdown = setInterval(() => {
+        let minutes = Math.floor(timer / 60);
+        let seconds = timer % 60;
+        timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        if (--timer < 0) {
+            clearInterval(countdown);
+            alert("El código ha expirado. Solicita uno nuevo.");
+            timerDisplay.textContent = "Expirado";
+        }
+    }, 1000);
+</script>
+{% endblock %}
