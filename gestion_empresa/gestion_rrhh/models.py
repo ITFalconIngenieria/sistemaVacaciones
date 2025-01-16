@@ -362,4 +362,5 @@ class CodigoRestablecimiento(models.Model):
     usado = models.BooleanField(default=False)
 
     def es_valido(self):
-        return not self.usado and now() < self.expira_en
+        fecha_hora_actual = now() - timedelta(hours=6)
+        return not self.usado and fecha_hora_actual < self.expira_en
