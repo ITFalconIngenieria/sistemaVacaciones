@@ -42,7 +42,12 @@ def es_jefe(user):
 
 def calcular_dias_disponibles(usuario):
     total_dias_asignados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_asignados'))['dias_asignados__sum'] or 0
-    total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
+    # total_dias_tomados = HistorialVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_tomados'))['dias_tomados__sum'] or 0
+    total_dias_tomados = Solicitud.objects.filter(
+    usuario=usuario,
+    tipo='V',
+    estado='A'
+).aggregate(Sum('dias_solicitados'))['dias_solicitados__sum'] or 0
     total_dias_ajustados = AjusteVacaciones.objects.filter(usuario=usuario).aggregate(Sum('dias_ajustados'))['dias_ajustados__sum'] or 0
     total_dias_convertidos = ConversionVacacionesHoras.objects.filter(usuario=usuario).aggregate(Sum('dias_convertidos'))['dias_convertidos__sum'] or 0
 
@@ -543,12 +548,12 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
                         self.request, 
                         f"Advertencia: Al aprobar esta solicitud, el saldo de días de vacaciones será negativo en {dias_faltantes} días."
                     )
-                dias_solicitados = solicitud.dias_solicitados
-                historial_vacaciones = HistorialVacaciones.objects.filter(usuario=solicitud.usuario, año=año_actual)
+                # dias_solicitados = solicitud.dias_solicitados
+                # historial_vacaciones = HistorialVacaciones.objects.filter(usuario=solicitud.usuario, año=año_actual)
                 
-                for registro in historial_vacaciones:
-                    registro.dias_tomados += dias_solicitados
-                    registro.save()
+                # for registro in historial_vacaciones:
+                #     registro.dias_tomados += dias_solicitados
+                #     registro.save()
 
             elif solicitud.tipo == 'HC':
                 
