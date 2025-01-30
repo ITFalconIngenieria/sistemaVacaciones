@@ -1743,6 +1743,14 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
 
+        # Validar si se está subiendo un archivo
+        archivo = form.cleaned_data.get('archivo_adjunto')
+        if archivo:
+            max_size = 10 * 1024 * 1024  # 10MB
+            if archivo.size > max_size:
+                form.add_error('archivo_adjunto', "El archivo adjunto no puede superar los 10MB.")
+                return self.form_invalid(form)
+
         fecha_actual = date.today()
         if fecha_inicio > fecha_actual:
             form.add_error(None, "Imposible registrar una incapacidad para el futuro.")
