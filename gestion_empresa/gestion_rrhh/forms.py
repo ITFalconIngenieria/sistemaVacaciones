@@ -18,9 +18,12 @@ class UsuarioChangeForm(UserChangeForm):
         model = Usuario
         fields = UserChangeForm.Meta.fields
 
+from django import forms
+from django.utils import timezone
+from .models import Solicitud  # Asegúrate de importar tu modelo
+
 class SolicitudForm(forms.ModelForm):
     confirmacion_requisitos = forms.BooleanField(
-        
         required=True,
         help_text="""
         <div class="alert alert-warning">
@@ -35,17 +38,17 @@ class SolicitudForm(forms.ModelForm):
         error_messages={
             'required': 'Debe confirmar que está de acuerdo con los requisitos antes de continuar.'
         },
-        
     )
 
     class Meta:
         model = Solicitud
-        fields = ['numero_solicitud', 'tipo', 'fecha_inicio', 'fecha_fin']
+        fields = ['numero_solicitud', 'tipo', 'fecha_inicio', 'fecha_fin', 'descripcion']
         labels = {
             'numero_solicitud': 'Número de Solicitud',
             'tipo': 'Tipo',
             'fecha_inicio': 'Fecha de Inicio',
             'fecha_fin': 'Fecha de Fin',
+            'descripcion': 'Descripción'
         }
         widgets = {
             'numero_solicitud': forms.TextInput(attrs={
@@ -64,6 +67,14 @@ class SolicitudForm(forms.ModelForm):
                 'class': 'form-control flatpickr-datetime',
                 'required': 'required'
             }),
+            'descripcion': forms.Textarea(
+                attrs={
+                    'rows': 3,
+                    'class': 'form-control',
+                    'placeholder': 'Describa brevemente el motivo de su solicitud',
+                    'required': 'required'
+                }
+            )
         }
         exclude = ['estado', 'aprobado_por']
 
@@ -84,6 +95,7 @@ class SolicitudForm(forms.ModelForm):
         fecha_inicio = cleaned_data.get('fecha_inicio')
         fecha_fin = cleaned_data.get('fecha_fin')
         confirmacion_requisitos = cleaned_data.get('confirmacion_requisitos')
+        descripcion = cleaned_data.get('descripcion')
 
         if not fecha_inicio or not fecha_fin:
             raise forms.ValidationError("Las fechas de inicio y fin son obligatorias.")
@@ -98,7 +110,11 @@ class SolicitudForm(forms.ModelForm):
         if not confirmacion_requisitos:
             raise forms.ValidationError("Debe confirmar que está de acuerdo con los requisitos antes de enviar la solicitud.")
 
+        if not descripcion:
+            raise forms.ValidationError("La descripción es un campo obligatorio.")
+
         return cleaned_data
+
 
 
 

@@ -190,6 +190,7 @@ class Solicitud(models.Model):
     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador', null=True, blank=True, on_delete=models.SET_NULL)
     estado_cierre = models.BooleanField(default=False)
     requisitos_confirmados = models.BooleanField(default=False)
+    descripcion = models.TextField(null=True, blank=True)
 
     def es_eliminable(self):
         return date.today() <= (self.fecha_inicio.date() + timedelta(days=1))
@@ -226,7 +227,7 @@ class RegistroHoras(models.Model):
     horas = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     horas_compensatorias_feriado = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     numero_proyecto = models.IntegerField(null=True, blank=True)
-    descripcion = models.TextField(null=True, blank=True)
+    descripcion = models.TextField(null=True, blank=False)
     estado = models.CharField(max_length=1, choices=ESTADOS, default='P')
     estado_pago = models.CharField(max_length=2, choices=ESTADOS_PAGO, default='NP')
     aprobado_por = models.ForeignKey('Usuario', related_name='aprobador_horas', null=True, blank=True, on_delete=models.SET_NULL)
