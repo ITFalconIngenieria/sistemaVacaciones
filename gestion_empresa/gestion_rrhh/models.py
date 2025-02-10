@@ -190,7 +190,7 @@ class Solicitud(models.Model):
     aprobado_por = models.ForeignKey(Usuario, related_name='aprobador', null=True, blank=True, on_delete=models.SET_NULL)
     estado_cierre = models.BooleanField(default=False)
     requisitos_confirmados = models.BooleanField(default=False)
-    descripcion = models.TextField(null=True, blank=False)
+    descripcion = models.TextField(null=True, blank=True)
 
     def es_eliminable(self):
         return date.today() <= (self.fecha_inicio.date() + timedelta(days=1))
