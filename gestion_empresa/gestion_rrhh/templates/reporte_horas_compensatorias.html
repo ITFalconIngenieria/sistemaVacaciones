@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Reporte de Horas Compensatorias{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Reporte de Horas Compensatorias Aprobadas</h2>
+    
+    <form method="GET">
+        <div class="row">
+            <div class="col-md-3">
+                {{ form.fecha_inicio.label_tag }}
+                {{ form.fecha_inicio }}
+            </div>
+            <div class="col-md-3">
+                {{ form.fecha_fin.label_tag }}
+                {{ form.fecha_fin }}
+            </div>
+            <div class="col-md-3">
+                {{ form.empleado.label_tag }}
+                {{ form.empleado }}
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </div>
+        </div>
+    </form>
+
+    <table class="table table-striped mt-3">
+        <thead>
+            <tr>
+                <th>Empleado</th>
+                <th>Fecha Inicio</th>
+                <th>Fecha Fin</th>
+                <th>Horas</th>
+                <th>Proyecto</th>
+                <th>Descripción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for registro in registros %}
+            <tr>
+                <td>{{ registro.usuario.get_full_name }}</td>
+                <td>{{ registro.fecha_inicio|date:"d/m/Y H:i" }}</td>
+                <td>{{ registro.fecha_fin|date:"d/m/Y H:i" }}</td>
+                <td>{{ registro.horas }}</td>
+                <td>{{ registro.numero_proyecto|default:"-" }}</td>
+                <td>{{ registro.descripcion|default:"-" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center">No hay registros de horas compensatorias aprobadas en el rango seleccionado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

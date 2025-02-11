@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django import forms
 from datetime import date
 from .models import Licencia
+from django.db.models import  Q
 class UsuarioCreationForm(forms.ModelForm):
     class Meta:
         model = Usuario
@@ -368,3 +369,38 @@ class LicenciaForm(forms.ModelForm):
         return cleaned_data
 
 
+
+
+class ReporteRegistroHorasForm(forms.Form):
+    fecha_inicio = forms.DateField(
+        required=True,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label="Fecha de inicio"
+    )
+    fecha_fin = forms.DateField(
+        required=True,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        label="Fecha de fin"
+    )
+    empleado = forms.ModelChoiceField(
+        queryset=Usuario.objects.none(),  # Se define vacío y se llena en __init__
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label="Empleado",
+        to_field_name="id"  # Nos aseguramos de que almacene el ID
+    )
+
+    def __init__(self, *args, usuario_actual=None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if usuario_actual:
+            if usuario_actual.rol == 'GG':
+                self.fields['empleado'].queryset = Usuario.objects.all()
+            elif usuario_actual.rol == 'JI':
+                self.fields['empleado'].queryset = Usuario.objects.filter(
+                    Q(jefe=usuario_actual) |  # Subordinados directos
+                    Q(jefe__jefe=usuario_actual)  # Subordinados de subordinados
+                )
+
+        # 🔹 Personaliza la representación de cada usuario
+        self.fields['empleado'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name}"

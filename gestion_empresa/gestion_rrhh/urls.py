@@ -63,4 +63,7 @@ urlpatterns = [
 
     path('solicitar-restablecimiento/', views.solicitar_restablecimiento, name='solicitar_restablecimiento'),
     path('verificar-codigo/', views.verificar_codigo, name='verificar_codigo'),
+
+    path('reporte_horas_compensatorias/', views.reporte_horas_compensatorias, name='reporte_horas_compensatorias'),
+
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

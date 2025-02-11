@@ -36,6 +36,10 @@ from dateutil.relativedelta import relativedelta
 from decimal import Decimal
 import random
 from django.contrib.auth.hashers import make_password
+from .forms import ReporteRegistroHorasForm
+
+
+
 
 def es_jefe(user):
     return user.rol in ['GG', 'JI', 'JD']
@@ -2659,3 +2663,87 @@ def verificar_codigo(request):
         return redirect('login')
 
     return redirect('login')
+
+
+
+
+
+
+# @login_required
+# def reporte_horas_compensatorias(request):
+#     usuario_actual = request.user
+
+#     # 🚨 Restringir acceso según el rol
+#     if usuario_actual.rol not in ['GG', 'JI']:
+#         raise PermissionDenied("No tienes permiso para acceder a este reporte.")
+
+#     form = ReporteRegistroHorasForm(request.GET or None)
+#     registros = RegistroHoras.objects.filter(tipo='HC', estado='A').order_by('-fecha_inicio')  # 📌 Orden descendente
+
+#     # 📌 Filtrar registros según el rol
+#     if usuario_actual.rol == 'GG':
+#         pass  # Puede ver todos los registros
+#     elif usuario_actual.rol == 'JI':
+#         registros = registros.filter(
+#             Q(usuario__jefe=usuario_actual) |  # Subordinados directos
+#             Q(usuario__jefe__jefe=usuario_actual)  # Subordinados de subordinados
+#         )
+
+#     # 📌 Aplicar filtros del formulario
+#     if form.is_valid():
+#         fecha_inicio = form.cleaned_data.get('fecha_inicio')
+#         fecha_fin = form.cleaned_data.get('fecha_fin')
+#         empleado = form.cleaned_data.get('empleado')
+
+#         if fecha_inicio and fecha_fin:
+#             registros = registros.filter(fecha_inicio__date__gte=fecha_inicio, fecha_fin__date__lte=fecha_fin)
+
+#         if empleado:
+#             registros = registros.filter(usuario=empleado)
+
+#     return render(request, 'reporte_horas_compensatorias.html', {
+#         'form': form,
+#         'registros': registros
+#     })
+
+
+
+
+@login_required
+def reporte_horas_compensatorias(request):
+    usuario_actual = request.user
+
+    # 🚨 Restringir acceso según el rol
+    if usuario_actual.rol not in ['GG', 'JI']:
+        raise PermissionDenied("No tienes permiso para acceder a este reporte.")
+
+    # Pasamos `usuario_actual` al formulario para que filtre correctamente los empleados
+    form = ReporteRegistroHorasForm(request.GET or None, usuario_actual=usuario_actual)
+
+    registros = RegistroHoras.objects.filter(tipo='HC', estado='A').order_by('-fecha_inicio')
+
+    # 📌 Filtrar registros según el rol
+    if usuario_actual.rol == 'GG':
+        pass  # Puede ver todos los registros
+    elif usuario_actual.rol == 'JI':
+        registros = registros.filter(
+            Q(usuario__jefe=usuario_actual) |  # Subordinados directos
+            Q(usuario__jefe__jefe=usuario_actual)  # Subordinados de subordinados
+        )
+
+    # 📌 Aplicar filtros del formulario
+    if form.is_valid():
+        fecha_inicio = form.cleaned_data.get('fecha_inicio')
+        fecha_fin = form.cleaned_data.get('fecha_fin')
+        empleado = form.cleaned_data.get('empleado')
+
+        if fecha_inicio and fecha_fin:
+            registros = registros.filter(fecha_inicio__date__gte=fecha_inicio, fecha_fin__date__lte=fecha_fin)
+
+        if empleado:
+            registros = registros.filter(usuario=empleado)
+
+    return render(request, 'reporte_horas_compensatorias.html', {
+        'form': form,
+        'registros': registros
+    })

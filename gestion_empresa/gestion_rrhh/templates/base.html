@@ -70,14 +70,15 @@
                     </li>
                     {% endif %}
 
-                    {% if user.rol in 'GG' %}
-
+                    {% if user.rol in 'GG' or user.rol in 'JI' %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle text-white" href="#" id="gestionSubordinadosDropdown"
                             role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Reportes
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="reportesGerenteDropdown">
+                            {% if user.rol in 'GG'%}
+
                             <li>
                                 <a class="dropdown-item" href="{% url 'historial_ajustes_vacaciones' %}">Historial
                                     Ajuste Vacaciones</a>
@@ -86,12 +87,13 @@
                                 <a class="dropdown-item" href="{% url 'colaboradores_info' %}">Colaboradores</a>
                             </li>
 
+                            {% endif %}
+                            <li>
+                                <a class="dropdown-item" href="{% url 'reporte_horas_compensatorias' %}">HC Aprobadas</a>
+                            </li>
+
                         </ul>
                     </li>
-
-
-
-
                     {% endif %}
 
 
@@ -146,10 +148,6 @@
                         </ul>
                     </li>
                     {% endif %}
-
-
-
-
 
 
                     <!-- Usuario -->
