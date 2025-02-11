@@ -241,7 +241,7 @@ class HistorialVacaciones(models.Model):
     usuario = models.ForeignKey('Usuario', on_delete=models.CASCADE)
     año = models.IntegerField()
     dias_asignados = models.IntegerField(default=0)
-    aniversario_notificado = models.BooleanField(default=False)  # Nuevo campo
+    aniversario_notificado = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('usuario', 'año')

@@ -546,12 +546,6 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
                         self.request, 
                         f"Advertencia: Al aprobar esta solicitud, el saldo de días de vacaciones será negativo en {dias_faltantes} días."
                     )
-                # dias_solicitados = solicitud.dias_solicitados
-                # historial_vacaciones = HistorialVacaciones.objects.filter(usuario=solicitud.usuario, año=año_actual)
-                
-                # for registro in historial_vacaciones:
-                #     registro.dias_tomados += dias_solicitados
-                #     registro.save()
 
             elif solicitud.tipo == 'HC':
                 
@@ -828,6 +822,9 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         almuerzo_inicio = fecha_inicio.replace(hour=12, minute=0, second=0, microsecond=0)
         almuerzo_fin = fecha_inicio.replace(hour=13, minute=0, second=0, microsecond=0)
 
+        exclusion_inicio = fecha_inicio.replace(hour=17, minute=0, second=0, microsecond=0)
+        exclusion_fin = fecha_inicio.replace(hour=18, minute=0, second=0, microsecond=0)
+
         es_dia_especial = (
             fecha_inicio.date() in feriados or
             fecha_inicio.weekday() >= 5
@@ -837,22 +834,19 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         if not es_dia_especial:
             if fecha_inicio <= almuerzo_inicio < fecha_fin or fecha_inicio < almuerzo_fin <= fecha_fin:
                 total_horas -= 1
+            
+            if fecha_inicio <= exclusion_inicio < fecha_fin or fecha_inicio < exclusion_fin <= fecha_fin:
+                total_horas -= 1
 
         total_horas = max(total_horas, 0)
         horas_calculadas = Decimal(total_horas).quantize(Decimal('0.01'))
-
-        # Ajustar horas según el tipo
-        # if tipo_horas == 'HC' and fecha_inicio.weekday() == 6 and fecha_fin.weekday() == 6:
-        #     horas_calculadas *= 2
 
         if tipo_horas == 'HEF':
             diferencia_dias = (fecha_fin.date() - fecha_inicio.date()).days + 1
             form.instance.horas_compensatorias_feriado = Decimal(9 * diferencia_dias).quantize(Decimal('0.01'))
 
-        # Asignar las horas calculadas
         form.instance.horas = horas_calculadas
 
-        # Validar conflictos
         usuario = self.request.user
         registros_en_conflicto = RegistroHoras.objects.filter(
             usuario=usuario,
