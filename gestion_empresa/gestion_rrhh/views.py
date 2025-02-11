@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import render, redirect,  redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, ListView, UpdateView, View, DeleteView
-from .models import FeriadoNacional, Usuario, Solicitud, HistorialVacaciones, ConversionVacacionesHoras, HorasCompensatoriasSieteDias ,AjusteVacaciones, RegistroHoras,Solicitud, Incapacidad , CodigoRestablecimiento
+from .models import FeriadoNacional, Usuario, Solicitud, HistorialVacaciones, Departamento,ConversionVacacionesHoras, HorasCompensatoriasSieteDias ,AjusteVacaciones, RegistroHoras,Solicitud, Incapacidad , CodigoRestablecimiento
 from .forms import UsuarioCreationForm, SolicitudForm, FeriadoNacionalForm, RegistrarHorasForm,RegistroHorasFilterForm, AjusteVacacionesForm, IncapacidadForm
 from django.contrib import messages
 from django.contrib.auth import logout
@@ -35,7 +35,6 @@ from django.db import models
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
 import random
-from django.contrib.auth.hashers import make_password
 from .forms import ReporteRegistroHorasForm
 
 
@@ -2742,4 +2741,69 @@ def reporte_horas_compensatorias(request):
     return render(request, 'reporte_horas_compensatorias.html', {
         'form': form,
         'registros': registros
+    })
+
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django.db.models import Sum
+from .models import RegistroHoras, Usuario, Departamento
+from .forms import ReporteRegistroHorasForm
+from django.core.exceptions import PermissionDenied
+
+@login_required
+def reporte_total_HC(request):
+    usuario_actual = request.user
+
+    # 🚨 Restringir acceso según el rol
+    if usuario_actual.rol not in ['GG', 'JI']:
+        raise PermissionDenied("No tienes permiso para acceder a este reporte.")
+
+    form = ReporteRegistroHorasForm(request.GET or None, usuario_actual=usuario_actual)
+
+    # 📌 Obtener usuarios según el rol
+    if usuario_actual.rol == 'GG':
+        usuarios = Usuario.objects.all()
+    elif usuario_actual.rol == 'JI':
+        usuarios = Usuario.objects.filter(
+            Q(jefe=usuario_actual) |  
+            Q(jefe__jefe=usuario_actual)
+        )
+    
+    # 📌 Calcular las horas totales y el saldo para cada usuario
+    reporte_usuarios = []
+    for usuario in usuarios:
+        horas_aprobadas = RegistroHoras.objects.filter(
+            usuario=usuario,
+            estado='A'
+        ).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
+
+        saldo_horas = calcular_horas_individuales(usuario)['HC']
+
+        reporte_usuarios.append({
+            'nombre': f"{usuario.first_name} {usuario.last_name}",
+            'departamento': usuario.departamento.nombre if usuario.departamento else "Sin Departamento",
+            'total_horas': horas_aprobadas,
+            'saldo_horas': saldo_horas
+        })
+
+    # 📌 Agrupar datos por departamento
+    departamentos = Departamento.objects.all()
+    total_por_departamento = []
+
+    for depto in departamentos:
+        total_horas_depto = RegistroHoras.objects.filter(
+            usuario__departamento=depto,
+            estado='A'
+        ).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
+
+        total_por_departamento.append({
+            'departamento': depto.nombre,
+            'total_horas': total_horas_depto
+        })
+
+    return render(request, 'reporte_total_HC.html', {
+        'form': form,
+        'reporte_usuarios': reporte_usuarios,
+        'total_por_departamento': total_por_departamento
     })

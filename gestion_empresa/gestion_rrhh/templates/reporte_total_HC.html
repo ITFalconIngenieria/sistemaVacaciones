@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Reporte Total de Horas{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Reporte de Horas Aprobadas</h2>
+    
+    <form method="GET">
+        <div class="row">
+            <div class="col-md-3">
+                {{ form.fecha_inicio.label_tag }}
+                {{ form.fecha_inicio }}
+            </div>
+            <div class="col-md-3">
+                {{ form.fecha_fin.label_tag }}
+                {{ form.fecha_fin }}
+            </div>
+            <div class="col-md-3">
+                {{ form.empleado.label_tag }}
+                {{ form.empleado }}
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </div>
+        </div>
+    </form>
+
+    <h3 class="mt-4">Horas por Usuario</h3>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Empleado</th>
+                <th>Departamento</th>
+                <th>Total de Horas Aprobadas</th>
+                <th>Saldo de Horas</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for usuario in reporte_usuarios %}
+            <tr>
+                <td>{{ usuario.nombre }}</td>
+                <td>{{ usuario.departamento }}</td>
+                <td>{{ usuario.total_horas }}</td>
+                <td>{{ usuario.saldo_horas }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="text-center">No hay registros.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3 class="mt-4">Total de Horas por Departamento</h3>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Departamento</th>
+                <th>Total de Horas</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for depto in total_por_departamento %}
+            <tr>
+                <td>{{ depto.departamento }}</td>
+                <td>{{ depto.total_horas }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="2" class="text-center">No hay datos disponibles.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
