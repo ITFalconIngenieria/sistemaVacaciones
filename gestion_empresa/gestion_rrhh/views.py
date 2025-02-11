@@ -2713,25 +2713,21 @@ def verificar_codigo(request):
 def reporte_horas_compensatorias(request):
     usuario_actual = request.user
 
-    # 🚨 Restringir acceso según el rol
     if usuario_actual.rol not in ['GG', 'JI']:
         raise PermissionDenied("No tienes permiso para acceder a este reporte.")
 
-    # Pasamos `usuario_actual` al formulario para que filtre correctamente los empleados
     form = ReporteRegistroHorasForm(request.GET or None, usuario_actual=usuario_actual)
 
     registros = RegistroHoras.objects.filter(tipo='HC', estado='A').order_by('-fecha_inicio')
 
-    # 📌 Filtrar registros según el rol
     if usuario_actual.rol == 'GG':
-        pass  # Puede ver todos los registros
+        pass 
     elif usuario_actual.rol == 'JI':
         registros = registros.filter(
-            Q(usuario__jefe=usuario_actual) |  # Subordinados directos
-            Q(usuario__jefe__jefe=usuario_actual)  # Subordinados de subordinados
+            Q(usuario__jefe=usuario_actual) |
+            Q(usuario__jefe__jefe=usuario_actual)
         )
 
-    # 📌 Aplicar filtros del formulario
     if form.is_valid():
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
