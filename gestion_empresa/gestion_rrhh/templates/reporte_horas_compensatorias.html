@@ -4,7 +4,7 @@
 {% block content %}
 <div class="container mt-4">
     <h2>Reporte de Horas Compensatorias Aprobadas</h2>
-    
+
     <form method="GET">
         <div class="row">
             <div class="col-md-3">
@@ -25,15 +25,15 @@
         </div>
     </form>
 
-    <table class="table table-striped mt-3">
-        <thead>
+    <table class="table table-striped mt-3" id="horas-table">
+        <thead style="position: sticky; top: 0; background-color: white; z-index: 1;">
             <tr>
-                <th>Empleado</th>
-                <th>Fecha Inicio</th>
-                <th>Fecha Fin</th>
-                <th>Horas</th>
-                <th>Proyecto</th>
-                <th>Descripción</th>
+                <th style="cursor: pointer;" onclick="sortTable(0)">Empleado <span>&#9650;&#9660;</span></th>
+                <th style="cursor: pointer;" onclick="sortTable(1)">Fecha Inicio <span>&#9650;&#9660;</span></th>
+                <th style="cursor: pointer;" onclick="sortTable(2)">Fecha Fin <span>&#9650;&#9660;</span></th>
+                <th style="cursor: pointer;" onclick="sortTable(3)">Horas <span>&#9650;&#9660;</span></th>
+                <th style="cursor: pointer;" onclick="sortTable(4)">Proyecto <span>&#9650;&#9660;</span></th>
+                <th style="cursor: pointer;" onclick="sortTable(5)">Descripción <span>&#9650;&#9660;</span></th>
             </tr>
         </thead>
         <tbody>
@@ -54,4 +54,28 @@
         </tbody>
     </table>
 </div>
+
+<!-- Script para ordenar la tabla -->
+<script>
+    function sortTable(columnIndex) {
+        const table = document.getElementById('horas-table');
+        const rows = Array.from(table.rows).slice(1); // Excluye encabezado
+        const isAscending = table.getAttribute('data-sort-order') !== 'asc'; // Alternar orden
+
+        rows.sort((a, b) => {
+            const cellA = a.cells[columnIndex].innerText.trim().toLowerCase();
+            const cellB = b.cells[columnIndex].innerText.trim().toLowerCase();
+
+            const valueA = isNaN(cellA) ? cellA : parseFloat(cellA);
+            const valueB = isNaN(cellB) ? cellB : parseFloat(cellB);
+
+            return isAscending
+                ? valueA > valueB ? 1 : -1
+                : valueA < valueB ? 1 : -1;
+        });
+
+        rows.forEach(row => table.tBodies[0].appendChild(row));
+        table.setAttribute('data-sort-order', isAscending ? 'asc' : 'desc');
+    }
+</script>
 {% endblock %}

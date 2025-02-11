@@ -35,7 +35,7 @@ from django.db import models
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
 import random
-from .forms import ReporteRegistroHorasForm
+from .forms import ReporteRegistroHorasForm, ReporteTotalHorasCompForm
 
 
 
@@ -2744,24 +2744,15 @@ def reporte_horas_compensatorias(request):
     })
 
 
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from django.db.models import Sum
-from .models import RegistroHoras, Usuario, Departamento
-from .forms import ReporteRegistroHorasForm
-from django.core.exceptions import PermissionDenied
-
 @login_required
 def reporte_total_HC(request):
     usuario_actual = request.user
 
-    # 🚨 Restringir acceso según el rol
     if usuario_actual.rol not in ['GG', 'JI']:
         raise PermissionDenied("No tienes permiso para acceder a este reporte.")
 
-    form = ReporteRegistroHorasForm(request.GET or None, usuario_actual=usuario_actual)
+    form = ReporteTotalHorasCompForm(request.GET or None, usuario_actual=usuario_actual)
 
-    # 📌 Obtener usuarios según el rol
     if usuario_actual.rol == 'GG':
         usuarios = Usuario.objects.all()
     elif usuario_actual.rol == 'JI':
@@ -2769,8 +2760,12 @@ def reporte_total_HC(request):
             Q(jefe=usuario_actual) |  
             Q(jefe__jefe=usuario_actual)
         )
-    
-    # 📌 Calcular las horas totales y el saldo para cada usuario
+
+    if form.is_valid():
+        empleado = form.cleaned_data.get('empleado')
+        if empleado:
+            usuarios = usuarios.filter(id=empleado.id)
+
     reporte_usuarios = []
     for usuario in usuarios:
         horas_aprobadas = RegistroHoras.objects.filter(
@@ -2787,10 +2782,12 @@ def reporte_total_HC(request):
             'saldo_horas': saldo_horas
         })
 
-    # 📌 Agrupar datos por departamento
-    departamentos = Departamento.objects.all()
-    total_por_departamento = []
+    if usuario_actual.rol == 'GG':
+        departamentos = Departamento.objects.all()
+    elif usuario_actual.rol == 'JI':
+        departamentos = Departamento.objects.filter(usuario__in=usuarios).distinct()
 
+    total_por_departamento = []
     for depto in departamentos:
         total_horas_depto = RegistroHoras.objects.filter(
             usuario__departamento=depto,

@@ -334,12 +334,10 @@ class LicenciaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Si el formulario está en modo edición, deshabilitar el campo 'tipo'
         if self.instance and self.instance.pk:
             self.fields['tipo'].widget.attrs['readonly'] = True
-            self.fields['tipo'].widget.attrs['style'] = 'pointer-events: none;'  # Bloquear interacción visual
+            self.fields['tipo'].widget.attrs['style'] = 'pointer-events: none;'
 
-            # Deshabilitar fecha_fin para Matrimonio y Lactancia
             if self.instance.tipo in ['LAC', 'MAT']:
                 self.fields['fecha_fin'].widget.attrs['readonly'] = True
                 self.fields['fecha_fin'].widget.attrs['style'] = 'background-color: #e9ecef;'
@@ -353,13 +351,11 @@ class LicenciaForm(forms.ModelForm):
         if not fecha_inicio:
             raise forms.ValidationError("La fecha de inicio es obligatoria.")
 
-        # Validación para Lactancia y Matrimonio: Fecha Fin debe ser nula
         if tipo == 'LAC' or tipo == 'MAT':
             if fecha_fin:
                 raise forms.ValidationError("No puedes establecer manualmente la fecha de fin para este tipo de licencia. Se calculará automáticamente.")
-            cleaned_data['fecha_fin'] = None  # Garantizar que fecha_fin quede vacía
+            cleaned_data['fecha_fin'] = None 
 
-        # Validación para Calamidad Doméstica
         elif tipo == 'CAL':
             if not fecha_fin:
                 raise forms.ValidationError("La fecha de fin es obligatoria para Calamidad Doméstica.")
@@ -383,11 +379,11 @@ class ReporteRegistroHorasForm(forms.Form):
         label="Fecha de fin"
     )
     empleado = forms.ModelChoiceField(
-        queryset=Usuario.objects.none(),  # Se define vacío y se llena en __init__
+        queryset=Usuario.objects.none(), 
         required=False,
         widget=forms.Select(attrs={'class': 'form-control'}),
         label="Empleado",
-        to_field_name="id"  # Nos aseguramos de que almacene el ID
+        to_field_name="id"  
     )
 
     def __init__(self, *args, usuario_actual=None, **kwargs):
@@ -398,9 +394,33 @@ class ReporteRegistroHorasForm(forms.Form):
                 self.fields['empleado'].queryset = Usuario.objects.all()
             elif usuario_actual.rol == 'JI':
                 self.fields['empleado'].queryset = Usuario.objects.filter(
-                    Q(jefe=usuario_actual) |  # Subordinados directos
-                    Q(jefe__jefe=usuario_actual)  # Subordinados de subordinados
+                    Q(jefe=usuario_actual) |
+                    Q(jefe__jefe=usuario_actual)
                 )
 
-        # 🔹 Personaliza la representación de cada usuario
+        self.fields['empleado'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name}"
+
+
+
+class ReporteTotalHorasCompForm(forms.Form):
+    empleado = forms.ModelChoiceField(
+        queryset=Usuario.objects.none(),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label="Empleado"
+    )
+
+    def __init__(self, *args, usuario_actual=None, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if usuario_actual:
+            if usuario_actual.rol == 'GG':
+                self.fields['empleado'].queryset = Usuario.objects.all()
+            elif usuario_actual.rol == 'JI':
+
+                self.fields['empleado'].queryset = Usuario.objects.filter(
+                    Q(jefe=usuario_actual) |
+                    Q(jefe__jefe=usuario_actual)
+                )
+
         self.fields['empleado'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name}"
