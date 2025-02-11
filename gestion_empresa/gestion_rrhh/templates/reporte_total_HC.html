@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Reporte de Total Horas Compensatorias Aprobadas</h2>
+    <h2>Reporte de Total Horas Compensatorias Registradas y Aprobadas</h2>
 
     <form method="GET">
         <div class="row">
@@ -21,10 +21,10 @@
     <table class="table table-striped" id="total-horas-table">
         <thead style="position: sticky; top: 0; background-color: white; z-index: 1;">
             <tr>
-                <th style="cursor: pointer;" onclick="sortTable(0)">Empleado <span>&#9650;&#9660;</span></th>
-                <th style="cursor: pointer;" onclick="sortTable(1)">Departamento <span>&#9650;&#9660;</span></th>
-                <th style="cursor: pointer;" onclick="sortTable(2)">Total de Horas Aprobadas <span>&#9650;&#9660;</span></th>
-                <th style="cursor: pointer;" onclick="sortTable(3)">Saldo de Horas <span>&#9650;&#9660;</span></th>
+                <th style="cursor: pointer;" onclick="sortTable(0, 'total-horas-table')">Empleado <span>&#9650;&#9660;</span></th>
+                <th style="cursor: pointer;" onclick="sortTable(1, 'total-horas-table')">Departamento <span>&#9650;&#9660;</span></th>
+                <th style="cursor: pointer;" onclick="sortTable(2, 'total-horas-table')">Total de Horas Aprobadas <span>&#9650;&#9660;</span></th>
+                <th style="cursor: pointer;" onclick="sortTable(3, 'total-horas-table')">Saldo de Horas <span>&#9650;&#9660;</span></th>
             </tr>
         </thead>
         <tbody>
@@ -43,39 +43,44 @@
         </tbody>
     </table>
 
-    <h3 class="mt-4">Total de Horas Compensatorias por Departamento</h3>
-    <table class="table table-bordered" id="departamento-table">
-        <thead style="position: sticky; top: 0; background-color: white; z-index: 1;">
-            <tr>
-                <th style="cursor: pointer;" onclick="sortTable(0)">Departamento <span>&#9650;&#9660;</span></th>
-                <th style="cursor: pointer;" onclick="sortTable(1)">Total de Horas <span>&#9650;&#9660;</span></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for depto in total_por_departamento %}
-            <tr>
-                <td>{{ depto.departamento }}</td>
-                <td>{{ depto.total_horas }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="2" class="text-center">No hay datos disponibles.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <h3 class="mt-4">Total de Horas Compensatorias Registadas y Aprobadas por Departamento</h3>
+<table class="table table-bordered" id="departamento-table">
+    <thead style="position: sticky; top: 0; background-color: white; z-index: 1;">
+        <tr>
+            <th style="cursor: pointer;" onclick="sortTable(0, 'departamento-table')">Departamento <span>&#9650;&#9660;</span></th>
+            <th style="cursor: pointer;" onclick="sortTable(1, 'departamento-table')">Total de Horas <span>&#9650;&#9660;</span></th>
+            <th style="cursor: pointer;" onclick="sortTable(2, 'departamento-table')">Saldo Total <span>&#9650;&#9660;</span></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for depto in total_por_departamento %}
+        <tr>
+            <td>{{ depto.departamento }}</td>
+            <td>{{ depto.total_horas }}</td>
+            <td>{{ depto.saldo_total }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="3" class="text-center">No hay datos disponibles.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
 </div>
 
 <!-- Script para ordenar las tablas -->
 <script>
     function sortTable(columnIndex, tableId) {
         const table = document.getElementById(tableId);
-        const rows = Array.from(table.rows).slice(1);
-        const isAscending = table.getAttribute('data-sort-order') !== 'asc';
+        if (!table) return; 
+        const tbody = table.querySelector("tbody");
+        const rows = Array.from(tbody.querySelectorAll("tr")); 
+        const isAscending = table.getAttribute('data-sort-order') !== 'asc'; 
 
         rows.sort((a, b) => {
-            const cellA = a.cells[columnIndex].innerText.trim().toLowerCase();
-            const cellB = b.cells[columnIndex].innerText.trim().toLowerCase();
+            const cellA = a.cells[columnIndex].textContent.trim().toLowerCase();
+            const cellB = b.cells[columnIndex].textContent.trim().toLowerCase();
 
             const valueA = isNaN(cellA) ? cellA : parseFloat(cellA);
             const valueB = isNaN(cellB) ? cellB : parseFloat(cellB);
@@ -83,7 +88,8 @@
             return isAscending ? (valueA > valueB ? 1 : -1) : (valueA < valueB ? 1 : -1);
         });
 
-        rows.forEach(row => table.tBodies[0].appendChild(row));
+        rows.forEach(row => tbody.appendChild(row));
+
         table.setAttribute('data-sort-order', isAscending ? 'asc' : 'desc');
     }
 </script>

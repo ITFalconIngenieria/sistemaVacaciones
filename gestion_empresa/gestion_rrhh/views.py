@@ -2779,6 +2779,8 @@ def reporte_horas_compensatorias(request):
     })
 
 
+
+
 @login_required
 def reporte_total_HC(request):
     usuario_actual = request.user
@@ -2829,9 +2831,12 @@ def reporte_total_HC(request):
             estado='A'
         ).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
 
+        saldo_total_depto = sum(calcular_horas_individuales(usuario)['HC'] for usuario in usuarios.filter(departamento=depto))
+
         total_por_departamento.append({
             'departamento': depto.nombre,
-            'total_horas': total_horas_depto
+            'total_horas': total_horas_depto,
+            'saldo_total': saldo_total_depto
         })
 
     return render(request, 'reporte_total_HC.html', {
