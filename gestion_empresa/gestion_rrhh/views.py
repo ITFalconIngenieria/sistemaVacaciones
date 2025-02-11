@@ -1374,19 +1374,14 @@ def obtener_cantidad_pendientes(request):
             'pendientes_registros': 0
         })
 
-    # **Solicitudes y registros pendientes del primer nivel (subordinados directos)**
     registros_pendientes = RegistroHoras.objects.filter(estado='P', usuario__jefe=usuario).count()
     solicitudes_pendientes = Solicitud.objects.filter(estado='P', usuario__jefe=usuario).count()
     licencias_pendientes = Licencia.objects.filter(estado='P', usuario__jefe=usuario).count()
 
 
-    print("probando -*-*-*- ", registros_pendientes, solicitudes_pendientes, licencias_pendientes)
     view = ListaSolicitudesRegistrosDosNivelesView()
     view.request = request
     otras_solicitudes_pendientes = len(view.get_queryset())
-
-    print("probando2222 -*-*-*- ", otras_solicitudes_pendientes)
-
 
     total_pendientes = (
         registros_pendientes + 
