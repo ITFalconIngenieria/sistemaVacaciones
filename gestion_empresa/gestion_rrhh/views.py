@@ -1362,6 +1362,46 @@ class ListaSolicitudesRegistrosDosNivelesView(ListView):
         return context
 
 
+@login_required
+def obtener_cantidad_pendientes(request):
+    usuario = request.user
+
+    if usuario.rol not in ['GG', 'JI', 'JD']:
+        return JsonResponse({
+            'pendientes_total': 0, 
+            'pendientes_solicitudes': 0, 
+            'pendientes_otras': 0, 
+            'pendientes_registros': 0
+        })
+
+    # **Solicitudes y registros pendientes del primer nivel (subordinados directos)**
+    registros_pendientes = RegistroHoras.objects.filter(estado='P', usuario__jefe=usuario).count()
+    solicitudes_pendientes = Solicitud.objects.filter(estado='P', usuario__jefe=usuario).count()
+    licencias_pendientes = Licencia.objects.filter(estado='P', usuario__jefe=usuario).count()
+
+
+    print("probando -*-*-*- ", registros_pendientes, solicitudes_pendientes, licencias_pendientes)
+    view = ListaSolicitudesRegistrosDosNivelesView()
+    view.request = request
+    otras_solicitudes_pendientes = len(view.get_queryset())
+
+    print("probando2222 -*-*-*- ", otras_solicitudes_pendientes)
+
+
+    total_pendientes = (
+        registros_pendientes + 
+        solicitudes_pendientes + 
+        licencias_pendientes + 
+        otras_solicitudes_pendientes
+    )
+
+    return JsonResponse({
+        'pendientes_total': total_pendientes,
+        'pendientes_solicitudes_y_registros': solicitudes_pendientes + registros_pendientes + licencias_pendientes,
+        'pendientes_otras': otras_solicitudes_pendientes,
+    })
+
+
 class HistorialCombinadoView(LoginRequiredMixin, ListView):
     template_name = 'historial_solicitudes.html'
     context_object_name = 'registros_y_solicitudes'

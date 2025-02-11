@@ -66,4 +66,8 @@ urlpatterns = [
 
     path('reporte_horas_compensatorias/', views.reporte_horas_compensatorias, name='reporte_horas_compensatorias'),
     path('reporte_total_HC/', views.reporte_total_HC, name='reporte_total_HC'),
+    path('api/pendientes/', views.obtener_cantidad_pendientes, name='obtener_cantidad_pendientes'),
+
+
+
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

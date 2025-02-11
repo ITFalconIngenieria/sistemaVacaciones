@@ -54,7 +54,7 @@
 
                     <!-- Opciones de colaboradores -->
 
-                    <li class="nav-item dropdown">
+                    <!-- <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle text-white" href="#" id="gestionSubordinadosDropdown"
                             role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Gestión de colaboradores
@@ -67,7 +67,37 @@
                                     Solicitudes</a></li>
 
                         </ul>
+                    </li> -->
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-white position-relative" href="#" id="gestionSubordinadosDropdown"
+                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Gestión de colaboradores
+                            <span id="pendientes-total" class="badge bg-danger ms-2 position-absolute top-0 start-100 translate-middle"
+                                style="display: none;">0</span>
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="gestionSubordinadosDropdown">
+                            <li>
+                                <a class="dropdown-item d-flex justify-content-between align-items-center" href="{% url 'lista_solicitudes' %}">
+                                    Solicitudes
+                                    <span id="pendientes_solicitudes_y_registros" class="badge bg-danger ms-2" style="display: none;">0</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex justify-content-between align-items-center" href="{% url 'solicitudes_jerarquicas' %}">
+                                    Otras Solicitudes
+                                    <span id="pendientes-otras" class="badge bg-danger ms-2" style="display: none;">0</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'historial_solicitudes' %}">Historial Solicitudes</a>
+                            </li>
+                        </ul>
                     </li>
+                    
+                    
+                    
+                    
                     {% endif %}
 
                     {% if user.rol in 'GG' or user.rol in 'JI' %}
@@ -204,6 +234,52 @@
     <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <script>
+        function actualizarPendientes() {
+            fetch("{% url 'obtener_cantidad_pendientes' %}")  // Llamamos a la API
+                .then(response => response.json())
+                .then(data => {
+                    const badgeTotal = document.getElementById("pendientes-total");
+                    const badgeSolicitudes = document.getElementById("pendientes_solicitudes_y_registros");
+                    const badgeOtras = document.getElementById("pendientes-otras");
+    
+                    // Total en "Gestión de colaboradores"
+                    let total = data.pendientes_total;
+                    if (total > 0) {
+                        badgeTotal.innerText = total;
+                        badgeTotal.style.display = "inline-block";
+                    } else {
+                        badgeTotal.style.display = "none";
+                    }
+    
+                    // Solicitudes y Registros Pendientes
+                    if (data.pendientes_solicitudes_y_registros> 0) {
+                        badgeSolicitudes.innerText = data.pendientes_solicitudes_y_registros;
+                        badgeSolicitudes.style.display = "inline-block";
+                    } else {
+                        badgeSolicitudes.style.display = "none";
+                    }
+    
+                    // Otras Solicitudes Pendientes
+                    if (data.pendientes_otras > 0) {
+                        badgeOtras.innerText = data.pendientes_otras;
+                        badgeOtras.style.display = "inline-block";
+                    } else {
+                        badgeOtras.style.display = "none";
+                    }
+                })
+                .catch(error => console.error("Error obteniendo pendientes:", error));
+        }
+    
+        document.addEventListener("DOMContentLoaded", () => {
+            actualizarPendientes();  // Carga inicial de la cantidad de pendientes
+            setInterval(actualizarPendientes, 60000);  // Actualiza cada 60 segundos
+        });
+    </script>
+    
+    
+    
 </body>
 
 </html>
