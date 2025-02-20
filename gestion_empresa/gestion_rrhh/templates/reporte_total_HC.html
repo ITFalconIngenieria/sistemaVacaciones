@@ -25,16 +25,19 @@
             </div>
         </div>
     </form>
-    
+
 
     <h3 class="mt-4">Horas por Empleado</h3>
     <table class="table table-striped" id="total-horas-table">
         <thead style="position: sticky; top: 0; background-color: white; z-index: 1;">
             <tr>
                 <th onclick="sortTable(0, 'total-horas-table')" style="cursor: pointer;">Empleado &#9650;&#9660;</th>
-                <th onclick="sortTable(1, 'total-horas-table')" style="cursor: pointer;">Departamento &#9650;&#9660;</th>
-                <th onclick="sortTable(2, 'total-horas-table')" style="cursor: pointer;">Total de Horas Aprobadas &#9650;&#9660;</th>
-                <th onclick="sortTable(3, 'total-horas-table')" style="cursor: pointer;">Saldo de Horas &#9650;&#9660;</th>
+                <th onclick="sortTable(1, 'total-horas-table')" style="cursor: pointer;">Departamento &#9650;&#9660;
+                </th>
+                <th onclick="sortTable(2, 'total-horas-table')" style="cursor: pointer;">Total de Horas Aprobadas
+                    &#9650;&#9660;</th>
+                <th onclick="sortTable(3, 'total-horas-table')" style="cursor: pointer;">Saldo de Horas &#9650;&#9660;
+                </th>
             </tr>
         </thead>
         <tbody>
@@ -60,9 +63,12 @@
     <table class="table table-bordered mt-4" id="departamento-table">
         <thead>
             <tr>
-                <th onclick="sortTable(0, 'departamento-table')" style="cursor: pointer;">Departamento &#9650;&#9660;</th>
-                <th onclick="sortTable(1, 'departamento-table')" style="cursor: pointer;">Total de Horas &#9650;&#9660;</th>
-                <th onclick="sortTable(2, 'departamento-table')" style="cursor: pointer;">Saldo Total &#9650;&#9660;</th>
+                <th onclick="sortTable(0, 'departamento-table')" style="cursor: pointer;">Departamento &#9650;&#9660;
+                </th>
+                <th onclick="sortTable(1, 'departamento-table')" style="cursor: pointer;">Total de Horas &#9650;&#9660;
+                </th>
+                <th onclick="sortTable(2, 'departamento-table')" style="cursor: pointer;">Saldo Total &#9650;&#9660;
+                </th>
             </tr>
         </thead>
         <tbody>
@@ -80,41 +86,61 @@
         </tbody>
     </table>
 
-        <!-- Gráfico de barras con Chart.js -->
-        <div class="mt-4">
-            <canvas id="graficoHorasPorDepartamento"></canvas>
-        </div>
+    <!-- Gráfico de barras con Chart.js -->
+    <!-- <div class="mt-4">
+        <canvas id="graficoHorasPorDepartamento"></canvas>
+    </div> -->
+
+    <h3 class="mt-4">Total de Horas Compensatorias por Mes y Departamento</h3>
+    <div class="mt-4">
+        <canvas id="graficoHorasPorMesDepartamento"></canvas>
+    </div>
+    
+
 </div>
 
 <!-- Cargar Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    // Convertir la variable de Django en JSON válido en JavaScript
-    var totalPorDepartamento = JSON.parse('{{ total_por_departamento_json|escapejs }}');
+    var horasPorMesDepartamento = JSON.parse('{{ horas_por_mes_departamento_json|escapejs }}');
 
     document.addEventListener("DOMContentLoaded", function() {
-        var ctx = document.getElementById("graficoHorasPorDepartamento").getContext("2d");
+        var ctxMesDepartamento = document.getElementById("graficoHorasPorMesDepartamento").getContext("2d");
 
-        var departamentosLabels = [];
-        var horasData = [];
+        var mesesLabels = [...new Set(horasPorMesDepartamento.map(item => item.mes))]; // Obtener meses únicos
+        var departamentosLabels = [...new Set(horasPorMesDepartamento.map(item => item.departamento))]; // Obtener departamentos únicos
 
-        totalPorDepartamento.forEach(function(depto) {
-            departamentosLabels.push(depto.departamento);
-            horasData.push(depto.total_horas || 0);
+        // Organizar los datos por mes y departamento
+        var datosPorDepartamento = {};
+        departamentosLabels.forEach(dep => {
+            datosPorDepartamento[dep] = mesesLabels.map(mes => {
+                var encontrado = horasPorMesDepartamento.find(item => item.mes === mes && item.departamento === dep);
+                return encontrado ? encontrado.total_horas : 0;
+            });
         });
 
-        var myChart = new Chart(ctx, {
-            type: 'bar',
+        // Colores aleatorios para cada línea
+        function getRandomColor() {
+            return `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 0.8)`;
+        }
+
+        var datasets = departamentosLabels.map(dep => ({
+            label: dep,
+            data: datosPorDepartamento[dep],
+            borderColor: getRandomColor(),
+            backgroundColor: 'rgba(0, 0, 0, 0)', // Sin relleno en la línea
+            borderWidth: 2,
+            pointRadius: 4,
+            pointBackgroundColor: 'white',
+            tension: 0.3 // Suaviza la línea
+        }));
+
+        new Chart(ctxMesDepartamento, {
+            type: 'line',
             data: {
-                labels: departamentosLabels,
-                datasets: [{
-                    label: 'Total de Horas Aprobadas',
-                    data: horasData,
-                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                }]
+                labels: mesesLabels,
+                datasets: datasets
             },
             options: {
                 responsive: true,
@@ -122,11 +148,15 @@
                     legend: { display: true }
                 },
                 scales: {
-                    y: { beginAtZero: true }
+                    x: { title: { display: true, text: "Mes" } },
+                    y: { beginAtZero: true, title: { display: true, text: "Total de Horas Aprobadas" } }
                 }
             }
         });
     });
+
+
+
 
 
 

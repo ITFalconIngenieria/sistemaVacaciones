@@ -2780,6 +2780,10 @@ def reporte_horas_compensatorias(request):
 
 
 
+
+from django.db.models.functions import TruncMonth
+
+
 @login_required
 def reporte_total_HC(request):
     usuario_actual = request.user
@@ -2815,7 +2819,25 @@ def reporte_total_HC(request):
     if fecha_fin:
         registros_qs = registros_qs.filter(fecha_fin__date__lte=parse_date(fecha_fin))
 
-    # Generar datos para la tabla de usuarios
+    # **Agrupar por mes y por departamento**
+    horas_por_mes_departamento = registros_qs.annotate(
+        mes=TruncMonth('fecha_inicio')
+    ).values('mes', 'usuario__departamento__nombre').annotate(
+        total_horas=Sum('horas')
+    ).order_by('mes', 'usuario__departamento__nombre')
+
+    # Convertir los datos a un formato adecuado para JSON
+    horas_agrupadas_lista = []
+    for registro in horas_por_mes_departamento:
+        horas_agrupadas_lista.append({
+            'mes': registro['mes'].strftime('%Y-%m'),
+            'departamento': registro['usuario__departamento__nombre'] or "Sin Departamento",
+            'total_horas': float(registro['total_horas'])
+        })
+
+    horas_por_mes_departamento_json = json.dumps(horas_agrupadas_lista)
+
+    # **Generar datos para la tabla de usuarios**
     reporte_usuarios = []
     for usuario in usuarios:
         horas_aprobadas = registros_qs.filter(usuario=usuario).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
@@ -2824,11 +2846,11 @@ def reporte_total_HC(request):
         reporte_usuarios.append({
             'nombre': f"{usuario.first_name} {usuario.last_name}",
             'departamento': usuario.departamento.nombre if usuario.departamento else "Sin Departamento",
-            'total_horas': float(horas_aprobadas),  # Convertir Decimal a float
-            'saldo_horas': float(saldo_horas)  # Convertir Decimal a float
+            'total_horas': float(horas_aprobadas),
+            'saldo_horas': float(saldo_horas)
         })
 
-    # Generar datos para la tabla de departamentos
+    # **Generar datos para la tabla de departamentos**
     total_por_departamento = []
     for depto in Departamento.objects.all():
         total_horas_depto = registros_qs.filter(usuario__departamento=depto).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
@@ -2836,18 +2858,19 @@ def reporte_total_HC(request):
 
         total_por_departamento.append({
             'departamento': depto.nombre,
-            'total_horas': float(total_horas_depto),  # Convertir Decimal a float
-            'saldo_total': float(saldo_total_depto)  # Convertir Decimal a float
+            'total_horas': float(total_horas_depto),
+            'saldo_total': float(saldo_total_depto)
         })
 
-    # Convertir a JSON seguro para JavaScript
     total_por_departamento_json = json.dumps(total_por_departamento)
 
     return render(request, 'reporte_total_HC.html', {
         'form': form,
-        'reporte_usuarios': reporte_usuarios,  # Verifica que sigue en el contexto
-        'total_por_departamento': total_por_departamento,  # Verifica que sigue en el contexto
+        'horas_por_mes_departamento_json': horas_por_mes_departamento_json,
         'total_por_departamento_json': total_por_departamento_json,
+        'reporte_usuarios': reporte_usuarios,
+        'total_por_departamento': total_por_departamento,
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin
     })
+
