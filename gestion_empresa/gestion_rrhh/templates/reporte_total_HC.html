@@ -5,26 +5,36 @@
 <div class="container mt-4">
     <h2>Reporte de Total Horas Compensatorias Registradas y Aprobadas</h2>
 
+    <!-- Formulario de filtrado por empleado y fechas -->
     <form method="GET">
         <div class="row">
-            <div class="col-md-4">
+            <div class="col-md-3">
+                {{ form.fecha_inicio.label_tag }}
+                {{ form.fecha_inicio }}
+            </div>
+            <div class="col-md-3">
+                {{ form.fecha_fin.label_tag }}
+                {{ form.fecha_fin }}
+            </div>
+            <div class="col-md-3">
                 {{ form.empleado.label_tag }}
                 {{ form.empleado }}
             </div>
-            <div class="col-md-4 d-flex align-items-end">
+            <div class="col-md-3 d-flex align-items-end">
                 <button type="submit" class="btn btn-primary">Filtrar</button>
             </div>
         </div>
     </form>
+    
 
     <h3 class="mt-4">Horas por Empleado</h3>
     <table class="table table-striped" id="total-horas-table">
         <thead style="position: sticky; top: 0; background-color: white; z-index: 1;">
             <tr>
-                <th style="cursor: pointer;" onclick="sortTable(0, 'total-horas-table')">Empleado <span>&#9650;&#9660;</span></th>
-                <th style="cursor: pointer;" onclick="sortTable(1, 'total-horas-table')">Departamento <span>&#9650;&#9660;</span></th>
-                <th style="cursor: pointer;" onclick="sortTable(2, 'total-horas-table')">Total de Horas Aprobadas <span>&#9650;&#9660;</span></th>
-                <th style="cursor: pointer;" onclick="sortTable(3, 'total-horas-table')">Saldo de Horas <span>&#9650;&#9660;</span></th>
+                <th onclick="sortTable(0, 'total-horas-table')" style="cursor: pointer;">Empleado &#9650;&#9660;</th>
+                <th onclick="sortTable(1, 'total-horas-table')" style="cursor: pointer;">Departamento &#9650;&#9660;</th>
+                <th onclick="sortTable(2, 'total-horas-table')" style="cursor: pointer;">Total de Horas Aprobadas &#9650;&#9660;</th>
+                <th onclick="sortTable(3, 'total-horas-table')" style="cursor: pointer;">Saldo de Horas &#9650;&#9660;</th>
             </tr>
         </thead>
         <tbody>
@@ -43,40 +53,90 @@
         </tbody>
     </table>
 
-    <h3 class="mt-4">Total de Horas Compensatorias Registadas y Aprobadas por Departamento</h3>
-<table class="table table-bordered" id="departamento-table">
-    <thead style="position: sticky; top: 0; background-color: white; z-index: 1;">
-        <tr>
-            <th style="cursor: pointer;" onclick="sortTable(0, 'departamento-table')">Departamento <span>&#9650;&#9660;</span></th>
-            <th style="cursor: pointer;" onclick="sortTable(1, 'departamento-table')">Total de Horas <span>&#9650;&#9660;</span></th>
-            <th style="cursor: pointer;" onclick="sortTable(2, 'departamento-table')">Saldo Total <span>&#9650;&#9660;</span></th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for depto in total_por_departamento %}
-        <tr>
-            <td>{{ depto.departamento }}</td>
-            <td>{{ depto.total_horas }}</td>
-            <td>{{ depto.saldo_total }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="3" class="text-center">No hay datos disponibles.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+    <h3 class="mt-4">Total de Horas Compensatorias Registradas y Aprobadas por Departamento</h3>
 
+
+
+    <table class="table table-bordered mt-4" id="departamento-table">
+        <thead>
+            <tr>
+                <th onclick="sortTable(0, 'departamento-table')" style="cursor: pointer;">Departamento &#9650;&#9660;</th>
+                <th onclick="sortTable(1, 'departamento-table')" style="cursor: pointer;">Total de Horas &#9650;&#9660;</th>
+                <th onclick="sortTable(2, 'departamento-table')" style="cursor: pointer;">Saldo Total &#9650;&#9660;</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for depto in total_por_departamento %}
+            <tr>
+                <td>{{ depto.departamento }}</td>
+                <td>{{ depto.total_horas }}</td>
+                <td>{{ depto.saldo_total }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3" class="text-center">No hay datos disponibles.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+        <!-- Gráfico de barras con Chart.js -->
+        <div class="mt-4">
+            <canvas id="graficoHorasPorDepartamento"></canvas>
+        </div>
 </div>
 
-<!-- Script para ordenar las tablas -->
+<!-- Cargar Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
+    // Convertir la variable de Django en JSON válido en JavaScript
+    var totalPorDepartamento = JSON.parse('{{ total_por_departamento_json|escapejs }}');
+
+    document.addEventListener("DOMContentLoaded", function() {
+        var ctx = document.getElementById("graficoHorasPorDepartamento").getContext("2d");
+
+        var departamentosLabels = [];
+        var horasData = [];
+
+        totalPorDepartamento.forEach(function(depto) {
+            departamentosLabels.push(depto.departamento);
+            horasData.push(depto.total_horas || 0);
+        });
+
+        var myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: departamentosLabels,
+                datasets: [{
+                    label: 'Total de Horas Aprobadas',
+                    data: horasData,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: true }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+    });
+
+
+
+    // Script para ordenar tablas dinámicamente
     function sortTable(columnIndex, tableId) {
         const table = document.getElementById(tableId);
-        if (!table) return; 
+        if (!table) return;
         const tbody = table.querySelector("tbody");
-        const rows = Array.from(tbody.querySelectorAll("tr")); 
-        const isAscending = table.getAttribute('data-sort-order') !== 'asc'; 
+        const rows = Array.from(tbody.querySelectorAll("tr"));
+        const isAscending = table.getAttribute('data-sort-order') !== 'asc';
 
         rows.sort((a, b) => {
             const cellA = a.cells[columnIndex].textContent.trim().toLowerCase();
@@ -89,8 +149,8 @@
         });
 
         rows.forEach(row => tbody.appendChild(row));
-
         table.setAttribute('data-sort-order', isAscending ? 'asc' : 'desc');
     }
 </script>
+
 {% endblock %}

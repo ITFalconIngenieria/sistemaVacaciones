@@ -36,7 +36,7 @@ from dateutil.relativedelta import relativedelta
 from decimal import Decimal
 import random
 from .forms import ReporteRegistroHorasForm, ReporteTotalHorasCompForm
-
+from django.utils.dateparse import parse_date
 
 
 
@@ -2780,7 +2780,6 @@ def reporte_horas_compensatorias(request):
 
 
 
-
 @login_required
 def reporte_total_HC(request):
     usuario_actual = request.user
@@ -2789,6 +2788,9 @@ def reporte_total_HC(request):
         raise PermissionDenied("No tienes permiso para acceder a este reporte.")
 
     form = ReporteTotalHorasCompForm(request.GET or None, usuario_actual=usuario_actual)
+
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
 
     if usuario_actual.rol == 'GG':
         usuarios = Usuario.objects.all()
@@ -2803,48 +2805,49 @@ def reporte_total_HC(request):
         if empleado:
             usuarios = usuarios.filter(id=empleado.id)
 
+    registros_qs = RegistroHoras.objects.filter(
+        usuario__in=usuarios,
+        estado='A'
+    )
+
+    if fecha_inicio:
+        registros_qs = registros_qs.filter(fecha_inicio__date__gte=parse_date(fecha_inicio))
+    if fecha_fin:
+        registros_qs = registros_qs.filter(fecha_fin__date__lte=parse_date(fecha_fin))
+
+    # Generar datos para la tabla de usuarios
     reporte_usuarios = []
     for usuario in usuarios:
-        horas_aprobadas = RegistroHoras.objects.filter(
-            usuario=usuario,
-            estado='A'
-        ).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
-
+        horas_aprobadas = registros_qs.filter(usuario=usuario).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
         saldo_horas = calcular_horas_individuales(usuario)['HC']
 
         reporte_usuarios.append({
             'nombre': f"{usuario.first_name} {usuario.last_name}",
             'departamento': usuario.departamento.nombre if usuario.departamento else "Sin Departamento",
-            'total_horas': horas_aprobadas,
-            'saldo_horas': saldo_horas
+            'total_horas': float(horas_aprobadas),  # Convertir Decimal a float
+            'saldo_horas': float(saldo_horas)  # Convertir Decimal a float
         })
 
-    # Ordenar reporte_usuarios por departamento
-    reporte_usuarios = sorted(reporte_usuarios, key=lambda x: x['departamento'])
-
-    if usuario_actual.rol == 'GG':
-        departamentos = Departamento.objects.all()
-    elif usuario_actual.rol == 'JI':
-        departamentos = Departamento.objects.filter(usuario__in=usuarios).distinct()
-
+    # Generar datos para la tabla de departamentos
     total_por_departamento = []
-    for depto in departamentos:
-        total_horas_depto = RegistroHoras.objects.filter(
-            usuario__departamento=depto,
-            estado='A'
-        ).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
-
+    for depto in Departamento.objects.all():
+        total_horas_depto = registros_qs.filter(usuario__departamento=depto).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
         saldo_total_depto = sum(calcular_horas_individuales(usuario)['HC'] for usuario in usuarios.filter(departamento=depto))
 
         total_por_departamento.append({
             'departamento': depto.nombre,
-            'total_horas': total_horas_depto,
-            'saldo_total': saldo_total_depto
+            'total_horas': float(total_horas_depto),  # Convertir Decimal a float
+            'saldo_total': float(saldo_total_depto)  # Convertir Decimal a float
         })
+
+    # Convertir a JSON seguro para JavaScript
+    total_por_departamento_json = json.dumps(total_por_departamento)
 
     return render(request, 'reporte_total_HC.html', {
         'form': form,
-        'reporte_usuarios': reporte_usuarios,
-        'total_por_departamento': total_por_departamento
+        'reporte_usuarios': reporte_usuarios,  # Verifica que sigue en el contexto
+        'total_por_departamento': total_por_departamento,  # Verifica que sigue en el contexto
+        'total_por_departamento_json': total_por_departamento_json,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin
     })
-
