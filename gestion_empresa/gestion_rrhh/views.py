@@ -2819,6 +2819,9 @@ def reporte_total_HC(request):
             'saldo_horas': saldo_horas
         })
 
+    # Ordenar reporte_usuarios por departamento
+    reporte_usuarios = sorted(reporte_usuarios, key=lambda x: x['departamento'])
+
     if usuario_actual.rol == 'GG':
         departamentos = Departamento.objects.all()
     elif usuario_actual.rol == 'JI':
@@ -2844,3 +2847,4 @@ def reporte_total_HC(request):
         'reporte_usuarios': reporte_usuarios,
         'total_por_departamento': total_por_departamento
     })
+
