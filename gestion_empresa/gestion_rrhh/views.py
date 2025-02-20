@@ -2783,7 +2783,6 @@ def reporte_horas_compensatorias(request):
 
 from django.db.models.functions import TruncMonth
 
-
 @login_required
 def reporte_total_HC(request):
     usuario_actual = request.user
@@ -2819,7 +2818,10 @@ def reporte_total_HC(request):
     if fecha_fin:
         registros_qs = registros_qs.filter(fecha_fin__date__lte=parse_date(fecha_fin))
 
-    # **Agrupar por mes y por departamento**
+    # Filtrar departamentos de solo los empleados supervisados por el usuario
+    departamentos_filtrados = Departamento.objects.filter(usuario__in=usuarios).distinct()
+
+    # **Agrupar por mes y por departamento (solo de los empleados supervisados)**
     horas_por_mes_departamento = registros_qs.annotate(
         mes=TruncMonth('fecha_inicio')
     ).values('mes', 'usuario__departamento__nombre').annotate(
@@ -2850,9 +2852,9 @@ def reporte_total_HC(request):
             'saldo_horas': float(saldo_horas)
         })
 
-    # **Generar datos para la tabla de departamentos**
+    # **Generar datos para la tabla de departamentos (solo los supervisados)**
     total_por_departamento = []
-    for depto in Departamento.objects.all():
+    for depto in departamentos_filtrados:
         total_horas_depto = registros_qs.filter(usuario__departamento=depto).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
         saldo_total_depto = sum(calcular_horas_individuales(usuario)['HC'] for usuario in usuarios.filter(departamento=depto))
 
@@ -2873,4 +2875,5 @@ def reporte_total_HC(request):
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin
     })
+
 
