@@ -825,8 +825,8 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         almuerzo_inicio = fecha_inicio.replace(hour=12, minute=0, second=0, microsecond=0)
         almuerzo_fin = fecha_inicio.replace(hour=13, minute=0, second=0, microsecond=0)
 
-        exclusion_inicio = fecha_inicio.replace(hour=17, minute=0, second=0, microsecond=0)
-        exclusion_fin = fecha_inicio.replace(hour=18, minute=0, second=0, microsecond=0)
+        # exclusion_inicio = fecha_inicio.replace(hour=17, minute=0, second=0, microsecond=0)
+        # exclusion_fin = fecha_inicio.replace(hour=18, minute=0, second=0, microsecond=0)
 
         es_dia_especial = (
             fecha_inicio.date() in feriados or
@@ -838,8 +838,8 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
             if fecha_inicio <= almuerzo_inicio < fecha_fin or fecha_inicio < almuerzo_fin <= fecha_fin:
                 total_horas -= 1
             
-            if fecha_inicio <= exclusion_inicio < fecha_fin or fecha_inicio < exclusion_fin <= fecha_fin:
-                total_horas -= 1
+            # if fecha_inicio <= exclusion_inicio < fecha_fin or fecha_inicio < exclusion_fin <= fecha_fin:
+            #     total_horas -= 1
 
         total_horas = max(total_horas, 0)
         horas_calculadas = Decimal(total_horas).quantize(Decimal('0.01'))
