@@ -12,7 +12,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
-from decouple import config
+from decouple import config, Csv
+from django.conf import settings
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,14 +22,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-0%l29_j8s#5a)*h1k6@#^zun1k&##)a=cw7w(03oo^*iox*8yp'
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
-
-ALLOWED_HOSTS = ['192.168.1.46','192.168.128.80','172.31.67.163','ec2-54-84-74-28.compute-1.amazonaws.com','54.84.74.28', '192.168.128.59']
+DEBUG = config('DEBUG', default='False').lower() in ('true', '1')
 
 
+ALLOWED_HOSTS = ['192.168.1.46', '192.168.128.80', '172.31.67.163', 
+                 'ec2-54-84-74-28.compute-1.amazonaws.com', '54.84.74.28', '192.168.128.59']
+
+ENV = config('ENV', default='local')
 # Application definition
 
 INSTALLED_APPS = [
@@ -85,34 +88,30 @@ WSGI_APPLICATION = 'gestion_empresa.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'mssql',
-        'NAME': 'gestionVacaciones',
-        'USER': 'sa',
-        'PASSWORD': 'admin1',
-        'HOST': 'localhost',
-        'OPTIONS': {
-            'driver': 'ODBC Driver 17 for SQL Server',
-        },
+print("eeeenvvvv ", ENV)
+
+if ENV == 'local':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'mssql',
+            'NAME': config('DB_NAME_LOCAL'),
+            'USER': config('DB_USER_LOCAL'),
+            'PASSWORD': config('DB_PASSWORD_LOCAL'),
+            'HOST': config('DB_HOST_LOCAL'),
+            'OPTIONS': {'driver': 'ODBC Driver 17 for SQL Server'},
+        }
     }
-}
-
-#conexion a prd
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'mssql',
-#         'NAME': 'gestionVacaciones',
-#         'USER': 'falcon',
-#         'PASSWORD': 'falcon1*',
-#         'HOST': 'EC2AMAZ-HO0U0SO\FALCONCLOUD',
-#         'OPTIONS': {
-#             'driver': 'ODBC Driver 17 for SQL Server',
-#         },
-#     }
-# }
-
+else:  # Producción
+    DATABASES = {
+        'default': {
+            'ENGINE': 'mssql',
+            'NAME': config('DB_NAME_PRD'),
+            'USER': config('DB_USER_PRD'),
+            'PASSWORD': config('DB_PASSWORD_PRD'),
+            'HOST': config('DB_HOST_PRD'),
+            'OPTIONS': {'driver': 'ODBC Driver 17 for SQL Server'},
+        }
+    }
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 
