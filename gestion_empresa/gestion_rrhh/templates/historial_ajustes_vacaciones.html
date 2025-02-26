@@ -12,7 +12,8 @@
             <thead style="position: sticky; top: 0; background-color: white; z-index: 1;">
                 <tr>
                     <!-- Añadimos estilos para el cursor y sort -->
-                    <th style="cursor: pointer;" onclick="sortTable(0)">Fecha del Ajuste <span>&#9650;&#9660;</span></th>
+                    <th style="cursor: pointer;" onclick="sortTable(0)">Fecha del Ajuste <span>&#9650;&#9660;</span>
+                    </th>
                     <th style="cursor: pointer;" onclick="sortTable(1)">Empleado <span>&#9650;&#9660;</span></th>
                     <th style="cursor: pointer;" onclick="sortTable(2)">Días Ajustados <span>&#9650;&#9660;</span></th>
                     <th style="cursor: pointer;" onclick="sortTable(3)">Ajustado Por <span>&#9650;&#9660;</span></th>
@@ -25,7 +26,7 @@
                 <tr>
                     <td>{{ ajuste.fecha_ajuste }}</td>
                     <td>{{ ajuste.usuario.get_full_name }}</td>
-                    <td>{{ ajuste.dias_ajustados }}</td>
+                    <td>{{ ajuste.dias_ajustados |floatformat:2|default:"0.00"}}</td>
                     <td>{{ ajuste.ajustado_por.get_full_name }}</td>
                     <td>{{ ajuste.año }}</td>
                     <td>{{ ajuste.descripcion }}</td>
@@ -42,29 +43,35 @@
 
 <!-- Script para ordenar la tabla -->
 <script>
-    function sortTable(columnIndex) {
-        const table = document.getElementById('ajustes-table');
-        const rows = Array.from(table.rows).slice(1); // Excluye encabezado
-        const isAscending = table.getAttribute('data-sort-order') !== 'asc'; // Alternar orden
+function sortTable(columnIndex) {
+    const table = document.getElementById('ajustes-table'); // Asegúrate de que este sea el ID correcto
+    if (!table) return;
 
-        rows.sort((a, b) => {
-            const cellA = a.cells[columnIndex].innerText.trim().toLowerCase();
-            const cellB = b.cells[columnIndex].innerText.trim().toLowerCase();
+    const tbody = table.tBodies[0];
+    const rows = Array.from(tbody.rows);
+    const isAscending = table.getAttribute('data-sort-order') !== 'asc'; // Alternar orden
 
-            // Convertir a números si son valores numéricos
-            const valueA = isNaN(cellA) ? cellA : parseFloat(cellA);
-            const valueB = isNaN(cellB) ? cellB : parseFloat(cellB);
+    rows.sort((a, b) => {
+        let cellA = a.cells[columnIndex].innerText.trim();
+        let cellB = b.cells[columnIndex].innerText.trim();
 
-            return isAscending
-                ? valueA > valueB ? 1 : -1
-                : valueA < valueB ? 1 : -1;
-        });
+        // Normalizar valores (manejo de coma decimal y negativos)
+        let numA = parseFloat(cellA.replace(',', '.')); // Convierte "5,00" en 5.00
+        let numB = parseFloat(cellB.replace(',', '.'));
 
-        // Reordenar las filas en la tabla
-        rows.forEach(row => table.tBodies[0].appendChild(row));
+        if (!isNaN(numA) && !isNaN(numB)) {
+            return isAscending ? numA - numB : numB - numA;
+        }
 
-        // Alternar el atributo de orden
-        table.setAttribute('data-sort-order', isAscending ? 'asc' : 'desc');
-    }
+        return isAscending ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
+    });
+
+    rows.forEach(row => tbody.appendChild(row));
+
+    // Alternar el estado de ordenación
+    table.setAttribute('data-sort-order', isAscending ? 'asc' : 'desc');
+}
+
+
 </script>
 {% endblock %}

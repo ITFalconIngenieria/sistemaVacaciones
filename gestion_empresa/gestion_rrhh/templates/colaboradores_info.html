@@ -13,8 +13,11 @@
                 <tr>
                     <!-- Añadimos estilos para el cursor -->
                     <th style="cursor: pointer;" onclick="sortTable(0)">Nombre <span>&#9650;&#9660;</span></th>
-                    <th style="cursor: pointer;" onclick="sortTable(1)">Vacaciones Disponibles <span>&#9650;&#9660;</span></th>
-                    <th style="cursor: pointer;" onclick="sortTable(2)">Horas Compensatorias <span>&#9650;&#9660;</span></th>
+                    <th style="cursor: pointer;" onclick="sortTable(1)">Vacaciones Disponibles
+                        <span>&#9650;&#9660;</span>
+                    </th>
+                    <th style="cursor: pointer;" onclick="sortTable(2)">Horas Compensatorias <span>&#9650;&#9660;</span>
+                    </th>
                     <th style="cursor: pointer;" onclick="sortTable(3)">Horas Extras <span>&#9650;&#9660;</span></th>
                 </tr>
             </thead>
@@ -22,9 +25,9 @@
                 {% for data in colaboradores_data %}
                 <tr>
                     <td>{{ data.usuario.get_full_name }}</td>
-                    <td>{{ data.dias_data.dias_disponibles }}</td>
-                    <td>{{ data.horas_data.HC }}</td>
-                    <td>{{ data.horas_data.HE }}</td>
+                    <td>{{ data.dias_data.dias_disponibles |floatformat:2|default:"0.00" }}</td>
+                    <td>{{ data.horas_data.HC |floatformat:2|default:"0.00"}}</td>
+                    <td>{{ data.horas_data.HE |floatformat:2|default:"0.00" }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -34,29 +37,34 @@
 
 <!-- Script para ordenar la tabla -->
 <script>
-    function sortTable(columnIndex) {
-        const table = document.getElementById('colaboradores-table');
-        const rows = Array.from(table.rows).slice(1); // Excluye encabezado
-        const isAscending = table.getAttribute('data-sort-order') !== 'asc'; // Alternar orden
+function sortTable(columnIndex) {
+    const table = document.getElementById('colaboradores-table'); // Usa el ID correcto
+    if (!table) return;
 
-        rows.sort((a, b) => {
-            const cellA = a.cells[columnIndex].innerText.trim().toLowerCase();
-            const cellB = b.cells[columnIndex].innerText.trim().toLowerCase();
+    const tbody = table.tBodies[0];
+    const rows = Array.from(tbody.rows);
+    const isAscending = table.getAttribute('data-sort-order') !== 'asc'; // Alternar orden
 
-            // Convertir a números si son valores numéricos
-            const valueA = isNaN(cellA) ? cellA : parseFloat(cellA);
-            const valueB = isNaN(cellB) ? cellB : parseFloat(cellB);
+    rows.sort((a, b) => {
+        let cellA = a.cells[columnIndex].innerText.trim();
+        let cellB = b.cells[columnIndex].innerText.trim();
 
-            return isAscending
-                ? valueA > valueB ? 1 : -1
-                : valueA < valueB ? 1 : -1;
-        });
+        // Convertir a número si es posible, manejando comas decimales y negativos
+        let numA = parseFloat(cellA.replace(',', '.')); 
+        let numB = parseFloat(cellB.replace(',', '.'));
 
-        // Reordenar las filas en la tabla
-        rows.forEach(row => table.tBodies[0].appendChild(row));
+        if (!isNaN(numA) && !isNaN(numB)) {
+            return isAscending ? numA - numB : numB - numA;
+        }
 
-        // Alternar el atributo de orden
-        table.setAttribute('data-sort-order', isAscending ? 'asc' : 'desc');
-    }
+        return isAscending ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
+    });
+
+    rows.forEach(row => tbody.appendChild(row));
+
+    // Alternar el estado de ordenación
+    table.setAttribute('data-sort-order', isAscending ? 'asc' : 'desc');
+}
+
 </script>
 {% endblock %}

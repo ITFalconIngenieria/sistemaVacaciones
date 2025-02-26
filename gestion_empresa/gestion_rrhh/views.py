@@ -2761,10 +2761,6 @@ def reporte_horas_compensatorias(request):
     })
 
 
-
-
-
-
 @login_required
 def reporte_total_HC(request):
     usuario_actual = request.user
