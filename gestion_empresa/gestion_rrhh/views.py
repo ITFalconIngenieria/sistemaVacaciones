@@ -495,6 +495,7 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                 )
             except Exception as e:
                 print(f"Error al enviar correo al jefe {jefe.email}: {e}")
+                messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
         
         return super().form_valid(form)
 
@@ -614,6 +615,7 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
             )
         except Exception as e:
             print(f"Error al enviar correo al usuario {usuario.email}: {e}")
+            messages.error(f"Error al enviar correo al usuario {usuario.email}: {e}")
         return super().form_valid(form)
 
 class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
@@ -774,6 +776,7 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
                 )
             except Exception as e:
                 print(f"Error al enviar correo al jefe {jefe.email}: {e}")
+                messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
 
 
         return super().form_valid(form)
@@ -925,6 +928,7 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
                 )
             except Exception as e:
                 print(f"Error al enviar correo al jefe {jefe.email}: {e}")
+                messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
 
         messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
         return super().form_valid(form)
@@ -1142,6 +1146,7 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
                 )
             except Exception as e:
                 print(f"Error al enviar correo al usuario {usuario.email}: {e}")
+                messages.error(f"Error al enviar correo al usuario {usuario.email}: {e}")
             
         return super().form_valid(form)
 
@@ -1257,6 +1262,7 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
                 )
             except Exception as e:
                 print(f"Error al enviar correo al jefe {jefe.email}: {e}")
+                messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
 
         messages.success(self.request, f"El registro de horas {form.instance.numero_registro} ha sido actualizado.")
         return super().form_valid(form)
@@ -1291,8 +1297,6 @@ class ListaSolicitudesRegistrosPendientesView(ListView):
         registros_queryset = RegistroHoras.objects.filter(estado='P')
         solicitudes_queryset = Solicitud.objects.filter(estado='P')
         licencias_queryset = Licencia.objects.filter(estado='P')
-
-        print(licencias_queryset)
 
         if user.rol in ['GG', 'JI', 'JD']:
             registros_queryset = registros_queryset.filter(usuario__in=user.subordinados.all())
@@ -1451,8 +1455,6 @@ class HistorialCombinadoView(LoginRequiredMixin, ListView):
 
         registros_y_solicitudes = list(registros_queryset) + list(solicitudes_queryset) + list(licencias_queryset)
         estado_prioridad = {'P': 1, 'R': 2, 'A': 3}
-
-        print(registros_y_solicitudes)
         
         for item in registros_y_solicitudes:
             if isinstance(item, Solicitud):
@@ -1656,7 +1658,7 @@ def ajuste_vacaciones(request):
                     to_recipients=[usuario.email],
                 )
             except Exception as e:
-                print(f"Error al enviar correo al usuario {usuario.email}: {e}")
+                messages.error(f"Error al enviar correo al usuario {usuario.email}: {e}")
 
             messages.success(request, f"Vacaciones ajustadas para {usuario.get_full_name()}")
             return redirect('ajuste_vacaciones')
@@ -1876,6 +1878,7 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
                 )
             except Exception as e:
                 print(f"Error al enviar correo al jefe {jefe.email}: {e}")
+                messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
         return super().form_valid(form)
 
 
@@ -2073,6 +2076,7 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
                 )
             except Exception as e:
                 print(f"Error al enviar correo al jefe {jefe.email}: {e}")
+                messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
 
         return super().form_valid(form)
 
@@ -2274,6 +2278,7 @@ class CrearLicenciaView(CreateView):
                 )
             except Exception as e:
                 print(f"Error al enviar correo al jefe {jefe.email}: {e}")
+                messages.error((f"Error al enviar correo al jefe {jefe.email}: {e}"))
         return super().form_valid(form)
 
 
@@ -2346,6 +2351,7 @@ class AprobarRechazarLicenciaView(UserPassesTestMixin, UpdateView):
             )
         except Exception as e:
             print(f"Error al enviar correo al usuario {usuario.email}: {e}")
+            messages.error(f"Error al enviar correo al usuario {usuario.email}: {e}")
 
         return super().form_valid(form)
 
@@ -2477,6 +2483,7 @@ class EditarLicenciaView(UpdateView):
                 )
             except Exception as e:
                 print(f"Error al enviar correo al jefe {jefe.email}: {e}")
+                messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
 
         return super().form_valid(form)
 

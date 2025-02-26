@@ -5,7 +5,6 @@
 <div class="container mt-4">
     <h2>Reporte de Total Horas Compensatorias Registradas y Aprobadas</h2>
 
-    <!-- Formulario de filtrado por empleado y fechas -->
     <form method="GET">
         <div class="row">
             <div class="col-md-3">
@@ -58,8 +57,6 @@
 
     <h3 class="mt-4">Total de Horas Compensatorias Registradas y Aprobadas por Departamento</h3>
 
-
-
     <table class="table table-bordered mt-4" id="departamento-table">
         <thead>
             <tr>
@@ -86,26 +83,19 @@
         </tbody>
     </table>
 
-    <!-- Gráfico de barras con Chart.js -->
-    <!-- <div class="mt-4">
-        <canvas id="graficoHorasPorDepartamento"></canvas>
-    </div> -->
 
     <h3 class="mt-4">Total de Horas Compensatorias por Mes y Departamento</h3>
     <div class="mt-4">
         <canvas id="graficoHorasPorMesDepartamento"></canvas>
     </div>
-    
-
 </div>
 
-<!-- Cargar Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
     var horasPorMesDepartamento = JSON.parse('{{ horas_por_mes_departamento_json|escapejs }}');
 
-    document.addEventListener("DOMContentLoaded", function() {
+    document.addEventListener("DOMContentLoaded", function () {
         var ctxMesDepartamento = document.getElementById("graficoHorasPorMesDepartamento").getContext("2d");
 
         var mesesLabels = [...new Set(horasPorMesDepartamento.map(item => item.mes))]; // Obtener meses únicos
@@ -120,7 +110,6 @@
             });
         });
 
-        // Colores aleatorios para cada línea
         function getRandomColor() {
             return `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 0.8)`;
         }
@@ -129,11 +118,11 @@
             label: dep,
             data: datosPorDepartamento[dep],
             borderColor: getRandomColor(),
-            backgroundColor: 'rgba(0, 0, 0, 0)', // Sin relleno en la línea
+            backgroundColor: 'rgba(0, 0, 0, 0)',
             borderWidth: 2,
             pointRadius: 4,
             pointBackgroundColor: 'white',
-            tension: 0.3 // Suaviza la línea
+            tension: 0.3
         }));
 
         new Chart(ctxMesDepartamento, {
@@ -156,11 +145,6 @@
     });
 
 
-
-
-
-
-    // Script para ordenar tablas dinámicamente
     function sortTable(columnIndex, tableId) {
         const table = document.getElementById(tableId);
         if (!table) return;
@@ -169,18 +153,24 @@
         const isAscending = table.getAttribute('data-sort-order') !== 'asc';
 
         rows.sort((a, b) => {
-            const cellA = a.cells[columnIndex].textContent.trim().toLowerCase();
-            const cellB = b.cells[columnIndex].textContent.trim().toLowerCase();
+            let cellA = a.cells[columnIndex].textContent.trim();
+            let cellB = b.cells[columnIndex].textContent.trim();
 
-            const valueA = isNaN(cellA) ? cellA : parseFloat(cellA);
-            const valueB = isNaN(cellB) ? cellB : parseFloat(cellB);
+            // Convertir a número si es posible
+            let numA = parseFloat(cellA.replace(',', '.')); // Para manejar números con coma decimal
+            let numB = parseFloat(cellB.replace(',', '.'));
 
-            return isAscending ? (valueA > valueB ? 1 : -1) : (valueA < valueB ? 1 : -1);
+            if (!isNaN(numA) && !isNaN(numB)) {
+                return isAscending ? numA - numB : numB - numA;
+            }
+
+            return isAscending ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
         });
 
         rows.forEach(row => tbody.appendChild(row));
         table.setAttribute('data-sort-order', isAscending ? 'asc' : 'desc');
     }
+
 </script>
 
 {% endblock %}

@@ -48,7 +48,8 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="6" class="text-center">No hay registros de horas compensatorias aprobadas en el rango seleccionado.</td>
+                <td colspan="6" class="text-center">No hay registros de horas compensatorias aprobadas en el rango
+                    seleccionado.</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -59,23 +60,33 @@
 <script>
     function sortTable(columnIndex) {
         const table = document.getElementById('horas-table');
-        const rows = Array.from(table.rows).slice(1); // Excluye encabezado
+        if (!table) return;
+
+        const tbody = table.tBodies[0];
+        const rows = Array.from(tbody.rows); // Obtiene todas las filas del cuerpo de la tabla
         const isAscending = table.getAttribute('data-sort-order') !== 'asc'; // Alternar orden
 
         rows.sort((a, b) => {
-            const cellA = a.cells[columnIndex].innerText.trim().toLowerCase();
-            const cellB = b.cells[columnIndex].innerText.trim().toLowerCase();
+            let cellA = a.cells[columnIndex].innerText.trim();
+            let cellB = b.cells[columnIndex].innerText.trim();
 
-            const valueA = isNaN(cellA) ? cellA : parseFloat(cellA);
-            const valueB = isNaN(cellB) ? cellB : parseFloat(cellB);
+            // Convertir a número si es posible
+            let numA = parseFloat(cellA.replace(',', '.'));
+            let numB = parseFloat(cellB.replace(',', '.'));
 
-            return isAscending
-                ? valueA > valueB ? 1 : -1
-                : valueA < valueB ? 1 : -1;
+            if (!isNaN(numA) && !isNaN(numB)) {
+                return isAscending ? numA - numB : numB - numA;
+            }
+
+            return isAscending ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
         });
 
-        rows.forEach(row => table.tBodies[0].appendChild(row));
+        // Reordenar las filas en la tabla
+        rows.forEach(row => tbody.appendChild(row));
+
+        // Guardar el estado del ordenamiento
         table.setAttribute('data-sort-order', isAscending ? 'asc' : 'desc');
     }
+
 </script>
 {% endblock %}
