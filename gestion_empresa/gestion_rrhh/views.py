@@ -1,42 +1,64 @@
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.shortcuts import render, redirect,  redirect, get_object_or_404
-from django.urls import reverse_lazy
-from django.views.generic import CreateView, ListView, UpdateView, View, DeleteView
-from .models import FeriadoNacional, Usuario, Solicitud, HistorialVacaciones, Departamento,ConversionVacacionesHoras, HorasCompensatoriasSieteDias ,AjusteVacaciones, RegistroHoras,Solicitud, Incapacidad , CodigoRestablecimiento
-from .forms import UsuarioCreationForm, SolicitudForm, FeriadoNacionalForm, RegistrarHorasForm,RegistroHorasFilterForm, AjusteVacacionesForm, IncapacidadForm
-from django.contrib import messages
-from django.contrib.auth import logout
-from operator import attrgetter
-from django.core.paginator import Paginator
-from datetime import date
-from django.db.models import Sum , Q
-from xhtml2pdf import pisa
-from django.template.loader import get_template
-from django.http import HttpResponse
-from django.utils import timezone
-import locale
-from django.contrib.auth.views import PasswordChangeView
-from django.utils.timezone import now, timedelta
 import json
-from django.core.exceptions import PermissionDenied
-from .utils import MicrosoftGraphEmail
-from django.template.loader import render_to_string
-from django.utils.timezone import now
-from django.conf import settings
-from datetime import datetime, time
-from django.utils.timezone import make_aware , get_current_timezone
-from django.http import JsonResponse
+import locale
+import random
 import uuid
 import pytz
-from .models import Licencia
-from .forms import LicenciaForm
-from django.db import models
-from dateutil.relativedelta import relativedelta
 from decimal import Decimal
-import random
-from .forms import ReporteRegistroHorasForm, ReporteTotalHorasCompForm
+from datetime import date, datetime, time, timedelta
+
+from dateutil.relativedelta import relativedelta
+
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import logout
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.views import PasswordChangeView
+from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
+from django.db import models
+from django.db.models import Sum, Q
+from django.db.models.functions import TruncMonth
+from django.http import HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import get_template, render_to_string
+from django.urls import reverse_lazy
+from django.utils import timezone
 from django.utils.dateparse import parse_date
+from django.utils.timezone import make_aware, get_current_timezone, now
+from django.views.generic import CreateView, DeleteView, ListView, UpdateView, View
+
+from xhtml2pdf import pisa
+
+from operator import attrgetter
+
+from .forms import (
+    AjusteVacacionesForm,
+    FeriadoNacionalForm,
+    IncapacidadForm,
+    LicenciaForm,
+    RegistrarHorasForm,
+    RegistroHorasFilterForm,
+    ReporteRegistroHorasForm,
+    ReporteTotalHorasCompForm,
+    SolicitudForm,
+    UsuarioCreationForm,
+)
+from .models import (
+    AjusteVacaciones,
+    CodigoRestablecimiento,
+    ConversionVacacionesHoras,
+    Departamento,
+    FeriadoNacional,
+    HistorialVacaciones,
+    HorasCompensatoriasSieteDias,
+    Incapacidad,
+    Licencia,
+    RegistroHoras,
+    Solicitud,
+    Usuario,
+)
+from .utils import MicrosoftGraphEmail
 
 
 
@@ -1386,8 +1408,7 @@ def obtener_cantidad_pendientes(request):
     total_pendientes = (
         registros_pendientes + 
         solicitudes_pendientes + 
-        licencias_pendientes + 
-        otras_solicitudes_pendientes
+        licencias_pendientes
     )
 
     return JsonResponse({
@@ -2606,8 +2627,6 @@ def convertir_vacaciones_a_horas_view(request):
 
 
 
-
-
 def solicitar_restablecimiento(request):
     if request.method == 'POST':
         email = request.POST.get('email')
@@ -2699,50 +2718,6 @@ def verificar_codigo(request):
     return redirect('login')
 
 
-
-
-
-
-# @login_required
-# def reporte_horas_compensatorias(request):
-#     usuario_actual = request.user
-
-#     # 🚨 Restringir acceso según el rol
-#     if usuario_actual.rol not in ['GG', 'JI']:
-#         raise PermissionDenied("No tienes permiso para acceder a este reporte.")
-
-#     form = ReporteRegistroHorasForm(request.GET or None)
-#     registros = RegistroHoras.objects.filter(tipo='HC', estado='A').order_by('-fecha_inicio')  # 📌 Orden descendente
-
-#     # 📌 Filtrar registros según el rol
-#     if usuario_actual.rol == 'GG':
-#         pass  # Puede ver todos los registros
-#     elif usuario_actual.rol == 'JI':
-#         registros = registros.filter(
-#             Q(usuario__jefe=usuario_actual) |  # Subordinados directos
-#             Q(usuario__jefe__jefe=usuario_actual)  # Subordinados de subordinados
-#         )
-
-#     # 📌 Aplicar filtros del formulario
-#     if form.is_valid():
-#         fecha_inicio = form.cleaned_data.get('fecha_inicio')
-#         fecha_fin = form.cleaned_data.get('fecha_fin')
-#         empleado = form.cleaned_data.get('empleado')
-
-#         if fecha_inicio and fecha_fin:
-#             registros = registros.filter(fecha_inicio__date__gte=fecha_inicio, fecha_fin__date__lte=fecha_fin)
-
-#         if empleado:
-#             registros = registros.filter(usuario=empleado)
-
-#     return render(request, 'reporte_horas_compensatorias.html', {
-#         'form': form,
-#         'registros': registros
-#     })
-
-
-
-
 @login_required
 def reporte_horas_compensatorias(request):
     usuario_actual = request.user
@@ -2781,7 +2756,7 @@ def reporte_horas_compensatorias(request):
 
 
 
-from django.db.models.functions import TruncMonth
+
 
 @login_required
 def reporte_total_HC(request):
