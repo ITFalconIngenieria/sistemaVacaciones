@@ -2940,7 +2940,7 @@ def reporte_horas_pendientes_odoo(request):
 
 @login_required
 def reporte_horas_ingresadas_por_usuario_odoo(request):
-    if request.user.rol != 'JD':
+    if not hasattr(request.user, 'rol') or request.user.rol not in ['JD', 'GG', 'JI']:  
         messages.error(request, "No tienes permiso para acceder a este reporte.")
         return redirect('dashboard')
 
