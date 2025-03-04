@@ -43,6 +43,8 @@ from .forms import (
     ReporteTotalHorasCompForm,
     SolicitudForm,
     UsuarioCreationForm,
+    RegistroHorasOdooForm,
+    MarcarHorasIngresadasForm
 )
 from .models import (
     AjusteVacaciones,
@@ -57,6 +59,7 @@ from .models import (
     RegistroHoras,
     Solicitud,
     Usuario,
+    RegistroHorasOdoo
 )
 from .utils import MicrosoftGraphEmail
 
@@ -2854,4 +2857,113 @@ def reporte_total_HC(request):
         'fecha_fin': fecha_fin
     })
 
+
+@login_required
+def registrar_horas_odoo(request):
+    if request.user.rol != 'TE':
+        messages.error(request, "Solo los Técnicos pueden registrar horas en Odoo.")
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+        form = RegistroHorasOdooForm(request.POST, usuario=request.user)
+        if form.is_valid():
+            registro = form.save(commit=False)
+            registro.usuario = request.user
+            registro.save()
+            messages.success(request, "Horas registradas correctamente en Odoo.")
+            return redirect('dashboard')
+    else:
+        form = RegistroHorasOdooForm(usuario=request.user)
+
+    return render(request, 'registrar_horas_odoo.html', {'form': form})
+
+
+
+
+@login_required
+def historial_horas_odoo(request):
+    if request.user.rol != 'TE':
+        messages.error(request, "Solo los Técnicos pueden registrar horas en Odoo.")
+        return redirect('dashboard')
+
+    registros_list = RegistroHorasOdoo.objects.filter(usuario=request.user).order_by('-fecha')
+
+    paginator = Paginator(registros_list, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'historial_horas_odoo.html', {'page_obj': page_obj})
+
+
+
+@login_required
+def reporte_horas_pendientes_odoo(request):
+    if not hasattr(request.user, 'rol') or request.user.rol not in ['JD', 'GG', 'JI']:  
+        messages.error(request, "No tienes permiso para acceder a este reporte.")
+        return redirect('dashboard')
+
+    registros_list = (
+        RegistroHorasOdoo.objects.filter(ingresado=False)
+        .order_by('usuario__first_name', 'usuario__last_name', '-fecha')
+    )
+
+    registros_por_usuario = {}
+    for registro in registros_list:
+        if registro.usuario not in registros_por_usuario:
+            registros_por_usuario[registro.usuario] = {"registros": [], "total_horas": 0}
+        registros_por_usuario[registro.usuario]["registros"].append(registro)
+        registros_por_usuario[registro.usuario]["total_horas"] += registro.horas
+
+    registros_agrupados = list(registros_por_usuario.items())
+
+    paginator = Paginator(registros_agrupados, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    if request.method == 'POST':
+        form = MarcarHorasIngresadasForm(request.POST)
+        if form.is_valid():
+            registros_a_marcar = form.cleaned_data['registros']
+            registros_a_marcar.update(ingresado=True)
+            messages.success(request, "Horas marcadas como ingresadas correctamente.")
+            return redirect('reporte_horas_pendientes_odoo')
+    else:
+        form = MarcarHorasIngresadasForm()
+
+    return render(request, 'reporte_horas_pendientes_odoo.html', {
+        'page_obj': page_obj,
+        'form': form,
+        'registros_por_usuario': page_obj.object_list,
+    })
+
+
+
+@login_required
+def reporte_horas_ingresadas_por_usuario_odoo(request):
+    if request.user.rol != 'JD':
+        messages.error(request, "No tienes permiso para acceder a este reporte.")
+        return redirect('dashboard')
+
+    registros_list = (
+        RegistroHorasOdoo.objects.filter(ingresado=True)
+        .order_by('usuario__first_name', 'usuario__last_name', '-fecha')
+    )
+
+    registros_por_usuario = {}
+    for registro in registros_list:
+        if registro.usuario not in registros_por_usuario:
+            registros_por_usuario[registro.usuario] = {"registros": [], "total_horas": 0}
+        registros_por_usuario[registro.usuario]["registros"].append(registro)
+        registros_por_usuario[registro.usuario]["total_horas"] += registro.horas
+
+    registros_agrupados = list(registros_por_usuario.items())
+
+    paginator = Paginator(registros_agrupados, 10)  # Paginamos por usuario
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'reporte_horas_ingresadas_odoo.html', {
+        'page_obj': page_obj,
+        'registros_por_usuario': page_obj.object_list,
+    })
 

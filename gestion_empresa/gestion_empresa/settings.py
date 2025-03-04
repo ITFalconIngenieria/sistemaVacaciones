@@ -28,7 +28,7 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default='False').lower() in ('true', '1')
 
 
-ALLOWED_HOSTS = ['192.168.1.46', '192.168.128.80', '172.31.67.163', 
+ALLOWED_HOSTS = ['192.168.1.38', '192.168.128.80', '172.31.67.163', 
                  'ec2-54-84-74-28.compute-1.amazonaws.com', '54.84.74.28', '192.168.128.59']
 
 ENV = config('ENV', default='local')

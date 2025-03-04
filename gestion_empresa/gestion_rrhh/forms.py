@@ -1,6 +1,6 @@
 
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
-from .models import Solicitud, RegistroHoras, Usuario, AjusteVacaciones, FeriadoNacional, Incapacidad
+from .models import Solicitud, RegistroHoras, Usuario, RegistroHorasOdoo, AjusteVacaciones, FeriadoNacional, Incapacidad
 from .validators import validate_username
 from django.utils import timezone
 from django.core.exceptions import ValidationError
@@ -8,6 +8,7 @@ from django import forms
 from datetime import date
 from .models import Licencia
 from django.db.models import  Q
+from django.utils.timezone import now
 class UsuarioCreationForm(forms.ModelForm):
     class Meta:
         model = Usuario
@@ -458,3 +459,48 @@ class ReporteTotalHorasCompForm(forms.Form):
                 )
 
         self.fields['empleado'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name}"
+
+
+
+
+class RegistroHorasOdooForm(forms.ModelForm):
+    class Meta:
+        model = RegistroHorasOdoo
+        fields = ['fecha', 'numero_proyecto','descripcion', 'horas']
+        labels = {
+            'fecha': 'Fecha',
+            'numero_proyecto' : 'Número de Proyecto',
+            'descripcion': 'Descripción del Trabajo',
+            'horas': 'Cantidad de Horas',
+        }
+        widgets = {
+            'fecha': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'numero_proyecto': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de Proyecto'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Describa el trabajo realizado'}),
+            'horas': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'step': '0.1'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        usuario = kwargs.pop('usuario', None)
+        super().__init__(*args, **kwargs)
+
+        self.fields['fecha'].initial = now().date()
+
+
+        if usuario:
+            self.usuario = usuario
+
+    def clean_horas(self):
+        horas = self.cleaned_data.get('horas')
+        if horas <= 0:
+            raise forms.ValidationError("Las horas registradas deben ser mayores a 0.")
+        return horas
+    
+
+class MarcarHorasIngresadasForm(forms.Form):
+    registros = forms.ModelMultipleChoiceField(
+        queryset=RegistroHorasOdoo.objects.filter(ingresado=False),
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        label="Seleccione las horas a marcar como ingresadas"
+    )

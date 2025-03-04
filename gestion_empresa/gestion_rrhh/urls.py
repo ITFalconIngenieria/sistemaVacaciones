@@ -68,6 +68,10 @@ urlpatterns = [
     path('reporte_total_HC/', views.reporte_total_HC, name='reporte_total_HC'),
     path('api/pendientes/', views.obtener_cantidad_pendientes, name='obtener_cantidad_pendientes'),
 
+    path('registrar-horas-odoo/', views.registrar_horas_odoo, name='registrar_horas_odoo'),
+    path('historial-horas-odoo/', views.historial_horas_odoo, name='historial_horas_odoo'),
 
-
+    path('reporte-horas-pendientes-odoo/', views.reporte_horas_pendientes_odoo, name='reporte_horas_pendientes_odoo'),
+    
+    path('reporte_horas_ingresadas_por_usuario_odoo/', views.reporte_horas_ingresadas_por_usuario_odoo, name='reporte_horas_ingresadas_por_usuario_odoo'),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

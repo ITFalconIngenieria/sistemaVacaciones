@@ -364,3 +364,16 @@ class CodigoRestablecimiento(models.Model):
     def es_valido(self):
         fecha_hora_actual = now() - timedelta(hours=6)
         return not self.usado and fecha_hora_actual < self.expira_en
+
+
+
+class RegistroHorasOdoo(models.Model):
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    fecha = models.DateField(default=now, help_text="Fecha en la que se registran las horas")
+    numero_proyecto = models.CharField(max_length=50, help_text="Número del proyecto asociado")
+    descripcion = models.TextField(help_text="Descripción del trabajo realizado")
+    horas = models.DecimalField(max_digits=5, decimal_places=2, help_text="Cantidad de horas registradas")
+    ingresado = models.BooleanField(default=False, help_text="Indica si las horas ya fueron ingresadas en el sistema externo")
+
+    def __str__(self):
+        return f"{self.usuario.get_full_name()} - {self.horas} horas el {self.fecha} - Proyecto: {self.numero_proyecto or 'N/A'}"
