@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Eliminar Registro de Horas{% endblock %}
+{% block title %}Eliminar Registro de Horas ODOO{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -9,7 +9,7 @@
             <h4 class="mb-0">Confirmar Eliminación</h4>
         </div>
         <div class="card-body">
-            <p>¿Estás seguro de que deseas eliminar este registro de horas?</p>
+            <p>¿Estás seguro de que deseas eliminar este registro de horas ODOO?</p>
             <ul>
                 <li><strong>Fecha:</strong> {{ registro.fecha|date:"d/M/Y" }}</li>
                 <li><strong>Número de Proyecto:</strong> {{ registro.numero_proyecto|default:"N/A" }}</li>
