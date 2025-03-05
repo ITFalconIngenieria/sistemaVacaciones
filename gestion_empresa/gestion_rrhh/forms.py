@@ -466,15 +466,18 @@ class ReporteTotalHorasCompForm(forms.Form):
 class RegistroHorasOdooForm(forms.ModelForm):
     class Meta:
         model = RegistroHorasOdoo
-        fields = ['fecha', 'numero_proyecto','descripcion', 'horas']
+        fields = ['fecha', 'numero_proyecto', 'descripcion', 'horas']
         labels = {
             'fecha': 'Fecha',
-            'numero_proyecto' : 'Número de Proyecto',
+            'numero_proyecto': 'Número de Proyecto',
             'descripcion': 'Descripción del Trabajo',
             'horas': 'Cantidad de Horas',
         }
         widgets = {
-            'fecha': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'fecha': forms.TextInput(attrs={
+                'class': 'form-control flatpickr-datetime',  # Usa la misma clase que otros formularios
+                'required': 'required'
+            }),
             'numero_proyecto': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de Proyecto'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Describa el trabajo realizado'}),
             'horas': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'step': '0.1'}),
@@ -484,18 +487,19 @@ class RegistroHorasOdooForm(forms.ModelForm):
         usuario = kwargs.pop('usuario', None)
         super().__init__(*args, **kwargs)
 
-        self.fields['fecha'].initial = now().date()
-
+        # Asegurar que la fecha se cargue correctamente en edición
+        if self.instance.pk:
+            self.fields['fecha'].initial = self.instance.fecha.strftime('%Y-%m-%d')
 
         if usuario:
             self.usuario = usuario
 
     def clean_horas(self):
         horas = self.cleaned_data.get('horas')
-        if horas <= 0:
-            raise forms.ValidationError("Las horas registradas deben ser mayores a 0.")
+        if horas <= 0 or horas > 9:
+            raise forms.ValidationError("Las horas registradas deben ser mayores a 0 y menores o igual a 9.")
         return horas
-    
+
 
 class MarcarHorasIngresadasForm(forms.Form):
     registros = forms.ModelMultipleChoiceField(

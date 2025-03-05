@@ -24,4 +24,13 @@
         </div>
     </div>
 </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        flatpickr('.flatpickr-datetime', {
+            dateFormat: "Y-m-d",  // Asegura compatibilidad con el formato esperado en Django
+            enableTime: false,
+            locale: "es"
+        });
+    });
+</script>
 {% endblock %}

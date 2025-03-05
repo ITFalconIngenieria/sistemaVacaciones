@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Eliminar Registro de Horas{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0">Confirmar Eliminación</h4>
+        </div>
+        <div class="card-body">
+            <p>¿Estás seguro de que deseas eliminar este registro de horas?</p>
+            <ul>
+                <li><strong>Fecha:</strong> {{ registro.fecha|date:"d/M/Y" }}</li>
+                <li><strong>Número de Proyecto:</strong> {{ registro.numero_proyecto|default:"N/A" }}</li>
+                <li><strong>Horas:</strong> {{ registro.horas }}</li>
+                <li><strong>Descripción:</strong> {{ registro.descripcion }}</li>
+            </ul>
+            
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Eliminar</button>
+                <a href="{% url 'historial_horas_odoo' %}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

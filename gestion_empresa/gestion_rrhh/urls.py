@@ -70,7 +70,8 @@ urlpatterns = [
 
     path('registrar-horas-odoo/', views.registrar_horas_odoo, name='registrar_horas_odoo'),
     path('historial-horas-odoo/', views.historial_horas_odoo, name='historial_horas_odoo'),
-
+    path('editar-registro-horas-odoo/<int:pk>/', views.editar_registro_horas_odoo, name='editar_registro_horas_odoo'),
+    path('eliminar-registro-horas-odoo/<int:pk>/', views.eliminar_registro_horas_odoo, name='eliminar_registro_horas_odoo'),
     path('reporte-horas-pendientes-odoo/', views.reporte_horas_pendientes_odoo, name='reporte_horas_pendientes_odoo'),
     
     path('reporte_horas_ingresadas_por_usuario_odoo/', views.reporte_horas_ingresadas_por_usuario_odoo, name='reporte_horas_ingresadas_por_usuario_odoo'),

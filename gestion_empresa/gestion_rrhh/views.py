@@ -2879,7 +2879,6 @@ def registrar_horas_odoo(request):
 
 
 
-
 @login_required
 def historial_horas_odoo(request):
     if request.user.rol != 'TE':
@@ -2894,6 +2893,42 @@ def historial_horas_odoo(request):
 
     return render(request, 'historial_horas_odoo.html', {'page_obj': page_obj})
 
+@login_required
+def editar_registro_horas_odoo(request, pk):
+    registro = get_object_or_404(RegistroHorasOdoo, pk=pk, usuario=request.user)
+
+    # Bloquea edición si ya fue ingresado
+    if registro.ingresado:
+        messages.error(request, "No puedes editar un registro que ya ha sido ingresado en el sistema externo.")
+        return redirect('historial_horas_odoo')
+
+    if request.method == 'POST':
+        form = RegistroHorasOdooForm(request.POST, instance=registro)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Registro actualizado correctamente.")
+            return redirect('historial_horas_odoo')
+    else:
+        form = RegistroHorasOdooForm(instance=registro)
+
+    return render(request, 'editar_registro_horas_odoo.html', {'form': form})
+
+
+@login_required
+def eliminar_registro_horas_odoo(request, pk):
+    registro = get_object_or_404(RegistroHorasOdoo, pk=pk, usuario=request.user)
+
+    # Bloquea eliminación si ya fue ingresado
+    if registro.ingresado:
+        messages.error(request, "No puedes eliminar un registro que ya ha sido ingresado en el sistema externo.")
+        return redirect('historial_horas_odoo')
+
+    if request.method == 'POST':
+        registro.delete()
+        messages.success(request, "Registro eliminado correctamente.")
+        return redirect('historial_horas_odoo')
+
+    return render(request, 'eliminar_registro_horas_odoo.html', {'registro': registro})
 
 
 @login_required
