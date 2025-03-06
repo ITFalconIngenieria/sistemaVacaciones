@@ -254,7 +254,8 @@ class IncapacidadForm(forms.ModelForm):
             }),
             'descripcion': forms.Textarea(attrs={
                 'class': 'form-control',
-                'rows': 3
+                'rows': 3,
+                'required': 'required'
             }),
             'archivo_adjunto': forms.FileInput(attrs={
                 'class': 'form-control'
@@ -317,7 +318,7 @@ class LicenciaForm(forms.ModelForm):
             'tipo': 'Tipo de Licencia',
             'fecha_inicio': 'Fecha y Hora de Inicio',
             'fecha_fin': 'Fecha y Hora de Fin',
-            'descripcion': 'Descripción (opcional)',
+            'descripcion': 'Descripción',
         }
         widgets = {
             'tipo': forms.Select(attrs={'class': 'form-control'}),
@@ -329,7 +330,7 @@ class LicenciaForm(forms.ModelForm):
                 'class': 'form-control flatpickr-datetime',
                 'placeholder': 'Selecciona fecha y hora de fin'
             }),
-            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Opcional'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'required': 'required'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -402,29 +403,6 @@ class ReporteRegistroHorasForm(forms.Form):
         self.fields['empleado'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name}"
 
 
-
-# class ReporteTotalHorasCompForm(forms.Form):
-#     empleado = forms.ModelChoiceField(
-#         queryset=Usuario.objects.none(),
-#         required=False,
-#         widget=forms.Select(attrs={'class': 'form-control'}),
-#         label="Empleado"
-#     )
-
-#     def __init__(self, *args, usuario_actual=None, **kwargs):
-#         super().__init__(*args, **kwargs)
-
-#         if usuario_actual:
-#             if usuario_actual.rol == 'GG':
-#                 self.fields['empleado'].queryset = Usuario.objects.all()
-#             elif usuario_actual.rol == 'JI':
-
-#                 self.fields['empleado'].queryset = Usuario.objects.filter(
-#                     Q(jefe=usuario_actual) |
-#                     Q(jefe__jefe=usuario_actual)
-#                 )
-
-#         self.fields['empleado'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name}"
 
 
 
