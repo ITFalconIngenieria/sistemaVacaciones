@@ -5,6 +5,7 @@ from django.core.cache import cache
 from django.conf import settings
 from datetime import datetime
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -17,32 +18,15 @@ class SecurityMiddleware:
         
         # Mining patterns
         self.mining_patterns = [
-            r'mining\.subscribe',
-            r'mining\.authorize',
-            r'mining\.submit',
-            r'xmr-stak',
-            r'stratum\+tcp',
-            r'xmrig',
-            r'cryptonight',
-            r'monero',
-            r'eth_submitLogin',
-            r'eth_getWork',
-            r'hashrate',
-            r'minergate',
-            r'antminer',
+            r'mining\.subscribe', r'mining\.authorize', r'mining\.submit',
+            r'xmr-stak', r'stratum\+tcp', r'xmrig', r'cryptonight', r'monero',
+            r'eth_submitLogin', r'eth_getWork', r'hashrate', r'minergate', r'antminer'
         ]
         
         # Agentes de usuario sospechosos
         self.suspicious_agents = [
-            'miner',
-            'xmr',
-            'minergate',
-            'nicehash',
-            'bfgminer',
-            'cgminer',
-            'ccminer',
-            'claymore',
-            'phoenixminer',
+            'miner', 'xmr', 'minergate', 'nicehash', 'bfgminer', 'cgminer', 
+            'ccminer', 'claymore', 'phoenixminer'
         ]
         
         # Configuración de límite de solicitudes
@@ -52,24 +36,54 @@ class SecurityMiddleware:
         # Hosts permitidos
         self.allowed_hosts = getattr(settings, 'ALLOWED_HOSTS', [])
 
+        # Archivo donde se guardan las IPs bloqueadas
+        self.banned_ips_file = "banned_ips.log"
+
     def log_attack(self, request, attack_type):
         ip = request.META.get('REMOTE_ADDR')
         user_agent = request.META.get('HTTP_USER_AGENT', 'Unknown')
+        path = request.path
+        attempts = cache.get(f'rate_limit_{ip}', 0)
         timestamp = datetime.now().isoformat()
-        
-        logger.warning(f"Security alert - {attack_type} - IP: {ip} - UA: {user_agent} - Time: {timestamp}")
 
-    def is_rate_limited(self, ip):
-        # Saltar la verificación para la IP de confianza
+        log_entry = f"{timestamp} - {attack_type} - IP: {ip} - Attempts: {attempts} - Path: {path} - UA: {user_agent}\n"
+
+        # Guardar en logs de Django
+        logger.warning(log_entry)
+
+        # Guardar en el archivo de IPs bloqueadas si es un bloqueo por rate limit
+        if attack_type == "Rate limit exceeded":
+            with open(self.banned_ips_file, "a") as file:
+                file.write(log_entry)
+
+    def is_rate_limited(self, request):
+        ip = request.META.get('REMOTE_ADDR')
+
         if ip == self.exempt_from_rate_limit:
             return False
-        
+
         key = f'rate_limit_{ip}'
+        block_key = f'blocked_{ip}'
+
+        # Si la IP ya está bloqueada, negar acceso
+        if cache.get(block_key):
+            return True
+
         requests = cache.get(key, 0)
         
         if requests >= self.max_requests:
+            # Si la IP ya fue bloqueada varias veces, aumentar el tiempo de bloqueo
+            previous_blocks = cache.get(f'ban_count_{ip}', 0)
+            block_time = self.window_seconds * (previous_blocks + 1)  # Aumentar tiempo exponencialmente
+
+            cache.set(block_key, True, block_time)
+            cache.set(f'ban_count_{ip}', previous_blocks + 1, None)  # Incrementar contador de bloqueos
+
+            # Registrar ataque y guardar en archivo
+            self.log_attack(request, "Rate limit exceeded")
+
             return True
-            
+
         cache.set(key, requests + 1, self.window_seconds)
         return False
 
@@ -94,8 +108,7 @@ class SecurityMiddleware:
             return HttpResponseForbidden('Invalid host')
 
         # Límite de solicitudes
-        if self.is_rate_limited(ip):
-            self.log_attack(request, "Rate limit exceeded")
+        if self.is_rate_limited(request):
             return HttpResponseForbidden('Too many requests')
 
         # Verificación del cuerpo de la solicitud
