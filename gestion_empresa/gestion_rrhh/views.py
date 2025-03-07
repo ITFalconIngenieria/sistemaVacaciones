@@ -455,15 +455,18 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                         
                         horasDia = min(horasDia, 9)
                         horas_totales += horasDia
-                
+                        horas_totales = round(horas_totales, 2)
+
                 fecha_actual += timedelta(days=1)
-            
             horas_solicitadas = horas_totales
+            horas_solicitadas = Decimal(str(horas_solicitadas)) if horas_solicitadas else messages.error(self.request, 'Solicitud no procesada')
+            
             if horas_solicitadas > horas_compensatorias:
                 form.add_error(None, f"No tienes suficientes Horas compensatorias disponibles (horas disponibles: {horas_compensatorias}).")
                 return self.form_invalid(form)
             
             form.instance.horas = horas_solicitadas
+            
 
         form.instance.numero_solicitud = form.cleaned_data['numero_solicitud']
         messages.success(self.request, 'Solicitud creada correctamente y pendiente de aprobación.')
@@ -739,6 +742,8 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
                 fecha_actual += timedelta(days=1)
             
             horas_solicitadas = horas_totales
+            horas_solicitadas = Decimal(str(horas_solicitadas)) if horas_solicitadas else messages.error(self.request, 'Solicitud no procesada')
+
             if horas_solicitadas > horas_compensatorias:
                 form.add_error(None, f"No tienes suficientes Horas compensatorias disponibles (horas disponibles: {horas_compensatorias}).")
                 return self.form_invalid(form)
