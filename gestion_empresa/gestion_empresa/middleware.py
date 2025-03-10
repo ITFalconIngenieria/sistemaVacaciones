@@ -12,6 +12,9 @@ class SecurityMiddleware:
         self.banned_ips_file = "banned_ips.txt"  # Archivo donde se guardan las IPs bloqueadas permanentemente
         self.blocked_ips = self.load_blocked_ips()  # Cargar IPs bloqueadas al iniciar
 
+        # ✅ Lista de IPs permitidas siempre (whitelist)
+        self.allowed_ips = {"190.4.48.82"}
+
         # 🚫 Bloqueo de User-Agent sospechosos
         self.blocked_user_agents = [
             "curl", "wget", "python-requests", "nmap", "sqlmap", "fuzz", "masscan"
@@ -52,6 +55,10 @@ class SecurityMiddleware:
         ip = request.META.get('REMOTE_ADDR')
         user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
         path = request.path.lower()
+
+        # ✅ 0. Permitir siempre las IPs en la lista blanca
+        if ip in self.allowed_ips:
+            return self.get_response(request)
 
         # 🚫 1. Bloqueo de IPs Maliciosas (guardadas en archivo)
         if ip in self.blocked_ips:
