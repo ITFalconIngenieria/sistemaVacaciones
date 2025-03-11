@@ -120,6 +120,25 @@
                     {% endif %}
 
 
+                    <!-- reportes para taller -->
+                    {% if user.rol in 'JD' and user.departamento_id == 7 %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-white" href="#" id="gestionSubordinadosDropdown"
+                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Reportes
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="reportesGerenteDropdown">
+
+                            <li>
+                                <a class="dropdown-item" href="{% url 'reporte_horas_pendientes_odoo' %}">Horas ODOO</a>
+                            </li>
+
+                        </ul>
+                    </li>
+                    {% endif %}
+
+
+
                     {% if user.rol in 'IN' or user.rol in 'TE' or user.rol in 'AST' or user.rol in 'FNZ'%}
 
                     {% if user.rol in 'TE' %}
