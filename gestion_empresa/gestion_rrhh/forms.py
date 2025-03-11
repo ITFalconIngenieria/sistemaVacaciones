@@ -474,8 +474,8 @@ class RegistroHorasOdooForm(forms.ModelForm):
 
     def clean_horas(self):
         horas = self.cleaned_data.get('horas')
-        if horas <= 0 or horas > 9:
-            raise forms.ValidationError("Las horas registradas deben ser mayores a 0 y menores o igual a 9.")
+        if horas <= 0 or horas > 24:
+            raise forms.ValidationError("Las horas registradas deben ser mayores a 0 y menores o igual a 24.")
         return horas
 
 
