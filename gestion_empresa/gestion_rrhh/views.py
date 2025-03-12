@@ -1723,7 +1723,7 @@ def reporte_horas_extra_html(request):
             request.session['reporte_horas_extra'] = seleccionados
             return redirect('generar_pdf')
 
-    paginator = Paginator(list(registros_por_usuario.items()), 5)
+    paginator = Paginator(list(registros_por_usuario.items()),5)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
