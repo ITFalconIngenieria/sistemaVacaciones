@@ -19,11 +19,11 @@ call venv\Scripts\activate >> %LOGFILE% 2>&1
 
 :: Entra en la carpeta del proyecto
 cd gestion_empresa
-echo [%DATE% %TIME%] Iniciando servidor Django... >> ..\%LOGFILE%
+echo [%DATE% %TIME%] Iniciando servidor Django en segundo plano... >> ..\%LOGFILE%
 
-:: Ejecuta el servidor y guarda la salida en el log
-python manage.py runsslserver 0.0.0.0:8000 >> ..\%LOGFILE% 2>&1
+:: Ejecuta el servidor en segundo plano
+start /min cmd /c python manage.py runsslserver 0.0.0.0:8000 >> ..\%LOGFILE% 2>&1
 
 :: Mensaje final
-echo [%DATE% %TIME%] Script finalizado. Revisa el archivo %LOGFILE% para detalles. >> ..\%LOGFILE%
-pause
+echo [%DATE% %TIME%] Servidor ejecutándose en segundo plano. Revisa el archivo %LOGFILE% para detalles. >> ..\%LOGFILE%
+exit
