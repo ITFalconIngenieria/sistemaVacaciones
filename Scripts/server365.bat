@@ -6,11 +6,20 @@ set LOGFILE=server_log.txt
 echo [%DATE% %TIME%] Iniciando script para gestionar el servidor Django... > %LOGFILE%
 
 :: Verifica si hay un proceso de Python corriendo en el puerto 8000
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000') do (
-    echo [%DATE% %TIME%] Servidor detectado en el puerto 8000 con PID %%a. Intentando detenerlo... >> %LOGFILE%
-    taskkill /PID %%a /F >> %LOGFILE% 2>&1
-    echo [%DATE% %TIME%] Esperando 3 segundos antes de reiniciar... >> %LOGFILE%
+set "PID="
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000') do set PID=%%a
+
+if defined PID (
+    echo [%DATE% %TIME%] Servidor detectado en el puerto 8000 con PID %PID%. Intentando detenerlo... >> %LOGFILE%
+    taskkill /PID %PID% /F >> %LOGFILE% 2>&1
+    if %ERRORLEVEL% == 0 (
+        echo [%DATE% %TIME%] Servidor detenido correctamente. >> %LOGFILE%
+    ) else (
+        echo [%DATE% %TIME%] ERROR: No se pudo detener el servidor. >> %LOGFILE%
+    )
     timeout /t 3 >nul
+) else (
+    echo [%DATE% %TIME%] No se encontró ningún proceso en el puerto 8000. >> %LOGFILE%
 )
 
 :: Activa el entorno virtual
