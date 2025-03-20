@@ -279,8 +279,8 @@ class IncapacidadForm(forms.ModelForm):
         if not fecha_inicio or not fecha_fin:
             raise forms.ValidationError("Ambas fechas son obligatorias.")
 
-        if fecha_inicio < hoy:
-            raise forms.ValidationError("La fecha de inicio no puede ser menor a la fecha actual.")
+        # if fecha_inicio < hoy:
+        #     raise forms.ValidationError("La fecha de inicio no puede ser menor a la fecha actual.")
 
         if fecha_fin < fecha_inicio:
             raise forms.ValidationError("La fecha de fin no puede ser menor a la fecha de inicio.")

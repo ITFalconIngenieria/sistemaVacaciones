@@ -1816,20 +1816,24 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
             form.add_error(None, "Imposible registrar una incapacidad para el futuro.")
             return self.form_invalid(form)
         
+        # Obtenemos los feriados en el rango de fechas
         feriados = FeriadoNacional.objects.filter(
             fecha__range=[fecha_inicio, fecha_fin]
-        )
-
-        non_working_dates = [
-            date for date in (fecha_inicio + timedelta(n) for n in range((fecha_fin - fecha_inicio).days + 1)) 
-            if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
-        ]
-
-        if non_working_dates:
-            non_working_str = ", ".join(date.strftime("%d/%m/%Y (%A)") for date in non_working_dates)
-            form.add_error(None, f"La incapacidad incluye días no laborables: {non_working_str}. Por favor, selecciona otro rango.")
-            return self.form_invalid(form)
+        ).values_list('fecha', flat=True)
         
+        # Calculamos los días hábiles (excluyendo fines de semana y feriados)
+        dias_habiles = 0
+        dia_actual = fecha_inicio
+        while dia_actual <= fecha_fin:
+            # Si no es fin de semana (0=lunes, 6=domingo) y no es feriado
+            if dia_actual.weekday() < 5 and dia_actual not in feriados:
+                dias_habiles += 1
+            dia_actual += timedelta(days=1)
+        
+        # Guardamos la cantidad de días hábiles en la instancia
+        form.instance.dias_incapacidad = dias_habiles
+        
+        # Verificamos conflictos con otras incapacidades
         incapacidades_conflicto = Incapacidad.objects.filter(
             usuario=usuario
         )
@@ -1837,19 +1841,20 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
         for incapacidad in incapacidades_conflicto:
             if (incapacidad.fecha_inicio <= fecha_inicio <= incapacidad.fecha_fin) or \
                (incapacidad.fecha_inicio <= fecha_fin <= incapacidad.fecha_fin) or \
-               (fecha_inicio<= incapacidad.fecha_inicio and fecha_fin >= incapacidad.fecha_fin):
+               (fecha_inicio <= incapacidad.fecha_inicio and fecha_fin >= incapacidad.fecha_fin):
                 print(f"Conflicto con registro: ID {incapacidad.id}, Inicio {incapacidad.fecha_inicio}, Fin {incapacidad.fecha_fin}")
                 form.add_error(None, "Ya tienes una incapacidad registrada que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
             
+        # Verificamos conflictos con solicitudes
         solicitudes_en_conflicto = Solicitud.objects.filter(
             usuario=usuario,
         )
 
         for solicitud in solicitudes_en_conflicto:
             if (solicitud.fecha_inicio.date() <= fecha_inicio <= solicitud.fecha_fin.date()) or \
-               (solicitud.fecha_inicio.date() <= fecha_fin<= solicitud.fecha_fin.date()) or \
-               (fecha_inicio<= solicitud.fecha_inicio.date() and fecha_fin>= solicitud.fecha_fin.date()):
+               (solicitud.fecha_inicio.date() <= fecha_fin <= solicitud.fecha_fin.date()) or \
+               (fecha_inicio <= solicitud.fecha_inicio.date() and fecha_fin >= solicitud.fecha_fin.date()):
                 print(f"Conflicto con registro: ID {solicitud.id}, Inicio {solicitud.fecha_inicio}, Fin {solicitud.fecha_fin}")
                 form.add_error(None, "Ya tienes una solicitud registrada que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
@@ -1869,14 +1874,15 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
                 "usuario": self.request.user.get_full_name(),
                 "fecha_inicio": fecha_inicio,
                 "fecha_fin": fecha_fin,
+                "dias_habiles": dias_habiles,
                 "year": year,
                 "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
-                "enlace_revisar":settings.ENLACE_DEV 
+                "enlace_revisar": settings.ENLACE_DEV 
             }
             html_content = render_to_string("mail_incapacidades.html", context)
             email_sender = MicrosoftGraphEmail()
             subject = "Registro de Incapacidad"
-            content=html_content
+            content = html_content
 
             try:
                 email_sender.send_email(
@@ -2010,16 +2016,17 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
         fecha_fin = form.cleaned_data.get('fecha_fin')
         usuario = self.request.user
         fecha_actual = date.today()
+        
         if fecha_inicio > fecha_actual:
             form.add_error(None, "Imposible registrar una incapacidad para el futuro.")
             return self.form_invalid(form)
 
+        # Verificamos conflictos con otras incapacidades
         incapacidades_conflicto = Incapacidad.objects.filter(
             usuario=usuario
         ).exclude(pk=self.object.pk)
 
         for incapacidad in incapacidades_conflicto:
-
             if (incapacidad.fecha_inicio <= fecha_inicio <= incapacidad.fecha_fin) or \
                (incapacidad.fecha_inicio <= fecha_fin <= incapacidad.fecha_fin) or \
                (fecha_inicio <= incapacidad.fecha_inicio and fecha_fin >= incapacidad.fecha_fin):
@@ -2027,6 +2034,7 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
                 form.add_error(None, "Ya tienes una incapacidad registrada que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
         
+        # Verificamos conflictos con solicitudes
         solicitudes_en_conflicto = Solicitud.objects.filter(
             usuario=usuario,
         )
@@ -2034,25 +2042,28 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
         for solicitud in solicitudes_en_conflicto:
             if (solicitud.fecha_inicio.date() <= fecha_inicio <= solicitud.fecha_fin.date()) or \
                (solicitud.fecha_inicio.date() <= fecha_fin <= solicitud.fecha_fin.date()) or \
-               (fecha_inicio<= solicitud.fecha_inicio.date() and fecha_fin >= solicitud.fecha_fin.date()):
+               (fecha_inicio <= solicitud.fecha_inicio.date() and fecha_fin >= solicitud.fecha_fin.date()):
                 print(f"Conflicto con registro: ID {solicitud.id}, Inicio {solicitud.fecha_inicio}, Fin {solicitud.fecha_fin}")
                 form.add_error(None, "Ya tienes una solicitud registrada que se solapa con este rango. Por favor, selecciona otro rango")
                 return self.form_invalid(form)
-            
+        
+        # Obtenemos los feriados en el rango de fechas
         feriados = FeriadoNacional.objects.filter(
             fecha__range=[fecha_inicio, fecha_fin]
-        )
-
-        non_working_dates = [
-            date for date in (fecha_inicio + timedelta(n) for n in range((fecha_fin - fecha_inicio).days + 1)) 
-            if date.weekday() >= 5 or date in [feriado.fecha for feriado in feriados]
-        ]
-
-        if non_working_dates:
-            non_working_str = ", ".join(date.strftime("%d/%m/%Y (%A)") for date in non_working_dates)
-            form.add_error(None, f"La incapacidad incluye días no laborables: {non_working_str}. Por favor, selecciona otro rango.")
-            return self.form_invalid(form)
-
+        ).values_list('fecha', flat=True)
+        
+        # Calculamos los días hábiles (excluyendo fines de semana y feriados)
+        dias_habiles = 0
+        dia_actual = fecha_inicio
+        while dia_actual <= fecha_fin:
+            # Si no es fin de semana (0=lunes, 6=domingo) y no es feriado
+            if dia_actual.weekday() < 5 and dia_actual not in feriados:
+                dias_habiles += 1
+            dia_actual += timedelta(days=1)
+        
+        # Guardamos la cantidad de días hábiles en la instancia
+        form.instance.dias_incapacidad = dias_habiles
+        
         form.instance.usuario = self.request.user
 
         messages.success(self.request, 'Incapacidad actualizada correctamente')
@@ -2066,15 +2077,16 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
                 "usuario": self.request.user.get_full_name(),
                 "fecha_inicio": fecha_inicio,
                 "fecha_fin": fecha_fin,
+                "dias_habiles": dias_habiles,
                 "year": year,
                 "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
-                "enlace_revisar":settings.ENLACE_DEV 
+                "enlace_revisar": settings.ENLACE_DEV 
             }
 
             html_content = render_to_string("mail_incapacidades.html", context)
             email_sender = MicrosoftGraphEmail()
             subject = "Registro de Incapacidad"
-            content=html_content
+            content = html_content
 
             try:
                 email_sender.send_email(

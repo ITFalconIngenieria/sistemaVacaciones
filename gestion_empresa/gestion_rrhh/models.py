@@ -272,19 +272,13 @@ class Incapacidad(models.Model):
         null=False
     )
     descripcion = models.TextField(blank=True, null=True)
-    dias_incapacidad = models.IntegerField(default=0)
+    dias_incapacidad = models.IntegerField(default=0)  # Se calcula en la vista
     revisado = models.BooleanField(default=False)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     def es_eliminable(self):
-        return date.today() == self.fecha_inicio and self.revisado==0
+        return date.today() == self.fecha_inicio and self.revisado == 0
 
-    def save(self, *args, **kwargs):
-        if self.fecha_inicio and self.fecha_fin:
-            self.dias_incapacidad = (self.fecha_fin - self.fecha_inicio).days + 1
-        else:
-            self.dias_incapacidad = 0
-        super().save(*args, **kwargs)  
     def __str__(self):
         return f"Incapacidad de {self.usuario.get_full_name()} del {self.fecha_inicio} al {self.fecha_fin}"
 
