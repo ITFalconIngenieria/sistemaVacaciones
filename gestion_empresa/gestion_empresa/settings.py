@@ -63,8 +63,11 @@ MIDDLEWARE = [
 SECURITY_MAX_REQUESTS = 50
 SECURITY_WINDOW_SECONDS = 60
 ROOT_URLCONF = 'gestion_empresa.urls'
-MEDIA_URL = '/media/'  
-MEDIA_ROOT = BASE_DIR / 'media' 
+# MEDIA_URL = '/media/'  
+# MEDIA_ROOT = BASE_DIR / 'media' 
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 TEMPLATES = [
     {

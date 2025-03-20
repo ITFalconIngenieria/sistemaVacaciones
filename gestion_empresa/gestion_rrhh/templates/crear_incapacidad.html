@@ -18,11 +18,11 @@
 
                         <!-- Información Dinámica -->
                         <div class="alert alert-info" id="dias-calculados">
-                            Los días calculados de incapacidad son: <span id="cantidad-dias">0</span> días.
+                            Los días hábiles de incapacidad son: <span id="cantidad-dias">0</span> días.
                         </div>
 
                         <div class="alert alert-warning" id="nota">
-                            Para que su registro sea valido debe presentar la incapacidad en fisico a RRHH antes de esta quincena 
+                            Para que su registro sea válido, debe presentar la incapacidad en físico a RRHH antes de esta quincena.
                         </div>
 
                         <button type="submit" class="btn btn-success w-100">Guardar Cambios</button>
@@ -38,39 +38,68 @@
 document.addEventListener('DOMContentLoaded', function () {
     const fechaInicioInput = document.getElementById('id_fecha_inicio');
     const fechaFinInput = document.getElementById('id_fecha_fin');
-    const diasCalculadosDiv = document.getElementById('dias-calculados');
     const cantidadDiasSpan = document.getElementById('cantidad-dias');
-    const nota = document.getElementById('nota')
+    const diasCalculadosDiv = document.getElementById('dias-calculados');
+    const nota = document.getElementById('nota');
+
+    let diasFeriados = [];
 
     flatpickr('.flatpickr-datetime', {
-            enableTime: true,
-            dateFormat: 'Y-m-d',
-            time_24hr: true,
-            locale:"es"
-        });
+        enableTime: false,
+        dateFormat: 'Y-m-d',
+        locale: "es"
+    });
 
-    function calcularDias() {
+    // Función para obtener feriados
+    async function obtenerFeriados(fechaInicio, fechaFin) {
+        if (!fechaInicio || !fechaFin) return [];
+
+        const response = await fetch(`/getferiados/?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`);
+        if (!response.ok) return [];
+
+        const data = await response.json();
+        return data.feriados.map(fecha => new Date(fecha));
+    }
+
+    // Función para calcular los días hábiles
+    async function calcularDiasHabiles() {
         const fechaInicio = new Date(fechaInicioInput.value);
         const fechaFin = new Date(fechaFinInput.value);
 
-        if (fechaInicio && fechaFin && fechaFin >= fechaInicio) {
-            const diferenciaTiempo = fechaFin - fechaInicio;
-            const dias = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24)) + 1;
-            cantidadDiasSpan.textContent = dias;
-            diasCalculadosDiv.style.display = 'block';
-            nota.style.display='block';
-        } else {
+        if (!fechaInicio || !fechaFin || fechaFin < fechaInicio) {
             cantidadDiasSpan.textContent = 0;
             diasCalculadosDiv.style.display = 'none';
-            nota.style.display='none';
+            nota.style.display = 'none';
+            return;
         }
+
+        diasFeriados = await obtenerFeriados(fechaInicioInput.value, fechaFinInput.value);
+        let diasHabiles = 0;
+        let diaActual = new Date(fechaInicio);
+
+        while (diaActual <= fechaFin) {
+            const esFeriado = diasFeriados.some(feriado => feriado.toDateString() === diaActual.toDateString());
+            const esFinDeSemana = diaActual.getDay() === 6 || diaActual.getDay() === 0;
+
+            if (!esFeriado && !esFinDeSemana) {
+                diasHabiles++;
+            }
+
+            diaActual.setDate(diaActual.getDate() + 1);
+        }
+
+        cantidadDiasSpan.textContent = diasHabiles;
+        diasCalculadosDiv.style.display = 'block';
+        nota.style.display = 'block';
     }
 
-    fechaInicioInput.addEventListener('change', calcularDias);
-    fechaFinInput.addEventListener('change', calcularDias);
+    fechaInicioInput.addEventListener('change', calcularDiasHabiles);
+    fechaFinInput.addEventListener('change', calcularDiasHabiles);
 
-    // Llamar al cálculo inicial si ya hay valores prellenados
-    calcularDias();
+    // Calcular si ya hay valores cargados
+    if (fechaInicioInput.value && fechaFinInput.value) {
+        calcularDiasHabiles();
+    }
 });
 </script>
 {% endblock %}
