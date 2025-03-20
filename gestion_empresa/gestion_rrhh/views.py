@@ -2062,7 +2062,7 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
             dia_actual += timedelta(days=1)
         
         # Guardamos la cantidad de días hábiles en la instancia
-        form.instance.dias_habiles = dias_habiles
+        form.instance.dias_incapacidad = dias_habiles
         
         form.instance.usuario = self.request.user
 
