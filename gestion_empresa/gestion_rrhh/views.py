@@ -1874,7 +1874,7 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
                 "usuario": self.request.user.get_full_name(),
                 "fecha_inicio": fecha_inicio,
                 "fecha_fin": fecha_fin,
-                "dias_habiles": dias_habiles,  # Añadimos los días hábiles al contexto
+                "dias_habiles": dias_habiles,
                 "year": year,
                 "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
                 "enlace_revisar": settings.ENLACE_DEV 
@@ -2077,7 +2077,7 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
                 "usuario": self.request.user.get_full_name(),
                 "fecha_inicio": fecha_inicio,
                 "fecha_fin": fecha_fin,
-                "dias_habiles": dias_habiles,  # Añadimos los días hábiles al contexto
+                "dias_habiles": dias_habiles,
                 "year": year,
                 "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
                 "enlace_revisar": settings.ENLACE_DEV 
