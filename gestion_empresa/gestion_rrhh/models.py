@@ -235,6 +235,16 @@ class RegistroHoras(models.Model):
     def es_eliminable(self):
         return date.today() <= self.fecha_inicio.date()
 
+class HorasCompensatoriasDescanso(models.Model):
+    usuario = models.ForeignKey('Usuario', on_delete=models.CASCADE)
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+    horas_compensadas = models.DecimalField(max_digits=5, decimal_places=2)
+    registro_origen = models.ForeignKey('RegistroHoras', on_delete=models.CASCADE)
+    inicio_descanso = models.DateTimeField()
+    fin_descanso = models.DateTimeField()
+
+    def __str__(self):
+        return f"{self.usuario} - {self.inicio_descanso.date()} - {self.horas_compensadas}h"
 
 
 class HistorialVacaciones(models.Model):

@@ -26,6 +26,10 @@
                             es aprobado.
                         </div>
 
+                        <div class="alert alert-danger mb-3" id="alerta-descanso" style="display: none;">
+                            Atención: el descanso entre jornadas es menor a 10 horas. Deberías presentarte a trabajar a las <strong><span id="hora-recomendada"></span></strong>.
+                        </div>
+
                         <button type="submit" class="btn btn-success w-100">Registrar Horas</button>
                         <a href="{% url 'dashboard' %}" class="btn btn-secondary w-100 mt-2">Cancelar</a>
                     </form>
@@ -43,6 +47,8 @@
         const horasCalculadasDiv = document.getElementById('horas-calculadas');
         const cantidadHorasSpan = document.getElementById('cantidad-horas');
         const mensajeFeriadosDiv = document.getElementById('mensaje-feriados');
+        const alertaDescanso = document.getElementById('alerta-descanso');
+        const horaRecomendada = document.getElementById('hora-recomendada');
 
         flatpickr('.flatpickr-datetime', {
             enableTime: true,
@@ -114,10 +120,36 @@
                 // Mostrar las horas calculadas con 2 decimales
                 cantidadHorasSpan.textContent = horas.toFixed(2);
                 horasCalculadasDiv.style.display = 'block';
+
+                if (tipoHorasInput.value === 'HC') {
+                    const turnoNormal = new Date(fechaFin);
+                    turnoNormal.setHours(7, 0, 0, 0);
+                    if (fechaFin.getHours() >= 7) {
+                        turnoNormal.setDate(turnoNormal.getDate() + 1);
+                    }
+
+                    const horasDescanso = (turnoNormal - fechaFin) / (1000 * 60 * 60);
+
+                    if (horasDescanso < 10) {
+                        const nuevaEntrada = new Date(fechaFin.getTime() + 10 * 60 * 60 * 1000);
+                        const horaTexto = nuevaEntrada.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        alertaDescanso.style.display = 'block';
+                        horaRecomendada.textContent = horaTexto;
+                    } else {
+                        alertaDescanso.style.display = 'none';
+                    }
+                } else {
+                    alertaDescanso.style.display = 'none';
+                    
+                }
+                
+
             } else {
                 mensajeFeriadosDiv.style.display = 'none';
                 horasCalculadasDiv.style.display = 'none';
+                alertaDescanso.style.display = 'none';
             }
+
         }
 
         // Verificar si ya hay fechas seleccionadas al cargar la página

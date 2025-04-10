@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Usuario, FeriadoNacional
+from .models import Usuario, FeriadoNacional,  HorasCompensatoriasDescanso
 from .forms import UsuarioCreationForm, UsuarioChangeForm
 
 class UsuarioAdmin(UserAdmin):
@@ -38,4 +38,11 @@ class FeriadoNacionalAdmin(admin.ModelAdmin):
     search_fields = ('descripcion',) 
     list_filter = ('fecha',) 
     ordering = ('fecha',)
-    date_hierarchy = 'fecha'         
+    date_hierarchy = 'fecha'
+
+
+
+@admin.register(HorasCompensatoriasDescanso)
+class HorasCompensatoriasDescansoAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'registro_origen', 'inicio_descanso', 'fin_descanso', 'horas_compensadas', 'fecha_registro')
+    list_filter = ('usuario', 'inicio_descanso')

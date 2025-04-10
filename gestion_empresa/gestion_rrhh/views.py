@@ -59,7 +59,8 @@ from .models import (
     RegistroHoras,
     Solicitud,
     Usuario,
-    RegistroHorasOdoo
+    RegistroHorasOdoo,
+    HorasCompensatoriasDescanso
 )
 from .utils import MicrosoftGraphEmail
 
@@ -200,7 +201,23 @@ def dashboard(request):
             "description": f"Feriado: {feriado.descripcion}",
             "color": "#09C1E6"
         })
-    
+
+
+    for descanso in HorasCompensatoriasDescanso.objects.filter(fin_descanso__date__gte=fecha_actual):
+        nombre_completo = f"{descanso.usuario.first_name} {descanso.usuario.last_name}"
+        descripcion = f"Inicio: {descanso.inicio_descanso.strftime('%d-%m-%Y %H:%M')} - Fin: {descanso.fin_descanso.strftime('%d-%m-%Y %H:%M')}"
+        
+        fecha_inicio = descanso.inicio_descanso.date()
+        fecha_fin = descanso.fin_descanso.date()
+        
+        eventos += generar_eventos_validos(
+            nombre_completo,
+            "Descanso obligatorio",
+            fecha_inicio,
+            fecha_fin,
+            descripcion,
+            "#89d47f"
+        )
 
     for licencia in Licencia.objects.filter(estado='A', fecha_fin__gte=fecha_hora_actual):
         nombre_completo = f"{licencia.usuario.first_name} {licencia.usuario.last_name}"
@@ -939,6 +956,38 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
                 messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
 
         messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
+
+        # Primero guardar el formulario antes de usarlo como FK
+        registro = form.save(commit=False)
+        registro.usuario = self.request.user
+        registro.estado = 'P'
+        registro.save()  # << GUARDADO AQUÍ
+
+        # Lógica de descanso solo para HC
+        if registro.tipo == 'HC':
+            fecha_fin = registro.fecha_fin
+            hora_turno_normal = time(7, 0)
+
+            fecha_turno = timezone.make_aware(datetime.combine(fecha_fin.date(), hora_turno_normal))
+            if fecha_fin.time() >= hora_turno_normal:
+                fecha_turno += timedelta(days=1)
+
+            diferencia_horas = (fecha_turno - fecha_fin).total_seconds() / 3600
+
+            if diferencia_horas < 10:
+                nueva_entrada = fecha_fin + timedelta(hours=10)
+
+                HorasCompensatoriasDescanso.objects.create(
+                    usuario=registro.usuario,
+                    registro_origen=registro,
+                    horas_compensadas=Decimal(10 - diferencia_horas).quantize(Decimal('0.01')),
+                    inicio_descanso=fecha_fin,
+                    fin_descanso=nueva_entrada
+                )
+
+            messages.success(self.request, 'Horas de descanso asignadas correctamente.')
+
+
         return super().form_valid(form)
     
     def get_context_data(self, **kwargs):
