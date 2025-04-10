@@ -861,23 +861,14 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         form.instance.usuario = self.request.user
         form.instance.estado = 'P'
-
-        # Datos del formulario
         tipo_horas = form.cleaned_data.get('tipo')
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
-
-        # Calcular horas
         feriados = FeriadoNacional.objects.values_list('fecha', flat=True)
         delta = fecha_fin - fecha_inicio
         total_horas = delta.total_seconds() / 3600
-
         almuerzo_inicio = fecha_inicio.replace(hour=12, minute=0, second=0, microsecond=0)
         almuerzo_fin = fecha_inicio.replace(hour=13, minute=0, second=0, microsecond=0)
-
-        # exclusion_inicio = fecha_inicio.replace(hour=17, minute=0, second=0, microsecond=0)
-        # exclusion_fin = fecha_inicio.replace(hour=18, minute=0, second=0, microsecond=0)
-
         es_dia_especial = (
             fecha_inicio.date() in feriados or
             fecha_inicio.weekday() >= 5
@@ -887,9 +878,6 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         if not es_dia_especial:
             if fecha_inicio <= almuerzo_inicio < fecha_fin or fecha_inicio < almuerzo_fin <= fecha_fin:
                 total_horas -= 1
-            
-            # if fecha_inicio <= exclusion_inicio < fecha_fin or fecha_inicio < exclusion_fin <= fecha_fin:
-            #     total_horas -= 1
 
         total_horas = max(total_horas, 0)
         horas_calculadas = Decimal(total_horas).quantize(Decimal('0.01'))
@@ -912,7 +900,6 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
                 form.add_error(None, "Ya tienes un registro que se solapa con este rango. Por favor, selecciona otro rango.")
                 return self.form_invalid(form)
 
-        # Validaciones específicas
         if tipo_horas == 'HEF' and not FeriadoNacional.objects.filter(fecha=fecha_inicio.date()).exists():
             form.add_error(None, "El día de inicio no coincide con ningún feriado registrado.")
             return self.form_invalid(form)
@@ -955,39 +942,38 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
                 print(f"Error al enviar correo al jefe {jefe.email}: {e}")
                 messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
 
-        messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
+        # messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
 
-        # Primero guardar el formulario antes de usarlo como FK
         registro = form.save(commit=False)
         registro.usuario = self.request.user
         registro.estado = 'P'
-        registro.save()  # << GUARDADO AQUÍ
+        registro.save()
 
-        # Lógica de descanso solo para HC
-        if registro.tipo == 'HC':
-            fecha_fin = registro.fecha_fin
-            hora_turno_normal = time(7, 0)
+        # Lógica de descanso aplica a cualquier tipo ahora
+        fecha_fin = registro.fecha_fin
+        hora_turno = timezone.make_aware(datetime.combine(fecha_fin.date(), time(7, 0)))
 
-            fecha_turno = timezone.make_aware(datetime.combine(fecha_fin.date(), hora_turno_normal))
-            if fecha_fin.time() >= hora_turno_normal:
-                fecha_turno += timedelta(days=1)
+        diferencia_horas = (hora_turno - fecha_fin).total_seconds() / 3600
 
-            diferencia_horas = (fecha_turno - fecha_fin).total_seconds() / 3600
 
-            if diferencia_horas < 10:
-                nueva_entrada = fecha_fin + timedelta(hours=10)
+        if diferencia_horas < 10:
+            if fecha_fin >= hora_turno:
+                # Ya invadió el turno → descanso hasta las 7:00 AM del día siguiente
+                fin_descanso = timezone.make_aware(datetime.combine(hora_turno.date(), time(17, 0)))
+            else:
+                fin_descanso = fecha_fin + timedelta(hours=10)
 
-                HorasCompensatoriasDescanso.objects.create(
-                    usuario=registro.usuario,
-                    registro_origen=registro,
-                    horas_compensadas=Decimal(10 - diferencia_horas).quantize(Decimal('0.01')),
-                    inicio_descanso=fecha_fin,
-                    fin_descanso=nueva_entrada
-                )
+            HorasCompensatoriasDescanso.objects.create(
+                usuario=registro.usuario,
+                registro_origen=registro,
+                horas_compensadas=Decimal(10 - diferencia_horas).quantize(Decimal('0.01')),
+                inicio_descanso=fecha_fin,
+                fin_descanso=fin_descanso
+            )
 
             messages.success(self.request, 'Horas de descanso asignadas correctamente.')
 
-
+        messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
         return super().form_valid(form)
     
     def get_context_data(self, **kwargs):
@@ -1227,13 +1213,9 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
     def form_valid(self, form):
         form.instance.usuario = self.request.user
         form.instance.estado = 'P'
-
-        # Datos del formulario
         tipo_horas = form.cleaned_data.get('tipo')
         fecha_inicio = form.cleaned_data.get('fecha_inicio')
         fecha_fin = form.cleaned_data.get('fecha_fin')
-
-        # Calcular horas
         feriados = FeriadoNacional.objects.values_list('fecha', flat=True)
         delta = fecha_fin - fecha_inicio
         total_horas = delta.total_seconds() / 3600
@@ -1253,10 +1235,6 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
 
         total_horas = max(total_horas, 0)
         horas_calculadas = Decimal(total_horas).quantize(Decimal('0.01'))
-
-        # Ajustar horas según el tipo
-        # if tipo_horas == 'HC' and fecha_inicio.weekday() == 6 and fecha_fin.weekday() == 6:
-        #     horas_calculadas *= 2
 
         if tipo_horas == 'HEF':
             diferencia_dias = (fecha_fin.date() - fecha_inicio.date()).days + 1
@@ -1322,6 +1300,43 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
                 messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
 
         messages.success(self.request, f"El registro de horas {form.instance.numero_registro} ha sido actualizado.")
+        
+        
+        registro = form.save(commit=False)
+        registro.usuario = self.request.user
+        registro.estado = 'P'
+        registro.save()
+
+        # 🔄 Eliminar descansos anteriores relacionados a este registro
+        HorasCompensatoriasDescanso.objects.filter(registro_origen=registro).delete()
+
+        fecha_fin = registro.fecha_fin
+        hora_turno = timezone.make_aware(datetime.combine(fecha_fin.date(), time(7, 0)))
+
+        diferencia_horas = (hora_turno - fecha_fin).total_seconds() / 3600
+
+        print(diferencia_horas , "aaaa")
+
+        if diferencia_horas < 10:
+            print("Fecha Fin ", fecha_fin, " Hora turno ", hora_turno)
+            if fecha_fin >= hora_turno:
+                # Ya invadió el turno → descanso hasta las 17:00 del mismo día
+                fin_descanso = timezone.make_aware(datetime.combine(hora_turno.date(), time(17, 0)))
+
+            else:
+                # Solo necesita descansar 10 horas
+                fin_descanso = fecha_fin + timedelta(hours=10)
+                print("fiiin descansooo ", fin_descanso)
+            HorasCompensatoriasDescanso.objects.create(
+                usuario=registro.usuario,
+                registro_origen=registro,
+                horas_compensadas=Decimal(10 - diferencia_horas).quantize(Decimal('0.01')),
+                inicio_descanso=fecha_fin,
+                fin_descanso=fin_descanso
+            )
+
+            messages.success(self.request, 'Se ajustó el descanso obligatorio por modificación de horario.')
+
         return super().form_valid(form)
     
 

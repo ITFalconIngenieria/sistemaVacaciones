@@ -27,8 +27,10 @@
                         </div>
 
                         <div class="alert alert-danger mb-3" id="alerta-descanso" style="display: none;">
-                            Atención: el descanso entre jornadas es menor a 10 horas. Deberías presentarte a trabajar a las <strong><span id="hora-recomendada"></span></strong>.
+                            Atención: el descanso entre jornadas es menor a 10 horas. Deberías presentarte a trabajar
+                            <strong><span id="hora-recomendada"></span></strong>.
                         </div>
+
 
                         <button type="submit" class="btn btn-success w-100">Registrar Horas</button>
                         <a href="{% url 'dashboard' %}" class="btn btn-secondary w-100 mt-2">Cancelar</a>
@@ -79,7 +81,6 @@
             if (fechaInicio && fechaFin && fechaFin > fechaInicio) {
                 let horas = (fechaFin - fechaInicio) / (1000 * 60 * 60);
 
-                // Inicializar variables para verificar días excluidos
                 const esSabadoODomingo = (fecha) => fecha.getDay() === 0 || fecha.getDay() === 6;
                 let esFeriado = false;
 
@@ -89,68 +90,75 @@
                     fechaFin.toISOString().split('T')[0]
                 );
 
-                // Verificar si la fecha inicial o final están dentro de los feriados
                 esFeriado = diasFeriados.some(
                     (feriado) => fechaInicio <= feriado && fechaFin >= feriado
                 );
 
-                // Descontar la hora de almuerzo si no es sábado, domingo o feriado
+                // Descontar 1 hora de almuerzo si no es fin de semana o feriado
                 if (!esSabadoODomingo(fechaInicio) && !esFeriado) {
                     const almuerzoInicio = new Date(fechaInicio);
-                    almuerzoInicio.setHours(12, 0, 0, 0); // 12:00 PM
-
+                    almuerzoInicio.setHours(12, 0, 0, 0);
                     const almuerzoFin = new Date(fechaInicio);
-                    almuerzoFin.setHours(13, 0, 0, 0); // 1:00 PM
+                    almuerzoFin.setHours(13, 0, 0, 0);
 
                     if (fechaInicio <= almuerzoInicio && fechaFin >= almuerzoFin) {
-                        horas -= 1; // Descontar 1 hora de almuerzo
+                        horas -= 1;
                     }
                 }
 
-                // Duplicar horas si es domingo y tipoHoras es 'HC'
-                // if (fechaInicio.getDay() === 0 && fechaFin.getDay() === 0 && tipoHorasInput.value === 'HC') {
-                //     horas *= 2;
-                // }
-
-                // Mostrar mensaje si es 'HEF'
+                // Mostrar mensaje si es HEF
                 if (tipoHorasInput.value === 'HEF') {
                     mensajeFeriadosDiv.style.display = 'block';
+                } else {
+                    mensajeFeriadosDiv.style.display = 'none';
                 }
 
-                // Mostrar las horas calculadas con 2 decimales
                 cantidadHorasSpan.textContent = horas.toFixed(2);
                 horasCalculadasDiv.style.display = 'block';
 
+                // --- Lógica de descanso HC ---
                 if (tipoHorasInput.value === 'HC') {
-                    const turnoNormal = new Date(fechaFin);
-                    turnoNormal.setHours(7, 0, 0, 0);
+                    let mostrarMensaje = false;
+                    let nuevaEntrada;
+
                     if (fechaFin.getHours() >= 7) {
-                        turnoNormal.setDate(turnoNormal.getDate() + 1);
+                        // Ya invadió el turno → descanso obligatorio hasta el día siguiente a las 7:00 AM
+                        nuevaEntrada = new Date(fechaFin);
+                        nuevaEntrada.setDate(nuevaEntrada.getDate() + 1);
+                        nuevaEntrada.setHours(7, 0, 0, 0);
+                        mostrarMensaje = true;
+                    } else {
+                        const turnoNormal = new Date(fechaFin);
+                        turnoNormal.setHours(7, 0, 0, 0);
+
+                        const horasDescanso = (turnoNormal - fechaFin) / (1000 * 60 * 60);
+                        if (horasDescanso < 10) {
+                            nuevaEntrada = new Date(fechaFin.getTime() + 10 * 60 * 60 * 1000);
+                            mostrarMensaje = true;
+                        }
                     }
 
-                    const horasDescanso = (turnoNormal - fechaFin) / (1000 * 60 * 60);
-
-                    if (horasDescanso < 10) {
-                        const nuevaEntrada = new Date(fechaFin.getTime() + 10 * 60 * 60 * 1000);
+                    if (mostrarMensaje) {
+                        const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+                        const diaNombre = diasSemana[nuevaEntrada.getDay()];
                         const horaTexto = nuevaEntrada.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                         alertaDescanso.style.display = 'block';
-                        horaRecomendada.textContent = horaTexto;
+                        horaRecomendada.textContent = `${diaNombre} a las ${horaTexto}`;
                     } else {
                         alertaDescanso.style.display = 'none';
                     }
+
                 } else {
                     alertaDescanso.style.display = 'none';
-                    
                 }
-                
 
             } else {
                 mensajeFeriadosDiv.style.display = 'none';
                 horasCalculadasDiv.style.display = 'none';
                 alertaDescanso.style.display = 'none';
             }
-
         }
+
 
         // Verificar si ya hay fechas seleccionadas al cargar la página
         if (fechaInicioInput.value && fechaFinInput.value) {
