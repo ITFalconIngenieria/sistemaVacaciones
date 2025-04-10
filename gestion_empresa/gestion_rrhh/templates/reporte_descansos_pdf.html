@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Descansos</title>
+    <style>
+        @page { margin: 2cm; size: letter; }
+        body { font-family: Arial, sans-serif; font-size: 12px; color: #333; }
+        h1, h2, h3 { margin: 0 0 10px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+        th { background-color: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>Reporte de Descansos Compensatorios</h1>
+    <h3>Fecha del reporte: {{ fecha_reporte|date:"d/m/Y" }}</h3>
+
+    {% for usuario, data in descansos_por_usuario.items %}
+        <h4>Colaborador: {{ usuario.get_full_name }}</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha y Hora Inicio</th>
+                    <th>Fecha y Hora Fin</th>
+                    <th>Horas Descansadas</th>
+                </tr>
+                </tr>
+            </thead>
+            <tbody>
+                {% for descanso in data.descansos %}
+                <tr>
+                    <td>{{ descanso.inicio_descanso|date:"d/m/Y H:i" }}</td>
+                    <td>{{ descanso.fin_descanso|date:"d/m/Y H:i" }}</td>
+                    <td>{{ descanso.horas_compensadas }}</td>
+                </tr>
+                {% endfor %}
+                <tr>
+                    <td colspan="2"><strong>Total Horas</strong></td>
+                    <td><strong>{{ data.total_horas }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    {% endfor %}
+</body>
+</html>

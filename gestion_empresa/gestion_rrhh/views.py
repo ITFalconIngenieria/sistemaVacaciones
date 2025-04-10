@@ -3083,3 +3083,81 @@ def reporte_horas_ingresadas_por_usuario_odoo(request):
         'registros_por_usuario': page_obj.object_list,
     })
 
+@login_required
+def reporte_descansos(request):
+    if not request.user.departamento or request.user.departamento.nombre != 'ADMON':
+        raise PermissionDenied("No tienes permiso para acceder a esta página.")
+
+    descansos = HorasCompensatoriasDescanso.objects.filter(
+        estado_cierre=False
+    ).order_by('usuario', 'inicio_descanso')
+
+    descansos_por_usuario = {}
+    for descanso in descansos:
+        usuario = descanso.usuario
+        if usuario not in descansos_por_usuario:
+            descansos_por_usuario[usuario] = {'descansos': [], 'total_horas': 0}
+        descansos_por_usuario[usuario]['descansos'].append(descanso)
+        descansos_por_usuario[usuario]['total_horas'] += descanso.horas_compensadas or 0
+
+    hay_descansos = descansos.exists()
+
+    if request.method == "POST":
+        seleccionados = request.POST.getlist('seleccionados')
+        if 'marcar_cerrado' in request.POST:
+            if seleccionados:
+                actualizados = HorasCompensatoriasDescanso.objects.filter(id__in=seleccionados).update(estado_cierre=True)
+                messages.success(request, f"{actualizados} descansos han sido marcados como cerrados.")
+                return redirect('reporte_descansos')
+            else:
+                messages.warning(request, "Por favor selecciona al menos un descanso para marcar como cerrado.")
+        elif 'generar_reporte' in request.POST:
+            request.session['reporte_descansos'] = seleccionados
+            return redirect('generar_reporte_descansos_pdf')
+
+    paginator = Paginator(list(descansos_por_usuario.items()), 5)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'reporte_descansos.html', {
+        'page_obj': page_obj,
+        'hay_descansos': hay_descansos,
+        'fecha_reporte': now(),
+    })
+
+
+@login_required
+def generar_reporte_descansos_pdf(request):
+    if not request.user.departamento or request.user.departamento.nombre != 'ADMON':
+        raise PermissionDenied("No tienes permiso para acceder a esta página.")
+
+    descansos = HorasCompensatoriasDescanso.objects.filter(
+        estado_cierre=False
+    ).order_by('usuario', 'inicio_descanso')
+
+    descansos_por_usuario = {}
+    for descanso in descansos:
+        usuario = descanso.usuario
+        if usuario not in descansos_por_usuario:
+            descansos_por_usuario[usuario] = {'descansos': [], 'total_horas': 0}
+        descansos_por_usuario[usuario]['descansos'].append(descanso)
+        descansos_por_usuario[usuario]['total_horas'] += descanso.horas_compensadas or 0
+
+    context = {
+        'descansos_por_usuario': descansos_por_usuario,
+        'fecha_reporte': now(),
+    }
+
+    template = get_template('reporte_descansos_pdf.html')
+    html = template.render(context)
+
+    fecha_actual = datetime.now().strftime("%Y-%m-%d")
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="reporte_descansos_{fecha_actual}.pdf"'
+
+    pisa_status = pisa.CreatePDF(html, dest=response, encoding='UTF-8')
+
+    if pisa_status.err:
+        return HttpResponse('Error al generar el PDF', status=400)
+
+    return response

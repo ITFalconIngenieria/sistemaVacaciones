@@ -242,6 +242,8 @@ class HorasCompensatoriasDescanso(models.Model):
     registro_origen = models.ForeignKey('RegistroHoras', on_delete=models.CASCADE)
     inicio_descanso = models.DateTimeField()
     fin_descanso = models.DateTimeField()
+    estado_cierre = models.BooleanField(default=False)
+
 
     def __str__(self):
         return f"{self.usuario} - {self.inicio_descanso.date()} - {self.horas_compensadas}h"

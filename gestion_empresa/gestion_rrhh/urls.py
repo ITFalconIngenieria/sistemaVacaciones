@@ -72,6 +72,10 @@ urlpatterns = [
     path('eliminar-registro-horas-odoo/<int:pk>/', views.eliminar_registro_horas_odoo, name='eliminar_registro_horas_odoo'),
     path('reporte-horas-pendientes-odoo/', views.reporte_horas_pendientes_odoo, name='reporte_horas_pendientes_odoo'),
     path('reporte_horas_ingresadas_por_usuario_odoo/', views.reporte_horas_ingresadas_por_usuario_odoo, name='reporte_horas_ingresadas_por_usuario_odoo'),
+
+    path('reporte-descansos/', views.reporte_descansos, name='reporte_descansos'),
+    path('reporte-descansos/pdf/', views.generar_reporte_descansos_pdf, name='generar_reporte_descansos_pdf'),
+
 ]
 
 # Servir archivos estáticos en producción

@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}Reporte de Descansos{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Reporte de Descansos Art. 327</h2>
+    <form method="post">
+        {% csrf_token %}
+        <table class="table table-striped">
+            <thead class="text-center align-middle">
+                <tr>
+                    <th><input type="checkbox" id="seleccionar_todos"></th>
+                    <th>Colaborador</th>
+                    <th>Fecha y Hora Inicio</th>
+                    <th>Fecha y Hora Fin</th>
+                    <th>Horas Descansadas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for usuario, data in page_obj %}
+                    <tr>
+                        <td colspan="5"><strong>{{ usuario.get_full_name }}</strong></td>
+                    </tr>
+                    {% for descanso in data.descansos %}
+                    <tr>
+                        <td><input type="checkbox" name="seleccionados" value="{{ descanso.id }}"></td>
+                        <td></td>
+                        <td class="text-center align-middle">{{ descanso.inicio_descanso|date:"d/m/Y H:i" }}</td>
+                        <td class="text-center align-middle">{{ descanso.fin_descanso|date:"d/m/Y H:i" }}</td>
+                        <td class="text-center align-middle">{{ descanso.horas_compensadas }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr>
+                        <td colspan="4"><strong>Total Horas</strong></td>
+                        <td class="text-center align-middle"><strong>{{ data.total_horas }}</strong></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <button type="submit" name="generar_reporte" class="btn btn-secondary" {% if not hay_descansos %}disabled{% endif %}>Generar PDF</button>
+        <button type="submit" name="marcar_cerrado" class="btn btn-primary" id="boton_marcar_cerrado" disabled>Marcar como Cerrado</button>
+    </form>
+
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page=1">Primera</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const checkboxes = document.querySelectorAll('input[name="seleccionados"]');
+        const botonMarcarCerrado = document.getElementById('boton_marcar_cerrado');
+        const seleccionarTodos = document.getElementById('seleccionar_todos');
+
+        function actualizarEstadoBotones() {
+            const haySeleccionados = Array.from(checkboxes).some(checkbox => checkbox.checked);
+            botonMarcarCerrado.disabled = !haySeleccionados;
+        }
+
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', actualizarEstadoBotones);
+        });
+
+        seleccionarTodos.addEventListener('change', function () {
+            checkboxes.forEach(checkbox => checkbox.checked = seleccionarTodos.checked);
+            actualizarEstadoBotones();
+        });
+
+        actualizarEstadoBotones();
+    });
+</script>
+{% endblock %}
