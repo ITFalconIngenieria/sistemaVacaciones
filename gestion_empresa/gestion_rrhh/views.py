@@ -212,7 +212,7 @@ def dashboard(request):
         
         eventos += generar_eventos_validos(
             nombre_completo,
-            "Descanso obligatorio",
+            "Descanso obligatorio Art. 327",
             fecha_inicio,
             fecha_fin,
             descripcion,
