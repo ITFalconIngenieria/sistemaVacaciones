@@ -27,7 +27,7 @@
                         </div>
 
                         <div class="alert alert-danger mb-3" id="alerta-descanso" style="display: none;">
-                            Atención: el descanso entre jornadas es menor a 10 horas. Deberías presentarte a trabajar
+                            Atención: Por descanso entre jornadas debes presentarte a trabajar el
                             <strong><span id="hora-recomendada"></span></strong>.
                         </div>
 
@@ -117,40 +117,42 @@
                 horasCalculadasDiv.style.display = 'block';
 
                 // --- Lógica de descanso HC ---
-                if (tipoHorasInput.value === 'HC') {
-                    let mostrarMensaje = false;
-                    let nuevaEntrada;
+                let mostrarMensaje = false;
+                let nuevaEntrada;
 
-                    if (fechaFin.getHours() >= 7) {
-                        // Ya invadió el turno → descanso obligatorio hasta el día siguiente a las 7:00 AM
-                        nuevaEntrada = new Date(fechaFin);
-                        nuevaEntrada.setDate(nuevaEntrada.getDate() + 1);
-                        nuevaEntrada.setHours(7, 0, 0, 0);
-                        mostrarMensaje = true;
-                    } else {
-                        const turnoNormal = new Date(fechaFin);
-                        turnoNormal.setHours(7, 0, 0, 0);
+                let fechaFinCopia = new Date(fechaFin);
+                let turnoDelDia = new Date(fechaFinCopia);
+                turnoDelDia.setHours(7, 0, 0, 0);
 
-                        const horasDescanso = (turnoNormal - fechaFin) / (1000 * 60 * 60);
-                        if (horasDescanso < 10) {
-                            nuevaEntrada = new Date(fechaFin.getTime() + 10 * 60 * 60 * 1000);
-                            mostrarMensaje = true;
-                        }
-                    }
+                // Si ya pasó de las 07:00 AM, el próximo turno es mañana
+                let proximoTurno = (fechaFin.getHours() >= 7)
+                    ? new Date(fechaFinCopia.setDate(fechaFin.getDate() + 1))
+                    : new Date(fechaFin);
 
-                    if (mostrarMensaje) {
-                        const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-                        const diaNombre = diasSemana[nuevaEntrada.getDay()];
-                        const horaTexto = nuevaEntrada.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        alertaDescanso.style.display = 'block';
-                        horaRecomendada.textContent = `${diaNombre} a las ${horaTexto}`;
-                    } else {
-                        alertaDescanso.style.display = 'none';
-                    }
+                proximoTurno.setHours(7, 0, 0, 0);
 
+                // Diferencia en horas entre salida y próximo turno
+                let horasDescanso = (proximoTurno - fechaFin) / (1000 * 60 * 60);
+
+                if (horasDescanso < 10) {
+                    nuevaEntrada = new Date(fechaFin.getTime() + 10 * 60 * 60 * 1000); // Suma 10h desde salida
+                    mostrarMensaje = true;
+                } else if (fechaFin.getHours() >= 7) {
+                    nuevaEntrada = proximoTurno; // Hasta las 07:00 del día siguiente
+                    mostrarMensaje = true;
+                }
+
+                if (mostrarMensaje) {
+                    const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+                    const diaNombre = diasSemana[nuevaEntrada.getDay()];
+                    const horaTexto = nuevaEntrada.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    alertaDescanso.style.display = 'block';
+                    horaRecomendada.textContent = `${diaNombre} a las ${horaTexto}`;
                 } else {
                     alertaDescanso.style.display = 'none';
                 }
+
+
 
             } else {
                 mensajeFeriadosDiv.style.display = 'none';

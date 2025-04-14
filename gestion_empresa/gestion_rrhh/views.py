@@ -949,19 +949,28 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         registro.estado = 'P'
         registro.save()
 
-        # Lógica de descanso aplica a cualquier tipo ahora
+        # Lógica de descanso aplica a cualquier tipo
         fecha_fin = registro.fecha_fin
-        hora_turno = timezone.make_aware(datetime.combine(fecha_fin.date(), time(7, 0)))
+        fecha_fin_local = timezone.localtime(fecha_fin)
+        fecha_base = fecha_fin_local.date()
+        hora_turno = time(7, 0)
 
-        diferencia_horas = (hora_turno - fecha_fin).total_seconds() / 3600
+        # Turno de hoy a las 07:00 AM
+        turno_del_dia = timezone.make_aware(datetime.combine(fecha_base, hora_turno))
 
+        # Próximo turno: hoy a las 07:00 AM si aún no pasa, mañana si ya pasó
+        if fecha_fin_local.time() >= hora_turno:
+            proximo_turno = timezone.make_aware(datetime.combine(fecha_base + timedelta(days=1), hora_turno))
+        else:
+            proximo_turno = turno_del_dia
 
+        # Diferencia en horas
+        diferencia_horas = (proximo_turno - fecha_fin).total_seconds() / 3600
+        print("Diferencia de horas con próximo turno:", diferencia_horas)
+
+        # Mostrar mensaje si no descansó 10h o si salió después de las 7am
         if diferencia_horas < 10:
-            if fecha_fin >= hora_turno:
-                # Ya invadió el turno → descanso hasta las 7:00 AM del día siguiente
-                fin_descanso = timezone.make_aware(datetime.combine(hora_turno.date(), time(17, 0)))
-            else:
-                fin_descanso = fecha_fin + timedelta(hours=10)
+            fin_descanso = fecha_fin + timedelta(hours=10)
 
             HorasCompensatoriasDescanso.objects.create(
                 usuario=registro.usuario,
@@ -970,8 +979,21 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
                 inicio_descanso=fecha_fin,
                 fin_descanso=fin_descanso
             )
+            messages.success(self.request, 'Horas de descanso asignadas correctamente.')
+
+        elif fecha_fin_local.time() >= hora_turno:
+
+            HorasCompensatoriasDescanso.objects.create(
+                usuario=registro.usuario,
+                registro_origen=registro,
+                horas_compensadas=Decimal(10),
+                inicio_descanso=fecha_fin,
+                fin_descanso = timezone.make_aware(datetime.combine(fecha_fin.date(), time(17, 0)))
+
+            )
 
             messages.success(self.request, 'Horas de descanso asignadas correctamente.')
+
 
         messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
         return super().form_valid(form)
