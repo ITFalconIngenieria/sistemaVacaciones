@@ -22,7 +22,7 @@
                 </div>
 
                 <div class="alert alert-danger mb-3" id="alerta-descanso" style="display: none;">
-                    Atención: el descanso entre jornadas es menor a 10 horas. Deberías presentarte a trabajar
+                    Atención: Por descanso entre jornadas deberás presentarte a trabajar el
                     <strong><span id="hora-recomendada"></span></strong>.
                 </div>
 
@@ -107,37 +107,49 @@
                 horasCalculadasDiv.style.display = 'block';
 
                 // --- Lógica de descanso HC ---
-                if (tipoHorasInput.value === 'HC') {
-                    let mostrarMensaje = false;
-                    let nuevaEntrada;
+                const HORAS_MINIMAS_DESCANSO = 10;
+                const HORA_INICIO_TURNO = 7;
+                const HORA_FIN_TURNO_DIURNO = 17;
+                const HORA_FIN_TURNO_TARDE = 24;
 
-                    if (fechaFin.getHours() >= 7) {
-                        // Ya invadió el turno → descanso obligatorio hasta el día siguiente a las 7:00 AM
-                        nuevaEntrada = new Date(fechaFin);
-                        nuevaEntrada.setDate(nuevaEntrada.getDate() + 1);
-                        nuevaEntrada.setHours(7, 0, 0, 0);
-                        mostrarMensaje = true;
-                    } else {
-                        const turnoNormal = new Date(fechaFin);
-                        turnoNormal.setHours(7, 0, 0, 0);
+                // Calcular próximo turno y horas de descanso
+                let mostrarMensaje = false;
+                let nuevaEntrada;
 
-                        const horasDescanso = (turnoNormal - fechaFin) / (1000 * 60 * 60);
-                        if (horasDescanso < 10) {
-                            nuevaEntrada = new Date(fechaFin.getTime() + 10 * 60 * 60 * 1000);
-                            mostrarMensaje = true;
-                        }
-                    }
+                // Crear copia de fechaFin para no modificar la original
+                let proximoTurno = new Date(fechaFin);
+                let horasDescanso;
 
-                    if (mostrarMensaje) {
-                        const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-                        const diaNombre = diasSemana[nuevaEntrada.getDay()];
-                        const horaTexto = nuevaEntrada.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        alertaDescanso.style.display = 'block';
-                        horaRecomendada.textContent = `${diaNombre} a las ${horaTexto}`;
-                    } else {
-                        alertaDescanso.style.display = 'none';
-                    }
+                const horaActual = fechaFin.getHours();
 
+                // Simplificación de las condiciones para determinar el próximo turno
+                if ((horaActual > HORA_FIN_TURNO_DIURNO && horaActual < HORA_FIN_TURNO_TARDE) ||
+                    (horaActual >= HORA_INICIO_TURNO && horaActual <= HORA_FIN_TURNO_DIURNO)) {
+                    // Para turnos entre 7:00-17:00 y 17:01-24:00, próximo turno a las 7:00 del día siguiente
+                    proximoTurno.setHours(HORA_INICIO_TURNO, 0, 0, 0);
+                    proximoTurno.setDate(proximoTurno.getDate() + 1);
+                }
+
+                // Calcular horas de descanso (siempre valor positivo)
+                horasDescanso = Math.abs((proximoTurno - fechaFin) / (1000 * 60 * 60));
+
+                // Determinar nueva entrada según las horas de descanso
+                if (horasDescanso < HORAS_MINIMAS_DESCANSO) {
+                    nuevaEntrada = new Date(fechaFin.getTime() + HORAS_MINIMAS_DESCANSO * 60 * 60 * 1000);
+                    mostrarMensaje = true;
+                } else if (horasDescanso <= 24 && horasDescanso >= 14) {
+                    proximoTurno.setHours(HORA_INICIO_TURNO, 0, 0, 0);
+                    nuevaEntrada = proximoTurno;
+                    mostrarMensaje = true;
+                }
+
+                // Mostrar u ocultar alerta según corresponda
+                if (mostrarMensaje) {
+                    const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+                    const diaNombre = diasSemana[nuevaEntrada.getDay()];
+                    const horaTexto = nuevaEntrada.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    alertaDescanso.style.display = 'block';
+                    horaRecomendada.textContent = `${diaNombre} a las ${horaTexto}`;
                 } else {
                     alertaDescanso.style.display = 'none';
                 }

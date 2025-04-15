@@ -117,39 +117,43 @@
                 horasCalculadasDiv.style.display = 'block';
 
                 // --- Lógica de descanso HC ---
+                const HORAS_MINIMAS_DESCANSO = 10;
+                const HORA_INICIO_TURNO = 7;
+                const HORA_FIN_TURNO_DIURNO = 17;
+                const HORA_FIN_TURNO_TARDE = 24;
+
+                // Calcular próximo turno y horas de descanso
                 let mostrarMensaje = false;
                 let nuevaEntrada;
 
-
+                // Crear copia de fechaFin para no modificar la original
                 let proximoTurno = new Date(fechaFin);
-                let horasDescanso
+                let horasDescanso;
 
-                if (fechaFin.getHours() < 24 && fechaFin.getHours()>17) {
-                    proximoTurno.setHours(7, 0, 0, 0);
+                const horaActual = fechaFin.getHours();
+
+                // Simplificación de las condiciones para determinar el próximo turno
+                if ((horaActual > HORA_FIN_TURNO_DIURNO && horaActual < HORA_FIN_TURNO_TARDE) ||
+                    (horaActual >= HORA_INICIO_TURNO && horaActual <= HORA_FIN_TURNO_DIURNO)) {
+                    // Para turnos entre 7:00-17:00 y 17:01-24:00, próximo turno a las 7:00 del día siguiente
+                    proximoTurno.setHours(HORA_INICIO_TURNO, 0, 0, 0);
                     proximoTurno.setDate(proximoTurno.getDate() + 1);
-                    horasDescanso = (proximoTurno - fechaFin) / (1000 * 60 * 60);
-
-                
-                }else if(fechaFin.getHours()>=7 && fechaFin.getHours()<=17 ){
-                    proximoTurno.setHours(7, 0, 0, 0);
-                    proximoTurno.setDate(proximoTurno.getDate() + 1);
-                    horasDescanso = Math.abs((fechaFin - proximoTurno) / (1000 * 60 * 60));
-
-                }
-                
-                else {
-                    horasDescanso = Math.abs((fechaFin - proximoTurno) / (1000 * 60 * 60));
                 }
 
-                if (horasDescanso < 10) {
-                    nuevaEntrada = new Date(fechaFin.getTime() + 10 * 60 * 60 * 1000);
+                // Calcular horas de descanso (siempre valor positivo)
+                horasDescanso = Math.abs((proximoTurno - fechaFin) / (1000 * 60 * 60));
+
+                // Determinar nueva entrada según las horas de descanso
+                if (horasDescanso < HORAS_MINIMAS_DESCANSO) {
+                    nuevaEntrada = new Date(fechaFin.getTime() + HORAS_MINIMAS_DESCANSO * 60 * 60 * 1000);
                     mostrarMensaje = true;
-                } else if(horasDescanso<=24 && horasDescanso>=14 ) {
-                    proximoTurno.setHours(7, 0, 0, 0); 
+                } else if (horasDescanso <= 24 && horasDescanso >= 14) {
+                    proximoTurno.setHours(HORA_INICIO_TURNO, 0, 0, 0);
                     nuevaEntrada = proximoTurno;
                     mostrarMensaje = true;
                 }
 
+                // Mostrar u ocultar alerta según corresponda
                 if (mostrarMensaje) {
                     const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
                     const diaNombre = diasSemana[nuevaEntrada.getDay()];
