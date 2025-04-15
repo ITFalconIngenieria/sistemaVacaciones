@@ -120,25 +120,33 @@
                 let mostrarMensaje = false;
                 let nuevaEntrada;
 
-                let fechaFinCopia = new Date(fechaFin);
-                let turnoDelDia = new Date(fechaFinCopia);
-                turnoDelDia.setHours(7, 0, 0, 0);
 
-                // Si ya pasó de las 07:00 AM, el próximo turno es mañana
-                let proximoTurno = (fechaFin.getHours() >= 7)
-                    ? new Date(fechaFinCopia.setDate(fechaFin.getDate() + 1))
-                    : new Date(fechaFin);
+                let proximoTurno = new Date(fechaFin);
+                let horasDescanso
 
-                proximoTurno.setHours(7, 0, 0, 0);
+                if (fechaFin.getHours() < 24 && fechaFin.getHours()>17) {
+                    proximoTurno.setHours(7, 0, 0, 0);
+                    proximoTurno.setDate(proximoTurno.getDate() + 1);
+                    horasDescanso = (proximoTurno - fechaFin) / (1000 * 60 * 60);
 
-                // Diferencia en horas entre salida y próximo turno
-                let horasDescanso = (proximoTurno - fechaFin) / (1000 * 60 * 60);
+                
+                }else if(fechaFin.getHours()>=7 && fechaFin.getHours()<=17 ){
+                    proximoTurno.setHours(7, 0, 0, 0);
+                    proximoTurno.setDate(proximoTurno.getDate() + 1);
+                    horasDescanso = Math.abs((fechaFin - proximoTurno) / (1000 * 60 * 60));
+
+                }
+                
+                else {
+                    horasDescanso = Math.abs((fechaFin - proximoTurno) / (1000 * 60 * 60));
+                }
 
                 if (horasDescanso < 10) {
-                    nuevaEntrada = new Date(fechaFin.getTime() + 10 * 60 * 60 * 1000); // Suma 10h desde salida
+                    nuevaEntrada = new Date(fechaFin.getTime() + 10 * 60 * 60 * 1000);
                     mostrarMensaje = true;
-                } else if (fechaFin.getHours() >= 7) {
-                    nuevaEntrada = proximoTurno; // Hasta las 07:00 del día siguiente
+                } else if(horasDescanso<=24 && horasDescanso>=14 ) {
+                    proximoTurno.setHours(7, 0, 0, 0); 
+                    nuevaEntrada = proximoTurno;
                     mostrarMensaje = true;
                 }
 
@@ -151,7 +159,6 @@
                 } else {
                     alertaDescanso.style.display = 'none';
                 }
-
 
 
             } else {
