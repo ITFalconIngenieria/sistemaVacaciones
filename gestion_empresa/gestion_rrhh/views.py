@@ -203,7 +203,7 @@ def dashboard(request):
         })
 
 
-    for descanso in HorasCompensatoriasDescanso.objects.filter(fin_descanso__date__gte=fecha_actual):
+    for descanso in HorasCompensatoriasDescanso.objects.filter(fin_descanso__date__gte=fecha_hora_actual):
         nombre_completo = f"{descanso.usuario.first_name} {descanso.usuario.last_name}"
         descripcion = f"Inicio: {descanso.inicio_descanso.strftime('%d-%m-%Y %H:%M')} - Fin: {descanso.fin_descanso.strftime('%d-%m-%Y %H:%M')}"
         
