@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 
-{% block title %}Reporte de Horas Extras{% endblock %}
+{% block title %}Reporte de Horas Extras y Trabajo en dias Feriado{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Reporte de Horas Extras</h2>
+    <h2>Reporte de Horas Extra y Trabajo En Dias Feriado</h2>
     <form method="post">
         {% csrf_token %}
         <table class="table table-striped">
@@ -19,13 +19,15 @@
                     <th>Fecha Inicio</th>
                     <th>Fecha Fin</th>
                     <th>Horas</th>
+                    <th>Tipo</th>
+
                     <th>Descripción</th>
                 </tr>
             </thead>
             <tbody>
                 {% for usuario, data in page_obj %}
                 <tr>
-                    <td colspan="8"><strong>{{ usuario.get_full_name }}</strong></td>
+                    <td colspan="9"><strong>{{ usuario.get_full_name }}</strong></td>
                 </tr>
                 {% for registro in data.registros %}
                 <tr>
@@ -38,12 +40,22 @@
                     <td>{{ registro.fecha_inicio|date:"d/M/Y H:i"}}</td>
                     <td>{{ registro.fecha_fin|date:"d/M/Y H:i"}}</td>
                     <td>{{ registro.horas }}</td>
+                    <td>
+                        {% if registro.tipo == 'HE' %}
+                            Horas Extra
+                        {% elif registro.tipo == 'HEF' %}
+                            Feriado
+                        {% else %}
+                            {{ registro.tipo }}
+                        {% endif %}
+                    </td>
+                    
                     <td>{{ registro.descripcion }}</td>
                 </tr>
                 {% endfor %}
                 <tr>
                     <th colspan="6">Total horas para {{ usuario.get_full_name }}</th>
-                    <td colspan="2">{{ data.total_horas }}</td>
+                    <td colspan="3">{{ data.total_horas }}</td>
                 </tr>
                 {% endfor %}
             </tbody>

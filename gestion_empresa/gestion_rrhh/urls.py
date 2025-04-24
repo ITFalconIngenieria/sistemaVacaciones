@@ -35,8 +35,8 @@ urlpatterns = [
     path('aprobar-rechazar-horas/<int:pk>/', views.AprobarRechazarHorasView.as_view(), name='aprobar_rechazar_horas'),
     path('ajuste-vacaciones/', views.ajuste_vacaciones, name='ajuste_vacaciones'),
     path('historial-ajustes-vacaciones/', views.historial_ajustes_vacaciones, name='historial_ajustes_vacaciones'),
-    path('reporte-horas-extra/', views.reporte_horas_extra_html, name='reporte_horas_extra'),
-    path('generar-pdf/', views.reporte_horas_extra_PDF.as_view(), name='generar_pdf'),
+    path('reporte-horas-extra/', views.reporte_horas_extra_y_feriados_html, name='reporte_horas_extra_y_feriados'),
+    path('generar-pdf/', views.reporte_horas_extra_y_feriados_pdf.as_view(), name='generar_pdf'),
 
     # Incapacidades
     path('incapacidades/crear/', views.CrearIncapacidadView.as_view(), name='crear_incapacidad'),

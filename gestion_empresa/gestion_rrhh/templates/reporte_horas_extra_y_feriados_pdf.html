@@ -80,7 +80,7 @@
     
 </head>
 <body>
-    <h1>Reporte de Horas Extras</h1>
+    <h1>Reporte de Horas Extra y Trabajo En Dias Feriado</h1>
     <h2>Fecha del Reporte: {{ fecha_reporte|date:"d/m/Y" }}</h2>
     
     <table>
@@ -92,6 +92,7 @@
                 <th>Fecha Inicio</th>
                 <th>Fecha Fin</th>
                 <th>Horas</th>
+                <th>Tipo</th>
                 <th>Descripción</th>
             </tr>
         </thead>
@@ -105,6 +106,16 @@
                     <td>{{ registro.fecha_inicio|date:"d/M/Y H:i"}}</td>
                     <td>{{ registro.fecha_fin|date:"d/M/Y H:i"}}</td>
                     <td>{{ registro.horas }}</td>
+                    <td>
+                        {% if registro.tipo == 'HE' %}
+                            Horas Extra
+                        {% elif registro.tipo == 'HEF' %}
+                            Feriado
+                        {% else %}
+                            {{ registro.tipo }}
+                        {% endif %}
+                    </td>
+                    
                     <td>{{ registro.descripcion }}</td>
                 </tr>
                 {% endfor %}

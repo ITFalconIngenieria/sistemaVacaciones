@@ -1822,7 +1822,7 @@ def historial_ajustes_vacaciones(request):
 
 
 @login_required
-def reporte_horas_extra_html(request):
+def reporte_horas_extra_y_feriados_html(request):
     # Verificar permisos
     if not request.user.departamento or request.user.departamento.nombre != 'ADMON':
         raise PermissionDenied("No tienes permiso para acceder a esta página.")
@@ -1850,24 +1850,24 @@ def reporte_horas_extra_html(request):
         if 'marcar_pagado' in request.POST:
             registros_actualizados = RegistroHoras.objects.filter(id__in=seleccionados).update(estado_pago='PG')
             messages.success(request, f"{registros_actualizados} registros de horas extras han sido marcados como pagados.")
-            return redirect('reporte_horas_extra')
+            return redirect('reporte_horas_extra_y_feriados')
 
         elif 'generar_reporte' in request.POST:
-            request.session['reporte_horas_extra'] = seleccionados
+            request.session['reporte_horas_extra_y_feriados'] = seleccionados
             return redirect('generar_pdf')
 
     paginator = Paginator(list(registros_por_usuario.items()),5)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    return render(request, 'reporte_horas_extra.html', {
+    return render(request, 'reporte_horas_extra_y_feriados.html', {
         'page_obj': page_obj,
         'hay_registros_pendientes': hay_registros_pendientes,
     })
 
 
 
-class reporte_horas_extra_PDF(LoginRequiredMixin,View):
+class reporte_horas_extra_y_feriados_pdf(LoginRequiredMixin,View):
     
     def dispatch(self, request, *args, **kwargs):
         if not request.user.departamento or request.user.departamento.nombre != 'ADMON':
@@ -1903,6 +1903,7 @@ class reporte_horas_extra_PDF(LoginRequiredMixin,View):
                 'fecha_inicio': registro.fecha_inicio,
                 'fecha_fin': registro.fecha_fin,
                 'horas': f"{registro.horas:.2f}",
+                'tipo':registro.tipo,
                 'descripcion': registro.descripcion or ''
             })
             registros_por_usuario[usuario_nombre]['total_horas'] += float(registro.horas)
@@ -1913,7 +1914,7 @@ class reporte_horas_extra_PDF(LoginRequiredMixin,View):
             'fecha_reporte': now(),
         }
 
-        template = get_template('reporte_horas_extra_pdf.html')
+        template = get_template('reporte_horas_extra_y_feriados_pdf.html')
         html = template.render(context)
         fecha_actual = datetime.now().strftime("%Y:%m:%d")
         response = HttpResponse(content_type='application/pdf')
