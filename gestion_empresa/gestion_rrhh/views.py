@@ -540,90 +540,197 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
         return context
     
 
+# class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+#     model = Solicitud
+#     fields = ['estado']
+#     template_name = 'aprobar_rechazar_solicitud.html'
+#     success_url = reverse_lazy('lista_solicitudes')
+
+#     def get_context_data(self, **kwargs):
+#         context = super().get_context_data(**kwargs)
+#         registro = self.get_object()
+#         usuario = registro.usuario
+
+#         dias_data = calcular_dias_disponibles(usuario)
+#         horas_data = calcular_horas_individuales(usuario)
+
+#         context['dias_disponibles'] = dias_data.get('dias_disponibles', 0)
+#         context['horas_compensatorias'] = horas_data.get('HC', 0)
+#         context['horas_extras'] = horas_data.get('HE', 0)
+
+#         return context
+
+#     def test_func(self):
+#         solicitud = self.get_object()
+
+#         if (self.request.user.rol != 'GG' and solicitud.usuario == self.request.user):
+#             messages.error(self.request, 'No puedes aprobar o rechazar tu propia solicitud.')
+#             return False
+
+
+#         if self.request.user.is_superuser or self.request.user.rol == 'GG':
+#             return True
+#         elif self.request.user.rol == 'JI':
+#             return solicitud.usuario.departamento.nombre in ['IT', 'ENERGIA', 'INDUSTRIA', 'TALLER','TGU']
+#         elif self.request.user.rol == 'JD':
+#             return solicitud.usuario in self.request.user.subordinados.all()
+#         return False
+
+#     def form_valid(self, form):
+#         solicitud = self.get_object()
+#         dias_data = calcular_dias_disponibles(solicitud.usuario)
+#         usuario = solicitud.usuario
+#         dias_disponibles = dias_data['dias_disponibles']
+#         fecha_ajustada = now() - timedelta(hours=6)
+#         año_actual = fecha_ajustada.year
+#         horas_data = calcular_horas_individuales(solicitud.usuario)
+#         horas_compensatorias = horas_data['HC']
+        
+#         if form.instance.estado == 'A':
+#             if solicitud.tipo == 'V':
+
+#                 if solicitud.dias_solicitados > dias_disponibles:
+#                     dias_faltantes = solicitud.dias_solicitados - dias_disponibles
+#                     messages.warning(
+#                         self.request, 
+#                         f"Advertencia: Al aprobar esta solicitud, el saldo de días de vacaciones será negativo en {dias_faltantes} días."
+#                     )
+
+#             elif solicitud.tipo == 'HC':
+                
+#                 if horas_compensatorias >= solicitud.horas:
+#                     solicitud.usuario.save()  
+#                 else:
+#                     messages.error(self.request, "No se puede aprobar. El usuario no tiene suficientes horas compensatorias.")
+#                     return self.form_invalid(form)
+
+#         form.instance.aprobado_por = self.request.user
+#         messages.success(self.request, 'La solicitud ha sido procesada exitosamente.')
+#         fecha_ajustada = now() - timedelta(hours=6)
+#         year = fecha_ajustada.year
+#         estados = {
+#         'A': "Aprobada",
+#         'R': "Rechazada",
+#         'P': "Pendiente",
+#     }
+#         context = {
+#             "usuario": usuario.first_name,
+#             "numero_solicitud": solicitud.numero_solicitud,
+#             "tipo": solicitud.get_tipo_display(),
+#             "fecha_inicio": solicitud.fecha_inicio,
+#             "fecha_fin": solicitud.fecha_fin,
+#             "estado": estados.get(form.instance.estado, "Desconocido"),
+#             "aprobado_por": form.instance.aprobado_por.get_full_name(),
+#             "year": year,
+#             "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+#             "enlace_revisar": settings.ENLACE_DEV
+#         }
+
+#         html_content = render_to_string("mail_estado_solicitud.html", context)
+#         email_sender = MicrosoftGraphEmail()
+#         subject = f"Tu solicitud ha sido {context['estado']}"
+
+#         try:
+#             email_sender.send_email(
+#                 subject=subject,
+#                 content=html_content,
+#                 to_recipients=[usuario.email],
+#             )
+#         except Exception as e:
+#             print(f"Error al enviar correo al usuario {usuario.email}: {e}")
+#             messages.error(f"Error al enviar correo al usuario {usuario.email}: {e}")
+#         return super().form_valid(form)
+
 class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Solicitud
     fields = ['estado']
     template_name = 'aprobar_rechazar_solicitud.html'
     success_url = reverse_lazy('lista_solicitudes')
 
+    def dispatch(self, request, *args, **kwargs):
+        self.solicitud = self.get_object()
+        return super().dispatch(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        registro = self.get_object()
-        usuario = registro.usuario
+        usuario = self.solicitud.usuario
 
         dias_data = calcular_dias_disponibles(usuario)
         horas_data = calcular_horas_individuales(usuario)
 
-        context['dias_disponibles'] = dias_data.get('dias_disponibles', 0)
-        context['horas_compensatorias'] = horas_data.get('HC', 0)
-        context['horas_extras'] = horas_data.get('HE', 0)
-
+        context.update({
+            'dias_disponibles': dias_data.get('dias_disponibles', 0),
+            'horas_compensatorias': horas_data.get('HC', 0),
+            'horas_extras': horas_data.get('HE', 0),
+        })
         return context
 
     def test_func(self):
-        solicitud = self.get_object()
+        solicitud = self.solicitud
+        user = self.request.user
 
-        if (self.request.user.rol != 'GG' and solicitud.usuario == self.request.user):
+        if user.rol != 'GG' and solicitud.usuario == user:
             messages.error(self.request, 'No puedes aprobar o rechazar tu propia solicitud.')
             return False
 
-
-        if self.request.user.is_superuser or self.request.user.rol == 'GG':
+        if user.is_superuser or user.rol == 'GG':
             return True
-        elif self.request.user.rol == 'JI':
-            return solicitud.usuario.departamento.nombre in ['IT', 'ENERGIA', 'INDUSTRIA', 'TALLER','TGU']
-        elif self.request.user.rol == 'JD':
-            return solicitud.usuario in self.request.user.subordinados.all()
+        elif user.rol == 'JI':
+            return solicitud.usuario.departamento.nombre in ['IT', 'ENERGIA', 'INDUSTRIA', 'TALLER', 'TGU']
+        elif user.rol == 'JD':
+            return solicitud.usuario in user.subordinados.all()
+
         return False
 
     def form_valid(self, form):
-        solicitud = self.get_object()
-        dias_data = calcular_dias_disponibles(solicitud.usuario)
+        solicitud = self.solicitud
         usuario = solicitud.usuario
-        dias_disponibles = dias_data['dias_disponibles']
-        fecha_ajustada = now() - timedelta(hours=6)
-        año_actual = fecha_ajustada.year
-        horas_data = calcular_horas_individuales(solicitud.usuario)
-        horas_compensatorias = horas_data['HC']
-        
+
         if form.instance.estado == 'A':
-            if solicitud.tipo == 'V':
-
-                if solicitud.dias_solicitados > dias_disponibles:
-                    dias_faltantes = solicitud.dias_solicitados - dias_disponibles
-                    messages.warning(
-                        self.request, 
-                        f"Advertencia: Al aprobar esta solicitud, el saldo de días de vacaciones será negativo en {dias_faltantes} días."
-                    )
-
-            elif solicitud.tipo == 'HC':
-                
-                if horas_compensatorias >= solicitud.horas:
-                    solicitud.usuario.save()  
-                else:
-                    messages.error(self.request, "No se puede aprobar. El usuario no tiene suficientes horas compensatorias.")
-                    return self.form_invalid(form)
+            if not self.validar_aprobacion_solicitud(solicitud):
+                return self.form_invalid(form)
 
         form.instance.aprobado_por = self.request.user
         messages.success(self.request, 'La solicitud ha sido procesada exitosamente.')
+
+        self.enviar_notificacion(usuario, solicitud, form.instance.estado)
+        return super().form_valid(form)
+
+    def validar_aprobacion_solicitud(self, solicitud):
+        usuario = solicitud.usuario
+        dias_data = calcular_dias_disponibles(usuario)
+        horas_data = calcular_horas_individuales(usuario)
+
+        if solicitud.tipo == 'V':
+            dias_disponibles = dias_data['dias_disponibles']
+            if solicitud.dias_solicitados > dias_disponibles:
+                dias_faltantes = solicitud.dias_solicitados - dias_disponibles
+                messages.warning(
+                    self.request,
+                    f"Advertencia: Al aprobar esta solicitud, el saldo de días de vacaciones será negativo en {dias_faltantes} días."
+                )
+        elif solicitud.tipo == 'HC':
+            horas_compensatorias = horas_data['HC']
+            if horas_compensatorias < solicitud.horas:
+                messages.error(self.request, "No se puede aprobar. El usuario no tiene suficientes horas compensatorias.")
+                return False
+        return True
+
+    def enviar_notificacion(self, usuario, solicitud, estado):
         fecha_ajustada = now() - timedelta(hours=6)
-        year = fecha_ajustada.year
-        estados = {
-        'A': "Aprobada",
-        'R': "Rechazada",
-        'P': "Pendiente",
-    }
+        estados = {'A': "Aprobada", 'R': "Rechazada", 'P': "Pendiente"}
+
         context = {
             "usuario": usuario.first_name,
             "numero_solicitud": solicitud.numero_solicitud,
             "tipo": solicitud.get_tipo_display(),
             "fecha_inicio": solicitud.fecha_inicio,
             "fecha_fin": solicitud.fecha_fin,
-            "estado": estados.get(form.instance.estado, "Desconocido"),
-            "aprobado_por": form.instance.aprobado_por.get_full_name(),
-            "year": year,
+            "estado": estados.get(estado, "Desconocido"),
+            "aprobado_por": self.request.user.get_full_name(),
+            "year": fecha_ajustada.year,
             "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
-            "enlace_revisar": settings.ENLACE_DEV
+            "enlace_revisar": getattr(settings, 'ENLACE_DEV', '#')
         }
 
         html_content = render_to_string("mail_estado_solicitud.html", context)
@@ -638,8 +745,8 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
             )
         except Exception as e:
             print(f"Error al enviar correo al usuario {usuario.email}: {e}")
-            messages.error(f"Error al enviar correo al usuario {usuario.email}: {e}")
-        return super().form_valid(form)
+            messages.error(self.request, f"Error al enviar correo: {e}")
+
 
 class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
     model = Solicitud
@@ -1029,21 +1136,227 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
 
 
 
+# class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
+#     model = RegistroHoras
+#     fields = ['estado']
+#     template_name = 'aprobar_rechazar_horas.html'
+#     success_url = reverse_lazy('lista_solicitudes')
+    
+    
+#     def test_func(self):
+#         registro = self.get_object()
+#         return registro.usuario != self.request.user and self.request.user.rol in ['GG', 'JI', 'JD']
+
+#     def get_context_data(self, **kwargs):
+#         context = super().get_context_data(**kwargs)
+#         registro = self.get_object()
+#         usuario = registro.usuario
+
+#         dias_data = calcular_dias_disponibles(usuario)
+#         horas_data = calcular_horas_individuales(usuario)
+
+#         context['dias_disponibles'] = dias_data.get('dias_disponibles', 0)
+#         context['horas_compensatorias'] = horas_data.get('HC', 0)
+#         context['horas_extras'] = horas_data.get('HE', 0)
+        
+#         return context
+    
+#     def form_valid(self, form):
+#         registro = self.get_object()
+#         usuario = registro.usuario
+#         form.instance.aprobado_por = self.request.user
+#         mensaje_compensatorio = ""
+
+#         if form.instance.estado == 'A':  
+#             if registro.fecha_inicio.weekday() == 6:  # Domingo
+#                 # Calcular rango de la semana previa
+#                 fecha_domingo = registro.fecha_inicio.date()
+#                 fecha_inicio_semana = fecha_domingo - timedelta(days=6)  # Lunes
+#                 fecha_fin_semana = fecha_domingo  # Domingo
+
+#                 # Validar solicitudes y registros dentro del rango de la semana
+#                 lunes_a_viernes_solicitudes_v = Solicitud.objects.filter(
+#                     usuario=usuario,
+#                     tipo='V',
+#                     fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana),
+#                     estado__in=['A', 'P']
+#                 )
+
+#                 lunes_a_viernes_solicitudes_hc = Solicitud.objects.filter(
+#                     usuario=usuario,
+#                     tipo='HC',
+#                     fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana),
+#                     horas__gte=9,
+#                     estado__in=['A', 'P']
+#                 )
+
+#                 lunes_a_viernes_licencias = Licencia.objects.filter(
+#                     usuario=usuario,
+#                     fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana),
+#                     estado__in=['A', 'P']
+#                 )
+
+#                 lunes_a_viernes_incapacidades = Incapacidad.objects.filter(
+#                     usuario=usuario,
+#                     fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana)
+#                 )
+
+#                 registros_fin_semana = RegistroHoras.objects.filter(
+#                     usuario=usuario,
+#                     tipo='HE' if usuario.rol == 'TE' else 'HC',
+#                     fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana),
+#                     estado='P'
+#                 )
+
+#                 sabado_pendientes = [registro for registro in registros_fin_semana if registro.fecha_inicio.weekday() == 5]
+
+#                 registros_fin_semana_aprobados = RegistroHoras.objects.filter(
+#                     usuario=usuario,
+#                     tipo='HE' if usuario.rol == 'TE' else 'HC',
+#                     fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana),
+#                     estado='A'
+#                 )
+
+#                 sabado_aprobados = [registro for registro in registros_fin_semana_aprobados if registro.fecha_inicio.weekday() == 5]
+
+#                 # Unir las solicitudes de lunes a viernes
+#                 lunes_a_viernes_solicitudes = list(lunes_a_viernes_solicitudes_v) + list(lunes_a_viernes_solicitudes_hc)
+
+#                 # Validaciones
+#                 if any(solicitud.estado == 'P' for solicitud in lunes_a_viernes_solicitudes):
+#                     messages.warning(
+#                         self.request,
+#                         "Existen solicitudes para días de semana en estado pendiente que necesitan ser aprobadas/rechazadas."
+#                     )
+#                     return self.form_invalid(form)
+
+#                 if lunes_a_viernes_licencias.filter(estado='P').exists():
+#                     messages.warning(
+#                         self.request,
+#                         "Existen registros de licencias en días de semana en estado pendiente que necesitan ser aprobados/rechazados."
+#                     )
+#                     return self.form_invalid(form)
+
+#                 if sabado_pendientes:
+#                     messages.warning(
+#                         self.request,
+#                         "Existen registros de horas en sábado en estado pendiente que necesitan ser aprobados/rechazados."
+#                     )
+#                     return self.form_invalid(form)
+
+                
+#                 if not (lunes_a_viernes_incapacidades.exists() or lunes_a_viernes_solicitudes or lunes_a_viernes_licencias.exists()) and sabado_aprobados:
+#                     if registro.horas * 2 > 9 and usuario.rol != 'TE':
+#                         nuevas_horas = Decimal(str(registro.horas * 2))
+#                         form.instance.horas = nuevas_horas
+#                         messages.success(
+#                             self.request,
+#                             f"Se detectó trabajo por 7 dias consecutivos con una cantidad de horas mayor a 9 para el dia domingo. Se asignaron automáticamente {nuevas_horas} horas compensatorias al colaborador {usuario.get_full_name()}."
+#                         )
+#                         mensaje_compensatorio = f"Se detectó trabajo por 7 días consecutivos con una cantidad de horas mayor a 9 para el domingo. Se asignaron automáticamente {nuevas_horas} horas compensatorias."
+#                     else:
+#                         HorasCompensatoriasSieteDias.objects.create(
+#                             usuario=usuario,
+#                             horas_compensatorias=9
+#                         )
+#                         messages.success(
+#                             self.request,
+#                             f"Se han asignado automáticamente 9 horas compensatorias al colaborador {usuario.get_full_name()} por haber trabajado 7 días consecutivos."
+#                         )
+#                         mensaje_compensatorio = "Se han asignado automáticamente 9 horas compensatorias por haber trabajado 7 días consecutivos."
+#                 else:
+#                     if usuario.rol != 'TE':
+#                         nuevas_horas = Decimal(str(registro.horas * 2))
+
+#                         form.instance.horas = nuevas_horas
+#                         messages.warning(
+#                             self.request,
+#                             "No se asignaron 9 horas compensatorias porque no trabajó 7 dias consecutivos pero sí se multiplicaron * 2 por ser trabajo en dia domingo."
+#                         )
+#                         mensaje_compensatorio = "No se asignaron 9 horas compensatorias porque no trabajó 7 días consecutivos, pero se asignaron horas doble por ser trabajo en día domingo."
+#                     else:
+#                         nuevas_horas = Decimal(str(registro.horas))
+#                         form.instance.horas = nuevas_horas
+#                         messages.warning(
+#                             self.request,
+#                             "No se asignaron 9 horas compensatorias porque no trabajó 7 dias consecutivos"
+#                         )
+#                         mensaje_compensatorio = "No se asignaron 9 horas compensatorias porque no trabajó 7 días consecutivos."
+
+#                 form.instance.aprobado_por = self.request.user
+#                 messages.success(self.request, 'El registro de horas ha sido procesado Aprobado exitosamente.')
+
+#             elif form.instance.estado == 'R':
+#                 messages.warning(
+#                     self.request,
+#                     f"El registro de horas con el número {registro.numero_registro} ha sido rechazado."
+#                 )
+
+#             elif form.instance.estado == 'P':
+#                 messages.warning(
+#                     self.request,
+#                     f"El registro de horas con el número {registro.numero_registro} ha sido marcado como pendiente."
+#                 )
+
+#             # Enviar notificación por correo
+#             fecha_ajustada = now() - timedelta(hours=6)
+#             year = fecha_ajustada.year
+#             estados = {
+#                 'A': "Aprobada",
+#                 'R': "Rechazada",
+#                 'P': "Pendiente",
+#             }
+            
+#             context = {
+#                 "usuario": usuario.first_name,
+#                 "numero_solicitud": registro.numero_registro,
+#                 "tipo": registro.get_tipo_display(),
+#                 "fecha_inicio": registro.fecha_inicio,
+#                 "fecha_fin": registro.fecha_fin,
+#                 "estado": estados.get(form.instance.estado, "Desconocido"), 
+#                 "aprobado_por": form.instance.aprobado_por.get_full_name(),
+#                 "year": year,
+#                 "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+#                 "enlace_revisar": settings.ENLACE_DEV,
+#                 "mensaje": mensaje_compensatorio
+#             }
+
+#             html_content = render_to_string("mail_estado_solicitud.html", context)
+#             email_sender = MicrosoftGraphEmail()
+#             subject = f"Tu solicitud ha sido {context['estado']}"
+
+#             try:
+#                 email_sender.send_email(
+#                     subject=subject,
+#                     content=html_content,
+#                     to_recipients=[usuario.email],
+#                 )
+#             except Exception as e:
+#                 print(f"Error al enviar correo al usuario {usuario.email}: {e}")
+#                 messages.error(f"Error al enviar correo al usuario {usuario.email}: {e}")
+            
+#         return super().form_valid(form)
+
+
+
+
 class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
     model = RegistroHoras
     fields = ['estado']
     template_name = 'aprobar_rechazar_horas.html'
     success_url = reverse_lazy('lista_solicitudes')
-    
-    
+
+    def dispatch(self, request, *args, **kwargs):
+        # Cachear el objeto para no hacer múltiples consultas
+        self.registro = self.get_object()
+        return super().dispatch(request, *args, **kwargs)
+
     def test_func(self):
-        registro = self.get_object()
-        return registro.usuario != self.request.user and self.request.user.rol in ['GG', 'JI', 'JD']
+        return self.registro.usuario != self.request.user and self.request.user.rol in ['GG', 'JI', 'JD']
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        registro = self.get_object()
-        usuario = registro.usuario
+        usuario = self.registro.usuario
 
         dias_data = calcular_dias_disponibles(usuario)
         horas_data = calcular_horas_individuales(usuario)
@@ -1051,184 +1364,134 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
         context['dias_disponibles'] = dias_data.get('dias_disponibles', 0)
         context['horas_compensatorias'] = horas_data.get('HC', 0)
         context['horas_extras'] = horas_data.get('HE', 0)
-        
+
         return context
-    
+
     def form_valid(self, form):
-        registro = self.get_object()
+        registro = self.registro
         usuario = registro.usuario
-        form.instance.aprobado_por = self.request.user
         mensaje_compensatorio = ""
 
-        if form.instance.estado == 'A':  
+        form.instance.aprobado_por = self.request.user
+
+        if form.instance.estado == 'A':
             if registro.fecha_inicio.weekday() == 6:  # Domingo
-                # Calcular rango de la semana previa
                 fecha_domingo = registro.fecha_inicio.date()
-                fecha_inicio_semana = fecha_domingo - timedelta(days=6)  # Lunes
-                fecha_fin_semana = fecha_domingo  # Domingo
+                fecha_inicio_semana = fecha_domingo - timedelta(days=6)
+                fecha_fin_semana = fecha_domingo
 
-                # Validar solicitudes y registros dentro del rango de la semana
-                lunes_a_viernes_solicitudes_v = Solicitud.objects.filter(
-                    usuario=usuario,
-                    tipo='V',
+                solicitudes_v = Solicitud.objects.filter(
+                    usuario=usuario, tipo='V',
                     fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana),
                     estado__in=['A', 'P']
                 )
-
-                lunes_a_viernes_solicitudes_hc = Solicitud.objects.filter(
-                    usuario=usuario,
-                    tipo='HC',
+                solicitudes_hc = Solicitud.objects.filter(
+                    usuario=usuario, tipo='HC',
                     fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana),
-                    horas__gte=9,
-                    estado__in=['A', 'P']
+                    horas__gte=9, estado__in=['A', 'P']
                 )
-
-                lunes_a_viernes_licencias = Licencia.objects.filter(
+                licencias = Licencia.objects.filter(
                     usuario=usuario,
                     fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana),
                     estado__in=['A', 'P']
                 )
-
-                lunes_a_viernes_incapacidades = Incapacidad.objects.filter(
+                incapacidades = Incapacidad.objects.filter(
                     usuario=usuario,
                     fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana)
                 )
-
-                registros_fin_semana = RegistroHoras.objects.filter(
+                registros_pendientes = RegistroHoras.objects.filter(
                     usuario=usuario,
                     tipo='HE' if usuario.rol == 'TE' else 'HC',
                     fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana),
                     estado='P'
                 )
-
-                sabado_pendientes = [registro for registro in registros_fin_semana if registro.fecha_inicio.weekday() == 5]
-
-                registros_fin_semana_aprobados = RegistroHoras.objects.filter(
+                registros_aprobados = RegistroHoras.objects.filter(
                     usuario=usuario,
                     tipo='HE' if usuario.rol == 'TE' else 'HC',
                     fecha_inicio__range=(fecha_inicio_semana, fecha_fin_semana),
                     estado='A'
                 )
 
-                sabado_aprobados = [registro for registro in registros_fin_semana_aprobados if registro.fecha_inicio.weekday() == 5]
+                solicitudes = list(solicitudes_v) + list(solicitudes_hc)
+                sabado_pendientes = [r for r in registros_pendientes if r.fecha_inicio.weekday() == 5]
+                sabado_aprobados = [r for r in registros_aprobados if r.fecha_inicio.weekday() == 5]
 
-                # Unir las solicitudes de lunes a viernes
-                lunes_a_viernes_solicitudes = list(lunes_a_viernes_solicitudes_v) + list(lunes_a_viernes_solicitudes_hc)
-
-                # Validaciones
-                if any(solicitud.estado == 'P' for solicitud in lunes_a_viernes_solicitudes):
-                    messages.warning(
-                        self.request,
-                        "Existen solicitudes para días de semana en estado pendiente que necesitan ser aprobadas/rechazadas."
-                    )
+                # Validaciones antes de aprobar
+                if any(s.estado == 'P' for s in solicitudes):
+                    messages.warning(self.request, "Existen solicitudes de días laborales pendientes.")
                     return self.form_invalid(form)
-
-                if lunes_a_viernes_licencias.filter(estado='P').exists():
-                    messages.warning(
-                        self.request,
-                        "Existen registros de licencias en días de semana en estado pendiente que necesitan ser aprobados/rechazados."
-                    )
+                if licencias.filter(estado='P').exists():
+                    messages.warning(self.request, "Existen licencias pendientes de aprobación.")
                     return self.form_invalid(form)
-
                 if sabado_pendientes:
-                    messages.warning(
-                        self.request,
-                        "Existen registros de horas en sábado en estado pendiente que necesitan ser aprobados/rechazados."
-                    )
+                    messages.warning(self.request, "Existen registros de sábado pendientes.")
                     return self.form_invalid(form)
 
-                
-                if not (lunes_a_viernes_incapacidades.exists() or lunes_a_viernes_solicitudes or lunes_a_viernes_licencias.exists()) and sabado_aprobados:
-                    if registro.horas * 2 > 9 and usuario.rol != 'TE':
-                        nuevas_horas = Decimal(str(registro.horas * 2))
+                # Asignar horas compensatorias o duplicar horas
+                if not (incapacidades.exists() or solicitudes or licencias.exists()) and sabado_aprobados:
+                    if Decimal(registro.horas) * 2 > 9 and usuario.rol != 'TE':
+                        nuevas_horas = Decimal(registro.horas) * 2
                         form.instance.horas = nuevas_horas
-                        messages.success(
-                            self.request,
-                            f"Se detectó trabajo por 7 dias consecutivos con una cantidad de horas mayor a 9 para el dia domingo. Se asignaron automáticamente {nuevas_horas} horas compensatorias al colaborador {usuario.get_full_name()}."
-                        )
-                        mensaje_compensatorio = f"Se detectó trabajo por 7 días consecutivos con una cantidad de horas mayor a 9 para el domingo. Se asignaron automáticamente {nuevas_horas} horas compensatorias."
+                        mensaje_compensatorio = f"Se asignaron automáticamente {nuevas_horas} horas compensatorias por trabajo 7 días consecutivos."
+                        messages.success(self.request, mensaje_compensatorio)
                     else:
-                        HorasCompensatoriasSieteDias.objects.create(
-                            usuario=usuario,
-                            horas_compensatorias=9
-                        )
-                        messages.success(
-                            self.request,
-                            f"Se han asignado automáticamente 9 horas compensatorias al colaborador {usuario.get_full_name()} por haber trabajado 7 días consecutivos."
-                        )
-                        mensaje_compensatorio = "Se han asignado automáticamente 9 horas compensatorias por haber trabajado 7 días consecutivos."
+                        HorasCompensatoriasSieteDias.objects.create(usuario=usuario, horas_compensatorias=9)
+                        mensaje_compensatorio = "Se asignaron 9 horas compensatorias por trabajo 7 días consecutivos."
+                        messages.success(self.request, mensaje_compensatorio)
                 else:
                     if usuario.rol != 'TE':
-                        nuevas_horas = Decimal(str(registro.horas * 2))
-
+                        nuevas_horas = Decimal(registro.horas) * 2
                         form.instance.horas = nuevas_horas
-                        messages.warning(
-                            self.request,
-                            "No se asignaron 9 horas compensatorias porque no trabajó 7 dias consecutivos pero sí se multiplicaron * 2 por ser trabajo en dia domingo."
-                        )
-                        mensaje_compensatorio = "No se asignaron 9 horas compensatorias porque no trabajó 7 días consecutivos, pero se asignaron horas doble por ser trabajo en día domingo."
+                        mensaje_compensatorio = "Horas duplicadas por trabajo en domingo sin 7 días consecutivos."
+                        messages.warning(self.request, mensaje_compensatorio)
                     else:
-                        nuevas_horas = Decimal(str(registro.horas))
-                        form.instance.horas = nuevas_horas
-                        messages.warning(
-                            self.request,
-                            "No se asignaron 9 horas compensatorias porque no trabajó 7 dias consecutivos"
-                        )
-                        mensaje_compensatorio = "No se asignaron 9 horas compensatorias porque no trabajó 7 días consecutivos."
+                        form.instance.horas = Decimal(registro.horas)
+                        mensaje_compensatorio = "No se asignaron horas compensatorias ni duplicación."
+            messages.success(self.request, f"El registro de horas de {usuario.get_full_name()} ha sido aprobado exitosamente.")
 
-                form.instance.aprobado_por = self.request.user
-                messages.success(self.request, 'El registro de horas ha sido procesado Aprobado exitosamente.')
+        elif form.instance.estado == 'R':
+            messages.warning(self.request, f"El registro de horas de {usuario.get_full_name()} ha sido aprobado ha sido rechazado.")
 
-            elif form.instance.estado == 'R':
-                messages.warning(
-                    self.request,
-                    f"El registro de horas con el número {registro.numero_registro} ha sido rechazado."
-                )
+        elif form.instance.estado == 'P':
+            messages.warning(self.request, f"El registro de horas de {usuario.get_full_name()} ha sido aprobado ha sido marcado como pendiente.")
 
-            elif form.instance.estado == 'P':
-                messages.warning(
-                    self.request,
-                    f"El registro de horas con el número {registro.numero_registro} ha sido marcado como pendiente."
-                )
+        # Enviar correo de notificación
+        self.enviar_notificacion(usuario, registro, form.instance.estado, mensaje_compensatorio)
 
-            # Enviar notificación por correo
-            fecha_ajustada = now() - timedelta(hours=6)
-            year = fecha_ajustada.year
-            estados = {
-                'A': "Aprobada",
-                'R': "Rechazada",
-                'P': "Pendiente",
-            }
-            
-            context = {
-                "usuario": usuario.first_name,
-                "numero_solicitud": registro.numero_registro,
-                "tipo": registro.get_tipo_display(),
-                "fecha_inicio": registro.fecha_inicio,
-                "fecha_fin": registro.fecha_fin,
-                "estado": estados.get(form.instance.estado, "Desconocido"), 
-                "aprobado_por": form.instance.aprobado_por.get_full_name(),
-                "year": year,
-                "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
-                "enlace_revisar": settings.ENLACE_DEV,
-                "mensaje": mensaje_compensatorio
-            }
-
-            html_content = render_to_string("mail_estado_solicitud.html", context)
-            email_sender = MicrosoftGraphEmail()
-            subject = f"Tu solicitud ha sido {context['estado']}"
-
-            try:
-                email_sender.send_email(
-                    subject=subject,
-                    content=html_content,
-                    to_recipients=[usuario.email],
-                )
-            except Exception as e:
-                print(f"Error al enviar correo al usuario {usuario.email}: {e}")
-                messages.error(f"Error al enviar correo al usuario {usuario.email}: {e}")
-            
         return super().form_valid(form)
+
+    def enviar_notificacion(self, usuario, registro, estado, mensaje):
+        fecha_ajustada = now() - timedelta(hours=6)
+        estados = {'A': "Aprobada", 'R': "Rechazada", 'P': "Pendiente"}
+
+        context = {
+            "usuario": usuario.first_name,
+            "numero_solicitud": registro.numero_registro,
+            "tipo": registro.get_tipo_display(),
+            "fecha_inicio": registro.fecha_inicio,
+            "fecha_fin": registro.fecha_fin,
+            "estado": estados.get(estado, "Desconocido"),
+            "aprobado_por": self.request.user.get_full_name(),
+            "year": fecha_ajustada.year,
+            "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+            "enlace_revisar": getattr(settings, 'ENLACE_DEV', '#'),
+            "mensaje": mensaje
+        }
+
+        html_content = render_to_string("mail_estado_solicitud.html", context)
+        email_sender = MicrosoftGraphEmail()
+        subject = f"Tu solicitud ha sido {context['estado']}"
+
+        try:
+            email_sender.send_email(
+                subject=subject,
+                content=html_content,
+                to_recipients=[usuario.email],
+            )
+        except Exception as e:
+            print(f"Error al enviar correo al usuario {usuario.email}: {e}")
+            messages.error(self.request, f"Error al enviar correo al usuario {usuario.email}: {e}")
+
 
 
 class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
@@ -2447,50 +2710,121 @@ class MisLicenciasView(ListView):
         return Licencia.objects.filter(usuario=self.request.user).order_by('-fecha_inicio')
 
 
+# class AprobarRechazarLicenciaView(UserPassesTestMixin, UpdateView):
+#     model = Licencia
+#     fields = ['estado']
+#     template_name = 'aprobar_rechazar_licencia.html'
+#     success_url = reverse_lazy('lista_solicitudes')
+
+#     def test_func(self):
+#         licencia = self.get_object()
+#         return self.request.user.rol in ['GG', 'JI', 'JD'] and licencia.usuario != self.request.user
+
+#     def get_context_data(self, **kwargs):
+#         context = super().get_context_data(**kwargs)
+#         usuario = self.get_object().usuario
+#         return context
+
+#     def form_valid(self, form):
+#         licencia = self.get_object()
+#         usuario = licencia.usuario
+
+#         if form.instance.estado == 'A':
+#             form.instance.aprobado_por = self.request.user
+#             messages.success(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
+#         elif form.instance.estado == 'R':
+#             messages.warning(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
+#         elif form.instance.estado == 'P':
+#             messages.info(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
+
+#         fecha_ajustada = now() - timedelta(hours=6)
+#         year = fecha_ajustada.year
+#         estados = {
+#             'A': "Aprobada",
+#             'R': "Rechazada",
+#             'P': "Pendiente",
+#         }
+#         context = {
+#             "usuario": usuario.first_name,
+#             "tipo": licencia.get_tipo_display(),
+#             "fecha_inicio": licencia.fecha_inicio,
+#             "fecha_fin": licencia.fecha_fin,
+#             "estado": estados.get(form.instance.estado, "Desconocido"),
+#             "aprobado_por": self.request.user.get_full_name(),
+#             "year": year,
+#             "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
+#             "enlace_revisar": settings.ENLACE_DEV,
+#         }
+
+#         html_content = render_to_string("mail_estado_licencia.html", context)
+#         email_sender = MicrosoftGraphEmail()
+#         subject = f"Tu licencia ha sido {context['estado']}"
+
+#         try:
+#             email_sender.send_email(
+#                 subject=subject,
+#                 content=html_content,
+#                 to_recipients=[usuario.email],
+#             )
+#         except Exception as e:
+#             print(f"Error al enviar correo al usuario {usuario.email}: {e}")
+#             messages.error(f"Error al enviar correo al usuario {usuario.email}: {e}")
+
+#         return super().form_valid(form)
+
+
 class AprobarRechazarLicenciaView(UserPassesTestMixin, UpdateView):
     model = Licencia
     fields = ['estado']
     template_name = 'aprobar_rechazar_licencia.html'
     success_url = reverse_lazy('lista_solicitudes')
 
-    def test_func(self):
-        licencia = self.get_object()
-        return self.request.user.rol in ['GG', 'JI', 'JD'] and licencia.usuario != self.request.user
+    def dispatch(self, request, *args, **kwargs):
+        self.licencia = self.get_object()
+        return super().dispatch(request, *args, **kwargs)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        usuario = self.get_object().usuario
-        return context
+    def test_func(self):
+        licencia = self.licencia
+        return (
+            self.request.user.rol in ['GG', 'JI', 'JD'] 
+            and licencia.usuario != self.request.user
+        )
 
     def form_valid(self, form):
-        licencia = self.get_object()
+        licencia = self.licencia
         usuario = licencia.usuario
 
-        if form.instance.estado == 'A':
-            form.instance.aprobado_por = self.request.user
-            messages.success(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
-        elif form.instance.estado == 'R':
-            messages.warning(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
-        elif form.instance.estado == 'P':
-            messages.info(self.request, f"La licencia ha sido marcada como {form.instance.get_estado_display()}.")
-
-        fecha_ajustada = now() - timedelta(hours=6)
-        year = fecha_ajustada.year
+        form.instance.aprobado_por = self.request.user
+        
         estados = {
-            'A': "Aprobada",
-            'R': "Rechazada",
-            'P': "Pendiente",
+            'A': ("success", "aprobada"),
+            'R': ("warning", "rechazada"),
+            'P': ("info", "marcada como pendiente"),
         }
+        
+        mensaje_tipo, mensaje_texto = estados.get(form.instance.estado, ("info", "actualizada"))
+        getattr(messages, mensaje_tipo)(
+            self.request, 
+            f"La licencia ha sido {mensaje_texto}."
+        )
+
+        self.enviar_notificacion(usuario, licencia, form.instance.estado)
+        return super().form_valid(form)
+
+    def enviar_notificacion(self, usuario, licencia, estado):
+        fecha_ajustada = now() - timedelta(hours=6)
+        estados = {'A': "Aprobada", 'R': "Rechazada", 'P': "Pendiente"}
+
         context = {
             "usuario": usuario.first_name,
             "tipo": licencia.get_tipo_display(),
             "fecha_inicio": licencia.fecha_inicio,
             "fecha_fin": licencia.fecha_fin,
-            "estado": estados.get(form.instance.estado, "Desconocido"),
+            "estado": estados.get(estado, "Desconocido"),
             "aprobado_por": self.request.user.get_full_name(),
-            "year": year,
+            "year": fecha_ajustada.year,
             "url_imagen": "https://itrecursos.s3.amazonaws.com/FALCON+2-02.png",
-            "enlace_revisar": settings.ENLACE_DEV,
+            "enlace_revisar": getattr(settings, 'ENLACE_DEV', '#'),
         }
 
         html_content = render_to_string("mail_estado_licencia.html", context)
@@ -2505,9 +2839,8 @@ class AprobarRechazarLicenciaView(UserPassesTestMixin, UpdateView):
             )
         except Exception as e:
             print(f"Error al enviar correo al usuario {usuario.email}: {e}")
-            messages.error(f"Error al enviar correo al usuario {usuario.email}: {e}")
+            messages.error(self.request, f"Error al enviar correo al usuario {usuario.email}: {e}")
 
-        return super().form_valid(form)
 
 
 
