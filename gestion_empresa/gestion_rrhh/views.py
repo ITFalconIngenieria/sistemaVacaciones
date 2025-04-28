@@ -2843,7 +2843,6 @@ class AprobarRechazarLicenciaView(UserPassesTestMixin, UpdateView):
 
 
 
-
 class EditarLicenciaView(UpdateView):
     model = Licencia
     form_class = LicenciaForm
