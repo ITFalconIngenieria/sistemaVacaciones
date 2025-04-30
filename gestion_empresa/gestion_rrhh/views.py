@@ -27,6 +27,8 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.utils.timezone import make_aware, get_current_timezone, now
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView, View
+from django.contrib.auth.views import LoginView
+from django.shortcuts import redirect
 
 from xhtml2pdf import pisa
 
@@ -64,7 +66,13 @@ from .models import (
 )
 from .utils import MicrosoftGraphEmail
 
+class CustomLoginView(LoginView):
+    template_name = 'login.html'
 
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect('dashboard')
+        return super().dispatch(request, *args, **kwargs)
 
 def es_jefe(user):
     return user.rol in ['GG', 'JI', 'JD']
