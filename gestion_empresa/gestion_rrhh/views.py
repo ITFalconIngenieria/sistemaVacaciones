@@ -111,7 +111,7 @@ def calcular_horas_individuales(usuario):
         ).aggregate(Sum('horas'))['horas__sum'] or 0
         horas_por_tipo[tipo] = total_horas
 
-    horas_hef = RegistroHoras.objects.filter(
+    horas_hef1 = RegistroHoras.objects.filter(
         usuario=usuario,
         tipo='HEF',
         estado='A',
@@ -121,8 +121,17 @@ def calcular_horas_individuales(usuario):
         horas_compensatorias_feriado=Sum('horas_compensatorias_feriado')
     )
 
-    horas_por_tipo['HE'] += horas_hef['total_horas'] or 0
-    horas_por_tipo['HC'] += horas_hef['horas_compensatorias_feriado'] or 0
+    horas_hef2 = RegistroHoras.objects.filter(
+        usuario=usuario,
+        tipo='HEF',
+        estado='A',
+    ).aggregate(
+        horas_compensatorias_feriado=Sum('horas_compensatorias_feriado')
+    )
+
+
+    horas_por_tipo['HE'] += horas_hef1['total_horas'] or 0
+    horas_por_tipo['HC'] += horas_hef2['horas_compensatorias_feriado'] or 0
 
     horas_solicitudes_hc = Solicitud.objects.filter(
         usuario=usuario,
