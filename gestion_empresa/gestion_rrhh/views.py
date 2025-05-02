@@ -118,7 +118,6 @@ def calcular_horas_individuales(usuario):
         estado_pago='NP'
     ).aggregate(
         total_horas=Sum('horas'),
-        horas_compensatorias_feriado=Sum('horas_compensatorias_feriado')
     )
 
     horas_hef2 = RegistroHoras.objects.filter(
