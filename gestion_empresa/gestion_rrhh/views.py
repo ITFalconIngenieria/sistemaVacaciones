@@ -933,9 +933,10 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         #     form.add_error(None, "Los Técnicos no pueden registrar horas extras para días feriados.")
         #     return self.form_invalid(form)
 
-        if self.request.user.rol in ['GG', 'JI', 'JD', 'IN', 'AST', 'FNZ'] and tipo_horas == 'HE':
+        if self.request.user.rol != 'TE' and tipo_horas == 'HE':
             form.add_error(None, "Usted no puede registrar horas extras.")
             return self.form_invalid(form)
+
 
         # Enviar notificación por correo
         jefe = self.request.user.jefe
@@ -1273,13 +1274,14 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
             form.add_error(None, "El día de inicio no coincide con ningún feriado registrado.")
             return self.form_invalid(form)
 
-        if self.request.user.rol == 'TE' and tipo_horas == 'HEF':
-            form.add_error(None, "Los Técnicos no pueden registrar horas extras para días feriados.")
-            return self.form_invalid(form)
+        # if self.request.user.rol == 'TE' and tipo_horas == 'HEF':
+        #     form.add_error(None, "Los Técnicos no pueden registrar horas extras para días feriados.")
+        #     return self.form_invalid(form)
 
-        if self.request.user.rol in ['GG', 'JI', 'JD', 'IN', 'AST', 'FNZ'] and tipo_horas == 'HE':
+        if self.request.user.rol != 'TE' and tipo_horas == 'HE':
             form.add_error(None, "Usted no puede registrar horas extras.")
             return self.form_invalid(form)
+
 
         # Notificar al jefe
         jefe = self.request.user.jefe

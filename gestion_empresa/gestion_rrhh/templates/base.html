@@ -46,8 +46,7 @@
                             <li><a class="dropdown-item" href="{% url 'registrar_horas' %}">Registro</a></li>
                             <li><a class="dropdown-item" href="{% url 'crear_solicitud' %}">Crear Solicitud</a></li>
                             <li><a class="dropdown-item" href="{% url 'mis_solicitudes' %}">Mis Solicitudes</a></li>
-                            <li><a class="dropdown-item" href="{% url 'crear_incapacidad' %}">Crear Incapacidad</a></li>
-                            <li><a class="dropdown-item" href="{% url 'mis_incapacidades' %}">Mis Incapacidades</a></li>
+                            <li><a class="dropdown-item" href="{% url 'mis_incapacidades' %}">Incapacidades</a></li>
                             <li><a class="dropdown-item" href="{% url 'mis_licencias' %}">Licencias</a>
                         </ul>
                     </li>
@@ -139,7 +138,8 @@
 
 
 
-                    {% if user.rol in 'IN' or user.rol in 'TE' or user.rol in 'AST' or user.rol in 'FNZ'%}
+                    {% if user.rol != 'GG' and user.rol != 'JI' and user.rol != 'JD' %}
+
 
                     {% if user.rol in 'TE' %}
                     <li class="nav-item dropdown">
@@ -168,10 +168,9 @@
                         <a class="nav-link text-white" href="{% url 'mis_solicitudes' %}">Mis Solicitudes</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-white" href="{% url 'crear_incapacidad' %}">Crear Incapacidad</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-white" href="{% url 'mis_incapacidades' %}">Mis Incapacidades</a>
+                        <a class="nav-link text-white" href="{% url 'mis_incapacidades' %}">Incapacidades</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link text-white" href="{% url 'mis_licencias' %}">Mis Licencias</a>
