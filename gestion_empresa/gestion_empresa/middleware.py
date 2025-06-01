@@ -28,7 +28,7 @@ class SecurityMiddleware:
             "x-forwarded-for", "x-originating-ip"
         ]
 
-        self.max_requests = 50
+        self.max_requests = 100
         self.window_seconds = 60
 
     def load_blocked_ips(self):
