@@ -2953,26 +2953,33 @@ def reporte_total_HC(request):
     # **Generar datos para la tabla de usuarios**
     reporte_usuarios = []
     for usuario in usuarios:
-        horas_aprobadas = registros_qs.filter(usuario=usuario).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
+        # horas_aprobadas = registros_qs.filter(usuario=usuario).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
         saldo_horas = calcular_horas_individuales(usuario)['HC']
+        dias_disponibles = calcular_dias_disponibles(usuario)['dias_disponibles']
 
         reporte_usuarios.append({
             'nombre': f"{usuario.first_name} {usuario.last_name}",
             'departamento': usuario.departamento.nombre if usuario.departamento else "Sin Departamento",
-            'total_horas': float(horas_aprobadas),
-            'saldo_horas': float(saldo_horas)
+            # 'total_horas': float(horas_aprobadas),
+            'saldo_horas': float(saldo_horas),
+            'dias_disponibles': float(dias_disponibles)
         })
 
     # **Generar datos para la tabla de departamentos (solo los supervisados)**
     total_por_departamento = []
     for depto in departamentos_filtrados:
-        total_horas_depto = registros_qs.filter(usuario__departamento=depto).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
+        # total_horas_depto = registros_qs.filter(usuario__departamento=depto).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
         saldo_total_depto = sum(calcular_horas_individuales(usuario)['HC'] for usuario in usuarios.filter(departamento=depto))
-
+        vacaciones_disponibles_depto = sum(
+            calcular_dias_disponibles(usuario)['dias_disponibles']
+            for usuario in usuarios.filter(departamento=depto)
+        )
+        
         total_por_departamento.append({
             'departamento': depto.nombre,
-            'total_horas': float(total_horas_depto),
-            'saldo_total': float(saldo_total_depto)
+            # 'total_horas': float(total_horas_depto),
+            'saldo_total': float(saldo_total_depto),
+            'vacaciones_disponibles': float(vacaciones_disponibles_depto)
         })
 
     total_por_departamento_json = json.dumps(total_por_departamento)
