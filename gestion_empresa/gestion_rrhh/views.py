@@ -139,19 +139,14 @@ def calcular_horas_individuales(usuario):
     ).aggregate(Sum('horas'))['horas__sum'] or 0
 
     horas_por_tipo['HC'] -= horas_solicitudes_hc
-
     # Incluir horas compensatorias generadas por la conversión
     horas_conversion = ConversionVacacionesHoras.objects.filter(usuario=usuario).aggregate(Sum('horas_compensatorias'))['horas_compensatorias__sum'] or 0
     horas_por_tipo['HC'] += horas_conversion
-
     # Incluir horas compensatorias asignadas por trabajar 7 días consecutivos
     horas_siete_dias = HorasCompensatoriasSieteDias.objects.filter(usuario=usuario).aggregate(Sum('horas_compensatorias'))['horas_compensatorias__sum'] or 0
     horas_por_tipo['HC'] += horas_siete_dias
 
-    
-
     return horas_por_tipo
-
 
 
 @login_required
@@ -2925,6 +2920,7 @@ def reporte_total_HC(request):
 
     registros_qs = RegistroHoras.objects.filter(
         usuario__in=usuarios,
+        tipo='HC',
         estado='A'
     )
 
