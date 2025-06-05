@@ -2913,7 +2913,11 @@ def reporte_total_HC(request):
     if usuario_actual.rol == 'GG' or usuario_actual.is_superuser:
         usuarios = Usuario.objects.all()
     else:  # JI o JD
-        usuarios = obtener_subordinados_dos_niveles(usuario_actual)
+        subordinados = obtener_subordinados_dos_niveles(usuario_actual)
+        usuarios = Usuario.objects.filter(
+            Q(id=usuario_actual.id) | Q(id__in=subordinados.values_list('id', flat=True)),
+            is_active=True
+        )
 
     if form.is_valid():
         empleado = form.cleaned_data.get('empleado')
