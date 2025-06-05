@@ -54,38 +54,43 @@
 
 
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle text-white position-relative d-flex align-items-center" href="#" 
-                            id="gestionSubordinadosDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle text-white position-relative d-flex align-items-center"
+                            href="#" id="gestionSubordinadosDropdown" role="button" data-bs-toggle="dropdown"
+                            aria-expanded="false">
                             Gestión de colaboradores
-                            <span id="pendientes-total" 
-                                class="badge bg-danger position-absolute translate-middle ms-1"
+                            <span id="pendientes-total" class="badge bg-danger position-absolute translate-middle ms-1"
                                 style="display: none; font-size: 0.75rem; padding: 4px 6px; top: 5px; right: 5px;">
                                 0
                             </span>
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="gestionSubordinadosDropdown">
                             <li>
-                                <a class="dropdown-item d-flex justify-content-between align-items-center" href="{% url 'lista_solicitudes' %}">
+                                <a class="dropdown-item d-flex justify-content-between align-items-center"
+                                    href="{% url 'lista_solicitudes' %}">
                                     Solicitudes
-                                    <span id="pendientes_solicitudes_y_registros" class="badge bg-danger ms-2" style="display: none;">0</span>
+                                    <span id="pendientes_solicitudes_y_registros" class="badge bg-danger ms-2"
+                                        style="display: none;">0</span>
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item d-flex justify-content-between align-items-center" href="{% url 'solicitudes_jerarquicas' %}">
+                                <a class="dropdown-item d-flex justify-content-between align-items-center"
+                                    href="{% url 'solicitudes_jerarquicas' %}">
                                     Otras Solicitudes
-                                    <span id="pendientes-otras" class="badge bg-danger ms-2" style="display: none;">0</span>
+                                    <span id="pendientes-otras" class="badge bg-danger ms-2"
+                                        style="display: none;">0</span>
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item" href="{% url 'historial_solicitudes' %}">Historial Solicitudes</a>
+                                <a class="dropdown-item" href="{% url 'historial_solicitudes' %}">Historial
+                                    Solicitudes</a>
                             </li>
                         </ul>
                     </li>
-                    
+
                     {% endif %}
 
 
-                    {% if user.rol in 'GG' or user.rol in 'JI' %}
+                    {% if user.rol in 'GG' or user.rol in 'JI' or 'JD' %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle text-white" href="#" id="gestionSubordinadosDropdown"
                             role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -98,44 +103,31 @@
                                 <a class="dropdown-item" href="{% url 'historial_ajustes_vacaciones' %}">Historial
                                     Ajuste Vacaciones</a>
                             </li>
-                            <li>
-                                <a class="dropdown-item" href="{% url 'colaboradores_info' %}">Colaboradores</a>
-                            </li>
 
                             {% endif %}
-                            <li>
-                                <a class="dropdown-item" href="{% url 'reporte_horas_compensatorias' %}">HC Aprobadas</a>
-                            </li>
+
+                            {% if user.rol in 'JI' or user.rol in 'GG' %}
 
                             <li>
-                                <a class="dropdown-item" href="{% url 'reporte_total_HC' %}">Total HC Aprobadas</a>
+                                <a class="dropdown-item" href="{% url 'reporte_horas_compensatorias' %}">HC
+                                    Aprobadas</a>
                             </li>
+                            {% endif %}
+
                             <li>
-                                <a class="dropdown-item" href="{% url 'reporte_horas_pendientes_odoo' %}">Horas ODOO</a>
+                                <a class="dropdown-item" href="{% url 'reporte_total_HC' %}">Saldo HC & Vacaciones</a>
                             </li>
-
-                        </ul>
-                    </li>
-                    {% endif %}
-
-
-                    <!-- reportes para taller -->
-                    {% if user.rol in 'JD' and user.departamento_id == 7 %}
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle text-white" href="#" id="gestionSubordinadosDropdown"
-                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            Reportes
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="reportesGerenteDropdown">
+                            {% if user.departamento_id == 7 or user.rol in 'JI' or user.rol in 'GG' %}
 
                             <li>
                                 <a class="dropdown-item" href="{% url 'reporte_horas_pendientes_odoo' %}">Horas ODOO</a>
                             </li>
+                            {% endif %}
+
 
                         </ul>
                     </li>
                     {% endif %}
-
 
 
                     {% if user.rol != 'GG' and user.rol != 'JI' and user.rol != 'JD' %}
@@ -152,12 +144,12 @@
                             <li><a class="dropdown-item" href="{% url 'historial_horas_odoo' %}">Horas ODOO</a></li>
                         </ul>
                     </li>
-                {% else %}
+                    {% else %}
                     <li class="nav-item">
                         <a class="nav-link text-white" href="{% url 'registrar_horas' %}">Registro</a>
                     </li>
-                {% endif %}
-                
+                    {% endif %}
+
 
 
                     <li class="nav-item">
@@ -192,20 +184,21 @@
                             <li>
                                 <a class="dropdown-item" href="{% url 'ajuste_vacaciones' %}">Ajustar Vacaciones</a>
                             </li>
-                            <li><a class="dropdown-item" href="{% url 'reporte_horas_extra_y_feriados' %}">Reporte Horas Extra y Feriados</a>
+                            <li><a class="dropdown-item" href="{% url 'reporte_horas_extra_y_feriados' %}">Reporte Horas
+                                    Extra y Feriados</a>
                             </li>
                             <li><a class="dropdown-item" href="{% url 'lista_incapacidades' %}">Reporte
                                     Incapacidades</a></li>
                             <li><a class="dropdown-item" href="{% url 'reporte_solicitudes' %}">Reporte Solicitudes</a>
-                            
+
                             </li>
 
                             <li><a class="dropdown-item" href="{% url 'reporte_licencias' %}">Reporte Licencias</a>
-                            
+
                             </li>
 
                             <li><a class="dropdown-item" href="{% url 'reporte_descansos' %}">Reporte Art. 327</a>
-                            
+
                             </li>
                         </ul>
                     </li>
@@ -271,7 +264,7 @@
                     const badgeTotal = document.getElementById("pendientes-total");
                     const badgeSolicitudes = document.getElementById("pendientes_solicitudes_y_registros");
                     const badgeOtras = document.getElementById("pendientes-otras");
-    
+
                     // Total en "Gestión de colaboradores"
                     let total = data.pendientes_total;
                     if (total > 0) {
@@ -280,15 +273,15 @@
                     } else {
                         badgeTotal.style.display = "none";
                     }
-    
+
                     // Solicitudes y Registros Pendientes
-                    if (data.pendientes_solicitudes_y_registros> 0) {
+                    if (data.pendientes_solicitudes_y_registros > 0) {
                         badgeSolicitudes.innerText = data.pendientes_solicitudes_y_registros;
                         badgeSolicitudes.style.display = "inline-block";
                     } else {
                         badgeSolicitudes.style.display = "none";
                     }
-    
+
                     // Otras Solicitudes Pendientes
                     if (data.pendientes_otras > 0) {
                         badgeOtras.innerText = data.pendientes_otras;
@@ -299,15 +292,15 @@
                 })
                 .catch(error => console.error("Error obteniendo pendientes:", error));
         }
-    
+
         document.addEventListener("DOMContentLoaded", () => {
             actualizarPendientes();  // Carga inicial de la cantidad de pendientes
             setInterval(actualizarPendientes, 60000);  // Actualiza cada 60 segundos
         });
     </script>
-    
-    
-    
+
+
+
 </body>
 
 </html>

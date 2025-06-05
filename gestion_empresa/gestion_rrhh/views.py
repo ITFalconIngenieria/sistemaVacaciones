@@ -2897,21 +2897,23 @@ def reporte_horas_compensatorias(request):
 def reporte_total_HC(request):
     usuario_actual = request.user
 
-    if usuario_actual.rol not in ['GG', 'JI']:
+    if usuario_actual.rol not in ['GG', 'JI', 'JD']:
         raise PermissionDenied("No tienes permiso para acceder a este reporte.")
+
+    def obtener_subordinados_dos_niveles(usuario):
+        nivel_1 = Usuario.objects.filter(jefe=usuario, is_active=True)
+        nivel_2 = Usuario.objects.filter(jefe__in=nivel_1, is_active=True)
+        return Usuario.objects.filter(Q(id__in=nivel_1) | Q(id__in=nivel_2), is_active=True)
 
     form = ReporteTotalHorasCompForm(request.GET or None, usuario_actual=usuario_actual)
 
     fecha_inicio = request.GET.get('fecha_inicio')
     fecha_fin = request.GET.get('fecha_fin')
 
-    if usuario_actual.rol == 'GG':
+    if usuario_actual.rol == 'GG' or usuario_actual.is_superuser:
         usuarios = Usuario.objects.all()
-    elif usuario_actual.rol == 'JI':
-        usuarios = Usuario.objects.filter(
-            Q(jefe=usuario_actual) |  
-            Q(jefe__jefe=usuario_actual)
-        )
+    else:  # JI o JD
+        usuarios = obtener_subordinados_dos_niveles(usuario_actual)
 
     if form.is_valid():
         empleado = form.cleaned_data.get('empleado')
@@ -2929,55 +2931,49 @@ def reporte_total_HC(request):
     if fecha_fin:
         registros_qs = registros_qs.filter(fecha_fin__date__lte=parse_date(fecha_fin))
 
-    # Filtrar departamentos de solo los empleados supervisados por el usuario
     departamentos_filtrados = Departamento.objects.filter(usuario__in=usuarios).distinct()
 
-    # **Agrupar por mes y por departamento (solo de los empleados supervisados)**
     horas_por_mes_departamento = registros_qs.annotate(
         mes=TruncMonth('fecha_inicio')
     ).values('mes', 'usuario__departamento__nombre').annotate(
         total_horas=Sum('horas')
     ).order_by('mes', 'usuario__departamento__nombre')
 
-    # Convertir los datos a un formato adecuado para JSON
-    horas_agrupadas_lista = []
-    for registro in horas_por_mes_departamento:
-        horas_agrupadas_lista.append({
+    horas_agrupadas_lista = [
+        {
             'mes': registro['mes'].strftime('%Y-%m'),
             'departamento': registro['usuario__departamento__nombre'] or "Sin Departamento",
             'total_horas': float(registro['total_horas'])
-        })
+        }
+        for registro in horas_por_mes_departamento
+    ]
 
     horas_por_mes_departamento_json = json.dumps(horas_agrupadas_lista)
 
-    # **Generar datos para la tabla de usuarios**
     reporte_usuarios = []
     for usuario in usuarios:
-        # horas_aprobadas = registros_qs.filter(usuario=usuario).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
         saldo_horas = calcular_horas_individuales(usuario)['HC']
         dias_disponibles = calcular_dias_disponibles(usuario)['dias_disponibles']
 
         reporte_usuarios.append({
             'nombre': f"{usuario.first_name} {usuario.last_name}",
             'departamento': usuario.departamento.nombre if usuario.departamento else "Sin Departamento",
-            # 'total_horas': float(horas_aprobadas),
             'saldo_horas': float(saldo_horas),
             'dias_disponibles': float(dias_disponibles)
         })
 
-    # **Generar datos para la tabla de departamentos (solo los supervisados)**
     total_por_departamento = []
     for depto in departamentos_filtrados:
-        # total_horas_depto = registros_qs.filter(usuario__departamento=depto).aggregate(total_horas=Sum('horas'))['total_horas'] or 0
-        saldo_total_depto = sum(calcular_horas_individuales(usuario)['HC'] for usuario in usuarios.filter(departamento=depto))
+        saldo_total_depto = sum(
+            calcular_horas_individuales(usuario)['HC']
+            for usuario in usuarios.filter(departamento=depto)
+        )
         vacaciones_disponibles_depto = sum(
             calcular_dias_disponibles(usuario)['dias_disponibles']
             for usuario in usuarios.filter(departamento=depto)
         )
-        
         total_por_departamento.append({
             'departamento': depto.nombre,
-            # 'total_horas': float(total_horas_depto),
             'saldo_total': float(saldo_total_depto),
             'vacaciones_disponibles': float(vacaciones_disponibles_depto)
         })
@@ -2993,6 +2989,7 @@ def reporte_total_HC(request):
         'fecha_inicio': fecha_inicio,
         'fecha_fin': fecha_fin
     })
+
 
 
 @login_required
