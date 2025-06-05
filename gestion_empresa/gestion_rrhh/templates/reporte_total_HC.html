@@ -32,9 +32,8 @@
     <tr>
         <th onclick="sortTable(0, 'total-horas-table')" style="cursor: pointer;">Empleado &#9650;&#9660;</th>
         <th onclick="sortTable(1, 'total-horas-table')" style="cursor: pointer;">Departamento &#9650;&#9660;</th>
-        <!-- <th onclick="sortTable(2, 'total-horas-table')" style="cursor: pointer;">Total de Horas Aprobadas &#9650;&#9660;</th> -->
-        <th onclick="sortTable(3, 'total-horas-table')" style="cursor: pointer;">Saldo de HC &#9650;&#9660;</th>
-        <th onclick="sortTable(4, 'total-horas-table')" style="cursor: pointer;">Vacaciones Disponibles &#9650;&#9660;</th>
+        <th onclick="sortTable(2, 'total-horas-table')" style="cursor: pointer;">Saldo de HC &#9650;&#9660;</th>
+        <th onclick="sortTable(3, 'total-horas-table')" style="cursor: pointer;">Vacaciones disponibles &#9650;&#9660;</th>    
     </tr>
 </thead>
 <tbody>
@@ -42,7 +41,6 @@
     <tr>
         <td>{{ usuario.nombre }}</td>
         <td>{{ usuario.departamento }}</td>
-        <!-- <td>{{ usuario.total_horas }}</td> -->
         <td>{{ usuario.saldo_horas }}</td>
         <td>{{ usuario.dias_disponibles }}</td>
     </tr>
@@ -74,7 +72,6 @@
             {% for depto in total_por_departamento %}
             <tr>
                 <td>{{ depto.departamento }}</td>
-                <!-- <td>{{ depto.total_horas }}</td> -->
                 <td>{{ depto.saldo_total }}</td>
                 <td>{{ depto.vacaciones_disponibles}}</td>
             </tr>

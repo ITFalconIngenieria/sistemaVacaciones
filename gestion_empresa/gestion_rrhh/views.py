@@ -2972,10 +2972,12 @@ def reporte_total_HC(request):
             calcular_horas_individuales(usuario)['HC']
             for usuario in usuarios.filter(departamento=depto)
         )
+        
         vacaciones_disponibles_depto = sum(
             calcular_dias_disponibles(usuario)['dias_disponibles']
             for usuario in usuarios.filter(departamento=depto)
         )
+
         total_por_departamento.append({
             'departamento': depto.nombre,
             'saldo_total': float(saldo_total_depto),
