@@ -430,11 +430,12 @@ class ReporteTotalHorasCompForm(forms.Form):
         if usuario_actual:
             if usuario_actual.rol == 'GG':
                 self.fields['empleado'].queryset = Usuario.objects.all()
-            elif usuario_actual.rol == 'JI':
-                self.fields['empleado'].queryset = Usuario.objects.filter(
+            elif usuario_actual.rol in ['JI', 'JD']:
+                subordinados = Usuario.objects.filter(
                     Q(jefe=usuario_actual) |
                     Q(jefe__jefe=usuario_actual)
                 )
+                self.fields['empleado'].queryset = subordinados
 
         self.fields['empleado'].label_from_instance = lambda obj: f"{obj.first_name} {obj.last_name}"
 
