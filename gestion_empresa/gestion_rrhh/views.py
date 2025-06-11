@@ -715,7 +715,6 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
                 return self.form_invalid(form)
 
         if tipo_solicitud == 'V':
-            form.instance.descripcion="Vacaciones"
             total_days_no_work=0
             feriados = FeriadoNacional.objects.filter(
             fecha__range=[fecha_inicio.date(), fecha_fin.date()]
@@ -746,7 +745,6 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
             form.instance.dias_solicitados = dias_solicitados - total_days_no_work
 
         elif tipo_solicitud == 'HC':
-            form.instance.descripcion="Horas Compensatorias"
             feriados = FeriadoNacional.objects.filter(
                 fecha__range=[fecha_inicio.date(), fecha_fin.date()]
             )
