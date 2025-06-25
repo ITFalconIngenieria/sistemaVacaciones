@@ -12,7 +12,6 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 PROJECT_ROOT = SCRIPT_DIR.parent
 PROJECT_DIR = PROJECT_ROOT / "gestion_empresa"
 LOG_FILE = SCRIPT_DIR / "log_servidor.txt"
-VENV_PYTHON = PROJECT_ROOT / "venv" / "Scripts" / "pythonw.exe"  # prefer pythonw para evitar consola
 PYTHON_CMD = "python"  # por defecto
 
 # -------------------------------
@@ -36,11 +35,13 @@ def kill_processes_on_port(port):
 
 def detect_python_cmd():
     global PYTHON_CMD
-    if VENV_PYTHON.exists():
-        PYTHON_CMD = str(VENV_PYTHON)
-        log(f"✅ Entorno virtual encontrado: {PYTHON_CMD}")
-    else:
-        log("⚠️ No se encontró entorno virtual. Se usará Python del sistema.")
+    for exe_name in ["pythonw.exe", "python.exe"]:
+        candidate = PROJECT_ROOT / "venv" / "Scripts" / exe_name
+        if candidate.exists():
+            PYTHON_CMD = str(candidate)
+            log(f"✅ Entorno virtual detectado: {PYTHON_CMD}")
+            return
+    log("⚠️ No se encontró entorno virtual. Se usará Python del sistema.")
 
 def iniciar_servidor():
     if not PROJECT_DIR.exists():
