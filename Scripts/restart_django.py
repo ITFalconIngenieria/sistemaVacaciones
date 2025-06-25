@@ -58,10 +58,11 @@ def iniciar_servidor():
     os.chdir(PROJECT_DIR)
     log("🚀 Iniciando servidor Django...")
     subprocess.Popen(
-        f'"{PYTHON_CMD}" manage.py runsslserver 0.0.0.0:8000 >> "{LOG_FILE}" 2>&1',
+        f'"{PYTHON_CMD}" manage.py runsslserver 0.0.0.0:8000 >> "{str(LOG_FILE)}" 2>&1',
         shell=True,
         creationflags=subprocess.CREATE_NO_WINDOW
     )
+
 
 # -------------------------------
 # EJECUCIÓN PRINCIPAL
