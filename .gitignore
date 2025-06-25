@@ -62,4 +62,4 @@ build/
 
 Scripts/script_logs.txt
 banned_ips.txt
-server_log.txt
+logs.txt
