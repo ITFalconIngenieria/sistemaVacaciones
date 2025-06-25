@@ -1,28 +1,26 @@
 import os
+import sys
 import subprocess
-import signal
-import socket
-import psutil
-from time import sleep
 from pathlib import Path
 from datetime import datetime
-import sys
-# -------------------------------------
-# CONFIGURACIONES
-PORT = 8000
-HOST = "0.0.0.0"
-PROJECT_NAME = "gestion_empresa"
-BASE_DIR = Path(__file__).parent.resolve()
-LOG_FILE = BASE_DIR / "log_servidor.txt"
-VENV_DIRS = ["venv", ".venv"]  # Buscar estos nombres
-PYTHON_CMD = "python"  # Default
+import psutil
+from time import sleep
 
-# -------------------------------------
+# -------------------------------
+# CONFIGURACIONES
+SCRIPT_DIR = Path(__file__).parent.resolve()
+PROJECT_ROOT = SCRIPT_DIR.parent
+PROJECT_DIR = PROJECT_ROOT / "gestion_empresa"
+LOG_FILE = SCRIPT_DIR / "log_servidor.txt"
+VENV_PYTHON = PROJECT_ROOT / "venv" / "Scripts" / "pythonw.exe"  # prefer pythonw para evitar consola
+PYTHON_CMD = "python"  # por defecto
+
+# -------------------------------
 # FUNCIONES
 
 def log(msg):
     with open(LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(f"{msg}\n")
+        f.write(msg + "\n")
 
 def kill_processes_on_port(port):
     log(f"🛑 Buscando procesos en el puerto {port}...")
@@ -36,52 +34,38 @@ def kill_processes_on_port(port):
         except Exception:
             continue
 
-def find_manage_py():
-    expected_paths = [
-        BASE_DIR / PROJECT_NAME / "manage.py",
-        BASE_DIR.parent / PROJECT_NAME / "manage.py"
-    ]
-    for path in expected_paths:
-        if path.exists():
-            return path.parent
-    log("❌ No se encontró manage.py")
-    sys.exit(1)
-
-
-def activate_virtualenv():
+def detect_python_cmd():
     global PYTHON_CMD
-    # Buscar venv relativo al directorio raíz del proyecto
-    venv_paths = [
-        BASE_DIR.parent / "venv" / "Scripts" / "pythonw.exe",  # Ejecutar sin consola
-        BASE_DIR.parent / "venv" / "Scripts" / "python.exe",   # Fallback con consola
-    ]
+    if VENV_PYTHON.exists():
+        PYTHON_CMD = str(VENV_PYTHON)
+        log(f"✅ Entorno virtual encontrado: {PYTHON_CMD}")
+    else:
+        log("⚠️ No se encontró entorno virtual. Se usará Python del sistema.")
 
-    for path in venv_paths:
-        if path.exists():
-            PYTHON_CMD = str(path)
-            log(f"✅ Entorno virtual activado: {PYTHON_CMD}")
-            return
-    log("⚠️ No se encontró entorno virtual, usando Python del sistema.")
+def iniciar_servidor():
+    if not PROJECT_DIR.exists():
+        log(f"❌ No se encontró el directorio del proyecto: {PROJECT_DIR}")
+        sys.exit(1)
 
+    manage_py = PROJECT_DIR / "manage.py"
+    if not manage_py.exists():
+        log(f"❌ No se encontró manage.py en: {PROJECT_DIR}")
+        sys.exit(1)
 
-def iniciar_servidor(proyecto_path):
-    os.chdir(proyecto_path)
-    log(f"🚀 Iniciando servidor Django en {HOST}:{PORT}...")
+    os.chdir(PROJECT_DIR)
+    log("🚀 Iniciando servidor Django...")
     subprocess.Popen(
-        f'"{PYTHON_CMD}" manage.py runsslserver {HOST}:{PORT} >> "{LOG_FILE}" 2>&1',
+        f'"{PYTHON_CMD}" manage.py runsslserver 0.0.0.0:8000 >> "{LOG_FILE}" 2>&1',
         shell=True,
         creationflags=subprocess.CREATE_NO_WINDOW
     )
 
+# -------------------------------
+# EJECUCIÓN PRINCIPAL
 
-# -------------------------------------
-# EJECUCIÓN
-
-# Sobrescribir el archivo de log al inicio
 with open(LOG_FILE, "w", encoding="utf-8") as f:
     f.write(f"==== LOG DEL SERVIDOR - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ====\n")
 
-kill_processes_on_port(PORT)
-activate_virtualenv()
-proyecto_path = find_manage_py()
-iniciar_servidor(proyecto_path)
+kill_processes_on_port(8000)
+detect_python_cmd()
+iniciar_servidor()
