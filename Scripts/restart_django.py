@@ -25,13 +25,14 @@ def kill_processes_on_port(port):
     log(f"🛑 Buscando procesos en el puerto {port}...")
     for proc in psutil.process_iter(attrs=["pid", "name"]):
         try:
-            for conn in proc.connections(kind='inet'):
+            for conn in proc.net_connections(kind='inet'):
                 if conn.status == psutil.CONN_LISTEN and conn.laddr.port == port:
                     log(f"Matando proceso PID {proc.pid} en puerto {port}")
                     proc.kill()
                     sleep(1)
         except Exception:
             continue
+
 
 
 def detect_python_cmd():
