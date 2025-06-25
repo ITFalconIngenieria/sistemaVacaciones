@@ -50,13 +50,19 @@ def find_manage_py():
 
 def activate_virtualenv():
     global PYTHON_CMD
-    for venv_name in VENV_DIRS:
-        venv_python = BASE_DIR / venv_name / "Scripts" / "python.exe"
-        if venv_python.exists():
-            PYTHON_CMD = str(venv_python)
+    # Buscar venv relativo al directorio raíz del proyecto
+    venv_paths = [
+        BASE_DIR.parent / "venv" / "Scripts" / "pythonw.exe",  # Ejecutar sin consola
+        BASE_DIR.parent / "venv" / "Scripts" / "python.exe",   # Fallback con consola
+    ]
+
+    for path in venv_paths:
+        if path.exists():
+            PYTHON_CMD = str(path)
             log(f"✅ Entorno virtual activado: {PYTHON_CMD}")
             return
     log("⚠️ No se encontró entorno virtual, usando Python del sistema.")
+
 
 def iniciar_servidor(proyecto_path):
     os.chdir(proyecto_path)
