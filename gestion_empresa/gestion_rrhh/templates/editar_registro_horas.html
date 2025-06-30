@@ -84,7 +84,7 @@
                     (feriado) => fechaInicio <= feriado && fechaFin >= feriado
                 );
 
-                // Descontar 1 hora de almuerzo si no es fin de semana o feriado
+                // Descontar 1 hora de almuerzo si no es feriado o fin de semana
                 if (!esSabadoODomingo(fechaInicio) && !esFeriado) {
                     const almuerzoInicio = new Date(fechaInicio);
                     almuerzoInicio.setHours(12, 0, 0, 0);
@@ -103,56 +103,46 @@
                     mensajeFeriadosDiv.style.display = 'none';
                 }
 
+                // Mostrar horas calculadas
                 cantidadHorasSpan.textContent = horas.toFixed(2);
                 horasCalculadasDiv.style.display = 'block';
 
-                // --- Lógica de descanso HC ---
-                const HORAS_MINIMAS_DESCANSO = 10;
-                const HORA_INICIO_TURNO = 7;
-                const HORA_FIN_TURNO_DIURNO = 17;
-                const HORA_FIN_TURNO_TARDE = 24;
+                // -----------------------------
+                // Lógica de descanso obligatorio
+                // -----------------------------
+                const HORAS_DESCANSO = 10;
+                const fechaSalida = new Date(fechaFin);
+                const fechaBase = new Date(fechaInicio);  // referencia del día de la jornada original
 
-                // Calcular próximo turno y horas de descanso
-                let mostrarMensaje = false;
-                let nuevaEntrada;
+                // Turno fijo: 07:00 AM del día siguiente a la jornada
+                const turnoFijo = new Date(fechaBase);
+                turnoFijo.setDate(turnoFijo.getDate() + 1);
+                turnoFijo.setHours(7, 0, 0, 0);
 
-                // Crear copia de fechaFin para no modificar la original
-                let proximoTurno = new Date(fechaFin);
-                let horasDescanso;
+                let debePresentarse;
 
-                const horaActual = fechaFin.getHours();
-
-                // Simplificación de las condiciones para determinar el próximo turno
-                if ((horaActual > HORA_FIN_TURNO_DIURNO && horaActual < HORA_FIN_TURNO_TARDE) ||
-                    (horaActual >= HORA_INICIO_TURNO && horaActual <= HORA_FIN_TURNO_DIURNO)) {
-                    // Para turnos entre 7:00-17:00 y 17:01-24:00, próximo turno a las 7:00 del día siguiente
-                    proximoTurno.setHours(HORA_INICIO_TURNO, 0, 0, 0);
-                    proximoTurno.setDate(proximoTurno.getDate() + 1);
-                }
-
-                // Calcular horas de descanso (siempre valor positivo)
-                horasDescanso = Math.abs((proximoTurno - fechaFin) / (1000 * 60 * 60));
-
-                // Determinar nueva entrada según las horas de descanso
-                if (horasDescanso < HORAS_MINIMAS_DESCANSO) {
-                    nuevaEntrada = new Date(fechaFin.getTime() + HORAS_MINIMAS_DESCANSO * 60 * 60 * 1000);
-                    mostrarMensaje = true;
-                } else if (horasDescanso <= 24 && horasDescanso >= 14) {
-                    proximoTurno.setHours(HORA_INICIO_TURNO, 0, 0, 0);
-                    nuevaEntrada = proximoTurno;
-                    mostrarMensaje = true;
-                }
-
-                // Mostrar u ocultar alerta según corresponda
-                if (mostrarMensaje) {
-                    const diasSemana = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-                    const diaNombre = diasSemana[nuevaEntrada.getDay()];
-                    const horaTexto = nuevaEntrada.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    alertaDescanso.style.display = 'block';
-                    horaRecomendada.textContent = `${diaNombre} a las ${horaTexto}`;
+                if (fechaSalida >= turnoFijo) {
+                    // Se pasó del inicio del próximo turno → debe presentarse el día siguiente a las 07:00
+                    debePresentarse = new Date(turnoFijo);
+                    debePresentarse.setDate(debePresentarse.getDate() + 1);
                 } else {
-                    alertaDescanso.style.display = 'none';
+                    const horasHastaTurno = (turnoFijo - fechaSalida) / (1000 * 60 * 60);
+                    if (horasHastaTurno < HORAS_DESCANSO) {
+                        // Descanso insuficiente → debe descansar 10 horas
+                        debePresentarse = new Date(fechaSalida.getTime() + HORAS_DESCANSO * 60 * 60 * 1000);
+                    } else {
+                        // Descanso suficiente
+                        alertaDescanso.style.display = 'none';
+                        return;
+                    }
                 }
+
+                // Mostrar mensaje
+                const diaNombre = debePresentarse.toLocaleDateString('es-ES', { weekday: 'long' });
+                const horaTexto = debePresentarse.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                alertaDescanso.style.display = 'block';
+                horaRecomendada.textContent = `Debe presentarse a trabajar el ${diaNombre} a las ${horaTexto}.`;
+
 
             } else {
                 mensajeFeriadosDiv.style.display = 'none';
