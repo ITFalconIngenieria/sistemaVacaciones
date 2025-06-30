@@ -967,66 +967,7 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         registro.estado = 'P'
         registro.save()
 
-        # Lógica de descanso aplica a cualquier tipo
-        # fecha_fin = registro.fecha_fin
-        # fecha_fin_local = timezone.localtime(fecha_fin)
-        # fecha_base = fecha_fin_local.date()
-
-        # hora_turno_0700 = time(7, 0)
-        # hora_turno_1700 = time(17, 0)
-        # hora_salida_hextras =time(7, 0)
-        # # Evaluar contra 17:00 si la hora de salida fue después de las 07:00
-        # if fecha_fin_local.time() >= hora_turno_0700:
-        #     turno_1700 = timezone.make_aware(datetime.combine(fecha_base, hora_turno_1700))
-        #     hora_salida_hextras = timezone.make_aware(datetime.combine(fecha_base, hora_salida_hextras))
-        #     if fecha_fin_local < turno_1700:
-        #         if tipo_horas=='HE':
-        #             fecha_fin=hora_salida_hextras
-        #         # Salió después de las 07:00 pero antes de las 17:00 → turno a las 17:00
-        #         HorasCompensatoriasDescanso.objects.create(
-        #             usuario=registro.usuario,
-        #             registro_origen=registro,
-        #             horas_compensadas=Decimal(10),
-        #             inicio_descanso=fecha_fin,
-        #             fin_descanso=turno_1700
-        #         )
-        #         messages.success(self.request, 'Horas de descanso asignadas correctamente.')
-        #     else:
-        #         # Salió después de las 17:00 → siguiente turno es mañana a las 07:00
-        #         proximo_turno = timezone.make_aware(datetime.combine(fecha_base + timedelta(days=1), hora_turno_0700))
-        #         diferencia_horas = (proximo_turno - fecha_fin_local).total_seconds() / 3600
-
-        #         if diferencia_horas < 10:
-        #             fin_descanso = fecha_fin + timedelta(hours=10)
-        #             HorasCompensatoriasDescanso.objects.create(
-        #                 usuario=registro.usuario,
-        #                 registro_origen=registro,
-        #                 horas_compensadas=Decimal(10 - diferencia_horas).quantize(Decimal('0.01')),
-        #                 inicio_descanso=fecha_fin,
-        #                 fin_descanso=fin_descanso
-        #             )
-        #             messages.success(self.request, 'Horas de descanso asignadas correctamente.')
-
-        # else:
-        #     # Salió antes de las 07:00 → comparar contra turno a las 07:00 del mismo día
-        #     turno_0700 = timezone.make_aware(datetime.combine(fecha_base, hora_turno_0700))
-        #     if fecha_fin_local > turno_0700:
-        #         turno_0700 += timedelta(days=1)  # si ya pasó, usar mañana
-
-        #     diferencia_horas = (turno_0700 - fecha_fin_local).total_seconds() / 3600
-
-        #     if diferencia_horas < 10:
-        #         fin_descanso = fecha_fin + timedelta(hours=10)
-        #         HorasCompensatoriasDescanso.objects.create(
-        #             usuario=registro.usuario,
-        #             registro_origen=registro,
-        #             horas_compensadas=Decimal(10 - diferencia_horas).quantize(Decimal('0.01')),
-        #             inicio_descanso=fecha_fin,
-        #             fin_descanso=fin_descanso
-        #         )
-        #         messages.success(self.request, 'Horas de descanso asignadas correctamente.')
-
-
+        # Calcular horas compensatorias de descanso
         fecha_inicio_local = timezone.localtime(registro.fecha_inicio)
         fecha_fin_local = timezone.localtime(registro.fecha_fin)
 
@@ -1034,6 +975,8 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
         turno_fijo = timezone.make_aware(
             datetime.combine(fecha_inicio_local.date() + timedelta(days=1), time(7, 0))
         )
+
+        print(turno_fijo)
 
         if fecha_fin_local >= turno_fijo:
             # CASO 1: Se pasó del turno → descanso de 10h, pero horas compensadas = lo que se pasó
@@ -1067,8 +1010,6 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
                 )
 
                 messages.success(self.request, 'Horas de descanso asignadas correctamente.')
-
-
 
         messages.success(self.request, 'Registro de horas creado y pendiente de aprobación.')
         return super().form_valid(form)
@@ -1361,62 +1302,47 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
        # 🔄 Eliminar descansos anteriores relacionados a este registro
         HorasCompensatoriasDescanso.objects.filter(registro_origen=registro).delete()
 
-        fecha_fin = registro.fecha_fin
-        fecha_fin_local = timezone.localtime(fecha_fin)
-        fecha_base = fecha_fin_local.date()
+        fecha_inicio_local = timezone.localtime(registro.fecha_inicio)
+        fecha_fin_local = timezone.localtime(registro.fecha_fin)
 
-        hora_turno_0700 = time(7, 0)
-        hora_turno_1700 = time(17, 0)
-        hora_salida_hextras = time(7, 0)
+        # Turno que le correspondería: 07:00 del día siguiente a la jornada
+        turno_fijo = timezone.make_aware(
+            datetime.combine(fecha_inicio_local.date() + timedelta(days=1), time(7, 0))
+        )
 
-        if fecha_fin_local.time() >= hora_turno_0700:
-            turno_1700 = timezone.make_aware(datetime.combine(fecha_base, hora_turno_1700))
-            hora_salida_hextras = timezone.make_aware(datetime.combine(fecha_base, hora_salida_hextras))
+        print(turno_fijo)
 
-            if fecha_fin_local < turno_1700:
-                if tipo_horas=='HE':
-                    fecha_fin=hora_salida_hextras
-                # Salió después de las 07:00 pero antes de las 17:00
-                HorasCompensatoriasDescanso.objects.create(
-                    usuario=registro.usuario,
-                    registro_origen=registro,
-                    horas_compensadas=Decimal(10),
-                    inicio_descanso=fecha_fin,
-                    fin_descanso=turno_1700
-                )
-                messages.success(self.request, 'Horas de descanso asignadas correctamente.')
-            else:
-                # Salió después de las 17:00 → siguiente turno a las 07:00 del día siguiente
-                proximo_turno = timezone.make_aware(datetime.combine(fecha_base + timedelta(days=1), hora_turno_0700))
-                diferencia_horas = (proximo_turno - fecha_fin_local).total_seconds() / 3600
+        if fecha_fin_local >= turno_fijo:
+            # CASO 1: Se pasó del turno → descanso de 10h, pero horas compensadas = lo que se pasó
+            fin_descanso = fecha_fin_local + timedelta(hours=10)
 
-                if diferencia_horas < 10:
-                    fin_descanso = fecha_fin + timedelta(hours=10)
-                    HorasCompensatoriasDescanso.objects.create(
-                        usuario=registro.usuario,
-                        registro_origen=registro,
-                        horas_compensadas=Decimal(10 - diferencia_horas).quantize(Decimal('0.01')),
-                        inicio_descanso=fecha_fin,
-                        fin_descanso=fin_descanso
-                    )
-                    messages.success(self.request, 'Horas de descanso asignadas correctamente.')
+            HorasCompensatoriasDescanso.objects.create(
+                usuario=registro.usuario,
+                registro_origen=registro,
+                inicio_descanso=fecha_fin_local,
+                fin_descanso=fin_descanso,
+                horas_compensadas=Decimal(10),
+            )
+
+            messages.success(self.request, 'Horas de descanso asignadas correctamente.')
+
+
         else:
-            # Salió antes de las 07:00 → comparar contra turno a las 07:00 del mismo día
-            turno_0700 = timezone.make_aware(datetime.combine(fecha_base, hora_turno_0700))
-            if fecha_fin_local > turno_0700:
-                turno_0700 += timedelta(days=1)
+            # CASO 2: No se pasó, pero descanso < 10h → calcular compensación
+            horas_restantes = (turno_fijo - fecha_fin_local).total_seconds() / 3600
 
-            diferencia_horas = (turno_0700 - fecha_fin_local).total_seconds() / 3600
+            if horas_restantes < 10:
+                fin_descanso = fecha_fin_local + timedelta(hours=10)
+                horas_compensadas = abs((fin_descanso - turno_fijo).total_seconds() / 3600)
 
-            if diferencia_horas < 10:
-                fin_descanso = fecha_fin + timedelta(hours=10)
                 HorasCompensatoriasDescanso.objects.create(
                     usuario=registro.usuario,
                     registro_origen=registro,
-                    horas_compensadas=Decimal(10 - diferencia_horas).quantize(Decimal('0.01')),
-                    inicio_descanso=fecha_fin,
-                    fin_descanso=fin_descanso
+                    inicio_descanso=fecha_fin_local,
+                    fin_descanso=fin_descanso,
+                    horas_compensadas=Decimal(horas_compensadas).quantize(Decimal('0.01'))
                 )
+
                 messages.success(self.request, 'Horas de descanso asignadas correctamente.')
 
         return super().form_valid(form)
