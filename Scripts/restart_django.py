@@ -18,22 +18,27 @@ PYTHON_CMD = "python"  # por defecto
 # FUNCIONES
 
 def log(msg):
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(msg + "\n")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(f"[{timestamp}] {msg}\n")
+    except PermissionError:
+        print(f"⚠️ No se pudo escribir en el log (archivo en uso): {msg}")
 
 def kill_processes_on_port(port):
     log(f"🛑 Buscando procesos en el puerto {port}...")
     for proc in psutil.process_iter(attrs=["pid", "name"]):
         try:
-            for conn in proc.net_connections(kind='inet'):
+            conns = proc.net_connections(kind='inet')
+            for conn in conns:
                 if conn.status == psutil.CONN_LISTEN and conn.laddr.port == port:
-                    log(f"Matando proceso PID {proc.pid} en puerto {port}")
+                    log(f"Matando proceso PID {proc.pid} que usaba el puerto {port}")
                     proc.kill()
-                    sleep(1)
-        except Exception:
+                    proc.wait(timeout=5)
+                    break
+        except (psutil.AccessDenied, psutil.NoSuchProcess):
             continue
-
-
+    sleep(1)
 
 def detect_python_cmd():
     global PYTHON_CMD
@@ -57,18 +62,28 @@ def iniciar_servidor():
 
     os.chdir(PROJECT_DIR)
     log("🚀 Iniciando servidor Django...")
-    subprocess.Popen(
-        f'"{PYTHON_CMD}" manage.py runsslserver 0.0.0.0:8000 >> "{str(LOG_FILE)}" 2>&1',
-        shell=True,
-        creationflags=subprocess.CREATE_NO_WINDOW
-    )
 
+    try:
+        with open(LOG_FILE, "a", encoding="utf-8") as log_file:
+            subprocess.Popen(
+                [PYTHON_CMD, "manage.py", "runsslserver", "0.0.0.0:8000"],
+                stdout=log_file,
+                stderr=log_file,
+                cwd=PROJECT_DIR,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+        log("✅ Servidor lanzado correctamente.")
+    except Exception as e:
+        log(f"❌ Error al iniciar el servidor: {str(e)}")
 
 # -------------------------------
 # EJECUCIÓN PRINCIPAL
 
-with open(LOG_FILE, "w", encoding="utf-8") as f:
-    f.write(f"==== LOG DEL SERVIDOR - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ====\n")
+try:
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(f"\n==== REINICIO - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ====\n")
+except PermissionError:
+    print("⚠️ No se pudo abrir el archivo de log para escritura inicial.")
 
 kill_processes_on_port(8000)
 detect_python_cmd()
