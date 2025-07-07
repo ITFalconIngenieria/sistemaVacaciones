@@ -14,7 +14,7 @@
 
 </head>
 
-<body>
+<body class="light-mode">
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
@@ -219,6 +219,11 @@
                             <li><a class="dropdown-item" href="{% url 'logout' %}">Cerrar Sesión</a></li>
                         </ul>
                     </li>
+
+                    <li class="nav-item">
+    <button id="theme-toggle" class="btn btn-sm btn-outline-light ms-2">🌙</button>
+</li>
+
                     {% endif %}
                 </ul>
             </div>
@@ -297,6 +302,36 @@
             actualizarPendientes();  // Carga inicial de la cantidad de pendientes
             setInterval(actualizarPendientes, 60000); // Actualiza cada 60 segundos
         });
+
+
+
+
+
+
+        const toggleButton = document.getElementById("theme-toggle");
+    const body = document.body;
+
+    // Cargar preferencia previa
+    document.addEventListener("DOMContentLoaded", () => {
+        const savedTheme = localStorage.getItem("theme") || "light";
+        body.classList.remove("light-mode", "dark-mode");
+        body.classList.add(savedTheme + "-mode");
+        updateToggleIcon(savedTheme);
+    });
+
+    toggleButton.addEventListener("click", () => {
+        const currentTheme = body.classList.contains("dark-mode") ? "dark" : "light";
+        const newTheme = currentTheme === "light" ? "dark" : "light";
+        body.classList.remove("light-mode", "dark-mode");
+        body.classList.add(newTheme + "-mode");
+        localStorage.setItem("theme", newTheme);
+        updateToggleIcon(newTheme);
+    });
+
+    function updateToggleIcon(theme) {
+        toggleButton.textContent = theme === "dark" ? "☀️" : "🌙";
+    }
+
     </script>
 
 
