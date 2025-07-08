@@ -5,21 +5,28 @@
     {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script>
+    (function () {
+        const theme = localStorage.getItem("theme") ||
+            (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+
+        // Asegura que esto se ejecute cuando el body esté disponible
+        document.addEventListener("DOMContentLoaded", function () {
+            document.body.classList.add(theme + "-mode");
+        });
+    })();
+</script>
+
+
+
+
     <title>{% block title %}Falcon 365{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
     <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
-    <script>
-    (function () {
-        const theme = localStorage.getItem("theme") ||
-            (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-        document.documentElement.classList.add(theme + "-mode");
-    })();
-</script>
-
-
 </head>
 
 <body>
@@ -269,59 +276,59 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
-<script>
-    document.addEventListener("DOMContentLoaded", () => {
-        const toggleButton = document.getElementById("theme-toggle");
-        const body = document.body;
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const toggleButton = document.getElementById("theme-toggle");
+            const body = document.body;
 
-        // Aplicar tema guardado o preferencia del sistema
-        const savedTheme = localStorage.getItem("theme") || (
-            window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
-        );
-        body.classList.remove("light-mode", "dark-mode");
-        body.classList.add(savedTheme + "-mode");
-        updateToggleIcon(savedTheme);
-
-        // Cambiar tema al hacer clic
-        toggleButton.addEventListener("click", () => {
-            const currentTheme = body.classList.contains("dark-mode") ? "dark" : "light";
-            const newTheme = currentTheme === "light" ? "dark" : "light";
+            // Aplicar tema guardado o preferencia del sistema
+            const savedTheme = localStorage.getItem("theme") || (
+                window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+            );
             body.classList.remove("light-mode", "dark-mode");
-            body.classList.add(newTheme + "-mode");
-            localStorage.setItem("theme", newTheme);
-            updateToggleIcon(newTheme);
+            body.classList.add(savedTheme + "-mode");
+            updateToggleIcon(savedTheme);
+
+            // Cambiar tema al hacer clic
+            toggleButton.addEventListener("click", () => {
+                const currentTheme = body.classList.contains("dark-mode") ? "dark" : "light";
+                const newTheme = currentTheme === "light" ? "dark" : "light";
+                body.classList.remove("light-mode", "dark-mode");
+                body.classList.add(newTheme + "-mode");
+                localStorage.setItem("theme", newTheme);
+                updateToggleIcon(newTheme);
+            });
+
+            function updateToggleIcon(theme) {
+                toggleButton.textContent = theme === "dark" ? "☀️" : "🌙";
+            }
+
+            // Pendientes (esto también debe estar en DOMContentLoaded)
+            function actualizarPendientes() {
+                fetch("{% url 'obtener_cantidad_pendientes' %}")
+                    .then(response => response.json())
+                    .then(data => {
+                        const badgeTotal = document.getElementById("pendientes-total");
+                        const badgeSolicitudes = document.getElementById("pendientes_solicitudes_y_registros");
+                        const badgeOtras = document.getElementById("pendientes-otras");
+
+                        let total = data.pendientes_total;
+                        badgeTotal.style.display = total > 0 ? "inline-block" : "none";
+                        badgeTotal.innerText = total;
+
+                        badgeSolicitudes.style.display = data.pendientes_solicitudes_y_registros > 0 ? "inline-block" : "none";
+                        badgeSolicitudes.innerText = data.pendientes_solicitudes_y_registros;
+
+                        badgeOtras.style.display = data.pendientes_otras > 0 ? "inline-block" : "none";
+                        badgeOtras.innerText = data.pendientes_otras;
+                    })
+                    .catch(error => console.error("Error obteniendo pendientes:", error));
+            }
+
+            actualizarPendientes();
+            setInterval(actualizarPendientes, 60000); // Cada minuto
         });
-
-        function updateToggleIcon(theme) {
-            toggleButton.textContent = theme === "dark" ? "☀️" : "🌙";
-        }
-
-        // Pendientes (esto también debe estar en DOMContentLoaded)
-        function actualizarPendientes() {
-            fetch("{% url 'obtener_cantidad_pendientes' %}")
-                .then(response => response.json())
-                .then(data => {
-                    const badgeTotal = document.getElementById("pendientes-total");
-                    const badgeSolicitudes = document.getElementById("pendientes_solicitudes_y_registros");
-                    const badgeOtras = document.getElementById("pendientes-otras");
-
-                    let total = data.pendientes_total;
-                    badgeTotal.style.display = total > 0 ? "inline-block" : "none";
-                    badgeTotal.innerText = total;
-
-                    badgeSolicitudes.style.display = data.pendientes_solicitudes_y_registros > 0 ? "inline-block" : "none";
-                    badgeSolicitudes.innerText = data.pendientes_solicitudes_y_registros;
-
-                    badgeOtras.style.display = data.pendientes_otras > 0 ? "inline-block" : "none";
-                    badgeOtras.innerText = data.pendientes_otras;
-                })
-                .catch(error => console.error("Error obteniendo pendientes:", error));
-        }
-
-        actualizarPendientes();
-        setInterval(actualizarPendientes, 60000); // Cada minuto
-    });
-</script>
+    </script>
 
 
 
