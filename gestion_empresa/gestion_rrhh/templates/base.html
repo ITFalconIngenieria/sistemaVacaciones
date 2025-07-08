@@ -221,8 +221,8 @@
                     </li>
 
                     <li class="nav-item">
-    <button id="theme-toggle" class="btn btn-sm btn-outline-light ms-2">🌙</button>
-</li>
+                        <button id="theme-toggle" class="btn btn-sm btn-outline-light ms-2">🌙</button>
+                    </li>
 
                     {% endif %}
                 </ul>
@@ -304,33 +304,29 @@
         });
 
 
-
-
-
-
         const toggleButton = document.getElementById("theme-toggle");
-    const body = document.body;
+        const body = document.body;
 
-    // Cargar preferencia previa
-    document.addEventListener("DOMContentLoaded", () => {
-        const savedTheme = localStorage.getItem("theme") || "light";
-        body.classList.remove("light-mode", "dark-mode");
-        body.classList.add(savedTheme + "-mode");
-        updateToggleIcon(savedTheme);
-    });
+        // Cargar preferencia previa
+        document.addEventListener("DOMContentLoaded", () => {
+            const savedTheme = localStorage.getItem("theme") || "light";
+            body.classList.remove("light-mode", "dark-mode");
+            body.classList.add(savedTheme + "-mode");
+            updateToggleIcon(savedTheme);
+        });
 
-    toggleButton.addEventListener("click", () => {
-        const currentTheme = body.classList.contains("dark-mode") ? "dark" : "light";
-        const newTheme = currentTheme === "light" ? "dark" : "light";
-        body.classList.remove("light-mode", "dark-mode");
-        body.classList.add(newTheme + "-mode");
-        localStorage.setItem("theme", newTheme);
-        updateToggleIcon(newTheme);
-    });
+        toggleButton.addEventListener("click", () => {
+            const currentTheme = body.classList.contains("dark-mode") ? "dark" : "light";
+            const newTheme = currentTheme === "light" ? "dark" : "light";
+            body.classList.remove("light-mode", "dark-mode");
+            body.classList.add(newTheme + "-mode");
+            localStorage.setItem("theme", newTheme);
+            updateToggleIcon(newTheme);
+        });
 
-    function updateToggleIcon(theme) {
-        toggleButton.textContent = theme === "dark" ? "☀️" : "🌙";
-    }
+        function updateToggleIcon(theme) {
+            toggleButton.textContent = theme === "dark" ? "☀️" : "🌙";
+        }
 
     </script>
 
