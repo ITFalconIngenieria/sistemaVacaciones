@@ -198,14 +198,3 @@ body.dark-mode .fc-day-today {
     padding: 5px;
     box-shadow: 0 2px 5px rgba(255, 255, 255, 0.1);
 }
-
-
-html.light-mode, body.light-mode {
-    background-color: #ffffff;
-    color: #000000;
-}
-
-html.dark-mode, body.dark-mode {
-    background-color: #121212;
-    color: #ffffff;
-}

@@ -5,31 +5,21 @@
     {% load static %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <script>
-        (function () {
-            const theme = localStorage.getItem("theme") ||
-                (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-
-            // Evita FOUC: agrega directamente antes de que cargue el DOM
-            document.documentElement.className = theme + "-mode";
-        })();
-    </script>
-
     <title>{% block title %}Falcon 365{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
     <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+
 </head>
 
-<body>
+<body class="light-mode">
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{% url 'dashboard' %}">
-                <img src="{% static 'img/LogoFI2.png' %}" alt="Logo" width="100%" height="40px" >
+                <img src="{% static 'img/LogoFI2.png' %}" alt="Logo" width="100%" height="40px">
                 <!-- Gestión de Vacaciones y Horas -->
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
@@ -270,58 +260,75 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
     <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            const toggleButton = document.getElementById("theme-toggle");
-            const body = document.body;
+        function actualizarPendientes() {
+            fetch("{% url 'obtener_cantidad_pendientes' %}")  // Llamamos a la API
+                .then(response => response.json())
+                .then(data => {
+                    const badgeTotal = document.getElementById("pendientes-total");
+                    const badgeSolicitudes = document.getElementById("pendientes_solicitudes_y_registros");
+                    const badgeOtras = document.getElementById("pendientes-otras");
 
-            // Aplicar tema guardado o preferencia del sistema
-            const savedTheme = localStorage.getItem("theme") || (
-                window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
-            );
+                    // Total en "Gestión de colaboradores"
+                    let total = data.pendientes_total;
+                    if (total > 0) {
+                        badgeTotal.innerText = total;
+                        badgeTotal.style.display = "inline-block";
+                    } else {
+                        badgeTotal.style.display = "none";
+                    }
+
+                    // Solicitudes y Registros Pendientes
+                    if (data.pendientes_solicitudes_y_registros > 0) {
+                        badgeSolicitudes.innerText = data.pendientes_solicitudes_y_registros;
+                        badgeSolicitudes.style.display = "inline-block";
+                    } else {
+                        badgeSolicitudes.style.display = "none";
+                    }
+
+                    // Otras Solicitudes Pendientes
+                    if (data.pendientes_otras > 0) {
+                        badgeOtras.innerText = data.pendientes_otras;
+                        badgeOtras.style.display = "inline-block";
+                    } else {
+                        badgeOtras.style.display = "none";
+                    }
+                })
+                .catch(error => console.error("Error obteniendo pendientes:", error));
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            actualizarPendientes();  // Carga inicial de la cantidad de pendientes
+            setInterval(actualizarPendientes, 60000); // Actualiza cada 60 segundos
+        });
+
+
+        const toggleButton = document.getElementById("theme-toggle");
+        const body = document.body;
+
+        // Cargar preferencia previa
+        document.addEventListener("DOMContentLoaded", () => {
+            const savedTheme = localStorage.getItem("theme") || "light";
             body.classList.remove("light-mode", "dark-mode");
             body.classList.add(savedTheme + "-mode");
             updateToggleIcon(savedTheme);
-
-            // Cambiar tema al hacer clic
-            toggleButton.addEventListener("click", () => {
-                const currentTheme = body.classList.contains("dark-mode") ? "dark" : "light";
-                const newTheme = currentTheme === "light" ? "dark" : "light";
-                body.classList.remove("light-mode", "dark-mode");
-                body.classList.add(newTheme + "-mode");
-                localStorage.setItem("theme", newTheme);
-                updateToggleIcon(newTheme);
-            });
-
-            function updateToggleIcon(theme) {
-                toggleButton.textContent = theme === "dark" ? "☀️" : "🌙";
-            }
-
-            // Pendientes (esto también debe estar en DOMContentLoaded)
-            function actualizarPendientes() {
-                fetch("{% url 'obtener_cantidad_pendientes' %}")
-                    .then(response => response.json())
-                    .then(data => {
-                        const badgeTotal = document.getElementById("pendientes-total");
-                        const badgeSolicitudes = document.getElementById("pendientes_solicitudes_y_registros");
-                        const badgeOtras = document.getElementById("pendientes-otras");
-
-                        let total = data.pendientes_total;
-                        badgeTotal.style.display = total > 0 ? "inline-block" : "none";
-                        badgeTotal.innerText = total;
-
-                        badgeSolicitudes.style.display = data.pendientes_solicitudes_y_registros > 0 ? "inline-block" : "none";
-                        badgeSolicitudes.innerText = data.pendientes_solicitudes_y_registros;
-
-                        badgeOtras.style.display = data.pendientes_otras > 0 ? "inline-block" : "none";
-                        badgeOtras.innerText = data.pendientes_otras;
-                    })
-                    .catch(error => console.error("Error obteniendo pendientes:", error));
-            }
-
-            actualizarPendientes();
-            setInterval(actualizarPendientes, 60000); // Cada minuto
         });
+
+        toggleButton.addEventListener("click", () => {
+            const currentTheme = body.classList.contains("dark-mode") ? "dark" : "light";
+            const newTheme = currentTheme === "light" ? "dark" : "light";
+            body.classList.remove("light-mode", "dark-mode");
+            body.classList.add(newTheme + "-mode");
+            localStorage.setItem("theme", newTheme);
+            updateToggleIcon(newTheme);
+        });
+
+        function updateToggleIcon(theme) {
+            toggleButton.textContent = theme === "dark" ? "☀️" : "🌙";
+        }
+
     </script>
+
+
 
 </body>
 
