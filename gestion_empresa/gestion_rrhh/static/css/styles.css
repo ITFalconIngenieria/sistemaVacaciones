@@ -40,10 +40,7 @@ body.light-mode {
     background-color: #0d6efd;
 }
 
-footer.light-mode {
-    background-color: #f8f9fa;
-    color: #333;
-}
+
 
 body.light-mode .card {
     background-color: #ffffff;
@@ -69,10 +66,23 @@ body.dark-mode {
     background-color: #1f1f1f !important;
 }
 
-footer.dark-mode {
+body.dark-mode .footer {
     background-color: #1f1f1f;
-    color: #ccc;
 }
+
+footer.light-mode {
+    background-color: #f8f9fa;
+}
+
+body.dark-mode .footer-text {
+    color: #ffffff;
+}
+
+body.light-mode .footer-text {
+    color: #333333;
+}
+
+
 
 body.dark-mode .card {
     background-color: #1e1e1e;
