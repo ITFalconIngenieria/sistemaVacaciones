@@ -252,7 +252,7 @@ def dashboard(request):
             )
 
         elif licencia.tipo == 'MAT':
-            color = "#0BE3E2"
+            color = "#3BE3B1"
             tipo_evento = "Matrimonio"
             descripcion = f"Inicio: {licencia.fecha_inicio.strftime('%d-%m-%Y')} - Fin: {licencia.fecha_fin.strftime('%d-%m-%Y')}"
 
