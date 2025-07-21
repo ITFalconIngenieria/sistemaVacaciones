@@ -1115,20 +1115,21 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
                     messages.warning(self.request, "Existen licencias pendientes de aprobación.")
                     return self.form_invalid(form)
                 if sabado_pendientes:
-                    messages.warning(self.request, "Existen registros de sábado pendientes.")
+                    messages.warning(self.request, "Existen registros pendientes de aprobar el dia sabado")
                     return self.form_invalid(form)
 
                 # Asignar horas compensatorias o duplicar horas
+
                 if not (incapacidades.exists() or solicitudes or licencias.exists()) and sabado_aprobados:
-                    if Decimal(registro.horas) * 2 > 9 and usuario.rol != 'TE':
-                        nuevas_horas = Decimal(registro.horas) * 2
+                    if usuario.rol != 'TE':
+                        nuevas_horas = Decimal(registro.horas) + Decimal(9)
                         form.instance.horas = nuevas_horas
-                        mensaje_compensatorio = f"Se asignaron automáticamente {nuevas_horas} horas compensatorias por trabajo 7 días consecutivos."
+                        mensaje_compensatorio = f"Se asignaron automáticamente 9 horas compensatorias adicionales. Total: {nuevas_horas} horas por trabajo 7 días consecutivos."
                         messages.success(self.request, mensaje_compensatorio)
                     else:
-                        HorasCompensatoriasSieteDias.objects.create(usuario=usuario, horas_compensatorias=9)
-                        mensaje_compensatorio = "Se asignaron 9 horas compensatorias por trabajo 7 días consecutivos."
-                        messages.success(self.request, mensaje_compensatorio)
+                        form.instance.horas = Decimal(registro.horas)
+                        mensaje_compensatorio = "No se asignaron horas compensatorias por política del rol TE."
+                        messages.info(self.request, mensaje_compensatorio)
                 else:
                     if usuario.rol != 'TE':
                         nuevas_horas = Decimal(registro.horas) * 2
