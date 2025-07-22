@@ -1128,13 +1128,13 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
                         messages.success(self.request, mensaje_compensatorio)
                     else:
                         form.instance.horas = Decimal(registro.horas)
-                        mensaje_compensatorio = "No se asignaron horas compensatorias por política del rol TE."
+                        mensaje_compensatorio = "No se asignaron horas compensatorias por trabajo en 7 dias consecutivos."
                         messages.info(self.request, mensaje_compensatorio)
                 else:
                     if usuario.rol != 'TE':
                         nuevas_horas = Decimal(registro.horas) * 2
                         form.instance.horas = nuevas_horas
-                        mensaje_compensatorio = "Horas duplicadas por trabajo en domingo sin 7 días consecutivos."
+                        mensaje_compensatorio = "Horas duplicadas por trabajo en domingo"
                         messages.warning(self.request, mensaje_compensatorio)
                     else:
                         form.instance.horas = Decimal(registro.horas)
