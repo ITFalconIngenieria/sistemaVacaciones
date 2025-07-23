@@ -1121,7 +1121,11 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
                 # Asignar horas compensatorias o duplicar horas
 
                 if not (incapacidades.exists() or solicitudes or licencias.exists()) and sabado_aprobados:
-                        HorasCompensatoriasSieteDias.objects.create(usuario=usuario, horas_compensatorias=9)
+                        HorasCompensatoriasSieteDias.objects.create(
+                        usuario=usuario,
+                        horas_compensatorias=9,
+                        registro=registro  # referencia directa al RegistroHoras
+                    )
                         mensaje_compensatorio = "Se asignaron 9 horas compensatorias por trabajo 7 días consecutivos."
                         messages.success(self.request, mensaje_compensatorio)
                 else:

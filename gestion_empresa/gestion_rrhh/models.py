@@ -352,6 +352,7 @@ class ConversionVacacionesHoras(models.Model):
 
 class HorasCompensatoriasSieteDias(models.Model):
     usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    registro = models.ForeignKey('RegistroHoras', on_delete=models.CASCADE, null=True, blank=True)
     fecha_asignacion = models.DateField(auto_now_add=True)
     horas_compensatorias = models.DecimalField(max_digits=5, decimal_places=2, default=9)
     descripcion = models.TextField(default="Horas compensatorias asignadas por trabajar 7 días consecutivos.")
