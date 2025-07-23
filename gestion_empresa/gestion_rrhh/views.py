@@ -1121,15 +1121,9 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
                 # Asignar horas compensatorias o duplicar horas
 
                 if not (incapacidades.exists() or solicitudes or licencias.exists()) and sabado_aprobados:
-                    if usuario.rol != 'TE':
-                        nuevas_horas = Decimal(registro.horas) + Decimal(9)
-                        form.instance.horas = nuevas_horas
-                        mensaje_compensatorio = f"Se asignaron automáticamente 9 horas compensatorias adicionales. Total: {nuevas_horas} horas por trabajo 7 días consecutivos."
+                        HorasCompensatoriasSieteDias.objects.create(usuario=usuario, horas_compensatorias=9)
+                        mensaje_compensatorio = "Se asignaron 9 horas compensatorias por trabajo 7 días consecutivos."
                         messages.success(self.request, mensaje_compensatorio)
-                    else:
-                        form.instance.horas = Decimal(registro.horas)
-                        mensaje_compensatorio = "No se asignaron horas compensatorias por trabajo en 7 dias consecutivos."
-                        messages.info(self.request, mensaje_compensatorio)
                 else:
                     if usuario.rol != 'TE':
                         nuevas_horas = Decimal(registro.horas) * 2
@@ -1138,7 +1132,8 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
                         messages.warning(self.request, mensaje_compensatorio)
                     else:
                         form.instance.horas = Decimal(registro.horas)
-                        mensaje_compensatorio = "No se asignaron horas compensatorias ni duplicación."
+                        mensaje_compensatorio = "No se asignaron horas compensatorias ni duplicación por trabajo en domingo."
+
             messages.success(self.request, f"El registro de horas de {usuario.get_full_name()} ha sido aprobado exitosamente.")
 
         elif form.instance.estado == 'R':
