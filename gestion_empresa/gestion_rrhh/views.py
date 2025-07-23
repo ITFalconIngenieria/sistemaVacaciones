@@ -1132,7 +1132,7 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
                     if usuario.rol != 'TE':
                         nuevas_horas = Decimal(registro.horas) * 2
                         form.instance.horas = nuevas_horas
-                        mensaje_compensatorio = "Horas duplicadas por trabajo en domingo"
+                        mensaje_compensatorio = "Horas duplicadas por trabajo en domingo, no se detectó trabajo de 7 días consecutivos."
                         messages.warning(self.request, mensaje_compensatorio)
                     else:
                         form.instance.horas = Decimal(registro.horas)
