@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const fechaFinInput = document.getElementById('id_fecha_fin');
     const cantidadDiasSpan = document.getElementById('cantidad-dias');
     const diasCalculadosDiv = document.getElementById('dias-calculados');
+    const nota = document.getElementById('nota');
 
     let diasFeriados = [];
 
@@ -87,6 +88,11 @@ document.addEventListener('DOMContentLoaded', function () {
         locale: "es"
     });
 
+    // Función para normalizar fechas (sin hora)
+    function normalizarFecha(fecha) {
+        return new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+    }
+
     // Función para obtener feriados
     async function obtenerFeriados(fechaInicio, fechaFin) {
         if (!fechaInicio || !fechaFin) return [];
@@ -95,17 +101,31 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!response.ok) return [];
 
         const data = await response.json();
-        return data.feriados.map(fecha => new Date(fecha));
+        return data.feriados.map(fechaStr => {
+            const [y, m, d] = fechaStr.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        });
     }
 
     // Función para calcular los días hábiles
     async function calcularDiasHabiles() {
-        const fechaInicio = new Date(fechaInicioInput.value);
-        const fechaFin = new Date(fechaFinInput.value);
-
-        if (!fechaInicio || !fechaFin || fechaFin < fechaInicio) {
+        if (!fechaInicioInput.value || !fechaFinInput.value) {
             cantidadDiasSpan.textContent = 0;
             diasCalculadosDiv.style.display = 'none';
+            nota.style.display = 'none';
+            return;
+        }
+
+        // Convertir fechas en objetos Date sin problema de zona horaria
+        const [a1, m1, d1] = fechaInicioInput.value.split('-').map(Number);
+        const [a2, m2, d2] = fechaFinInput.value.split('-').map(Number);
+        const fechaInicio = new Date(a1, m1 - 1, d1);
+        const fechaFin = new Date(a2, m2 - 1, d2);
+
+        if (fechaFin < fechaInicio) {
+            cantidadDiasSpan.textContent = 0;
+            diasCalculadosDiv.style.display = 'none';
+            nota.style.display = 'none';
             return;
         }
 
@@ -114,7 +134,10 @@ document.addEventListener('DOMContentLoaded', function () {
         let diaActual = new Date(fechaInicio);
 
         while (diaActual <= fechaFin) {
-            const esFeriado = diasFeriados.some(feriado => feriado.toDateString() === diaActual.toDateString());
+            const diaNormalizado = normalizarFecha(diaActual);
+            const esFeriado = diasFeriados.some(feriado =>
+                normalizarFecha(feriado).getTime() === diaNormalizado.getTime()
+            );
             const esFinDeSemana = diaActual.getDay() === 6 || diaActual.getDay() === 0;
 
             if (!esFeriado && !esFinDeSemana) {
@@ -126,6 +149,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         cantidadDiasSpan.textContent = diasHabiles;
         diasCalculadosDiv.style.display = 'block';
+        nota.style.display = 'block';
     }
 
     fechaInicioInput.addEventListener('change', calcularDiasHabiles);
