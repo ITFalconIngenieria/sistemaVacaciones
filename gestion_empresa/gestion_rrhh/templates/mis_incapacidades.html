@@ -60,48 +60,80 @@
     </table>
 
     <!-- Barra de navegación de la paginación -->
-    <nav aria-label="Page navigation">
-        <ul class="pagination">
-            {% if page_obj.has_previous %}
+<!-- Barra de navegación de la paginación -->
+<nav aria-label="Page navigation">
+    <ul class="pagination">
+
+        <!-- Primera y Anterior -->
+        {% if page_obj.has_previous %}
             <li class="page-item">
                 <a class="page-link" href="?page=1">Primera</a>
             </li>
             <li class="page-item">
                 <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
             </li>
-            {% else %}
+        {% else %}
             <li class="page-item disabled">
-                <a class="page-link" href="#">Primera</a>
+                <span class="page-link">Primera</span>
             </li>
             <li class="page-item disabled">
-                <a class="page-link" href="#">Anterior</a>
+                <span class="page-link">Anterior</span>
             </li>
-            {% endif %}
+        {% endif %}
 
-            {% for num in page_obj.paginator.page_range %}
-            {% if num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %} <li
-                class="page-item {% if page_obj.number == num %}active{% endif %}">
-                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                </li>
+        <!-- Páginas dinámicas (hasta 10) -->
+        {% with total=page_obj.paginator.num_pages current=page_obj.number %}
+            {% with start=current|add:"-5" end=current|add:"4" %}
+                {% if start < 1 %}
+                    {% with offset=1|add:"-"|add:start %}
+                        {% with start=1 end=end|add:offset %}
+                        {% endwith %}
+                    {% endwith %}
                 {% endif %}
+                {% if end > total %}
+                    {% with diff=end|add:"-"|add:total %}
+                        {% with end=total start=start|add:"-"|add:diff %}
+                        {% endwith %}
+                    {% endwith %}
+                {% endif %}
+
+                {% if start > 1 %}
+                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if num >= start and num <= end %}
+                        <li class="page-item {% if current == num %}active{% endif %}">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endif %}
                 {% endfor %}
 
-                {% if page_obj.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
-                </li>
-                {% else %}
-                <li class="page-item disabled">
-                    <a class="page-link" href="#">Siguiente</a>
-                </li>
-                <li class="page-item disabled">
-                    <a class="page-link" href="#">Última</a>
-                </li>
+                {% if end < total %}
+                    <li class="page-item disabled"><span class="page-link">…</span></li>
                 {% endif %}
-        </ul>
-    </nav>
+            {% endwith %}
+        {% endwith %}
+
+        <!-- Siguiente y Última -->
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">Siguiente</span>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">Última</span>
+            </li>
+        {% endif %}
+
+    </ul>
+</nav>
+
 </div>
 {% endblock %}
