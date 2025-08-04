@@ -5,6 +5,7 @@ from pathlib import Path
 from datetime import datetime
 import psutil
 from time import sleep
+import socket
 
 # -------------------------------
 # CONFIGURACIONES
@@ -76,6 +77,19 @@ def iniciar_servidor():
     except Exception as e:
         log(f"❌ Error al iniciar el servidor: {str(e)}")
 
+def esperar_puerto_activo(puerto, timeout=20):
+    log(f"⏳ Esperando a que el puerto {puerto} esté activo...")
+    for i in range(timeout):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(1)
+            resultado = sock.connect_ex(('127.0.0.1', puerto))
+            if resultado == 0:
+                log(f"✅ Puerto {puerto} activo.")
+                return True
+        sleep(1)
+    log(f"❌ Puerto {puerto} no respondió después de {timeout} segundos.")
+    return False
+
 # -------------------------------
 # EJECUCIÓN PRINCIPAL
 
@@ -88,3 +102,4 @@ except PermissionError:
 kill_processes_on_port(8000)
 detect_python_cmd()
 iniciar_servidor()
+esperar_puerto_activo(8000)
