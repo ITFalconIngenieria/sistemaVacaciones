@@ -1503,6 +1503,7 @@ def obtener_cantidad_pendientes(request):
     })
 
 
+
 class HistorialCombinadoView(LoginRequiredMixin, ListView):
     template_name = 'historial_solicitudes.html'
     context_object_name = 'registros_y_solicitudes'
@@ -1517,7 +1518,7 @@ class HistorialCombinadoView(LoginRequiredMixin, ListView):
         estado = self.request.GET.get('estado')
         tipo = self.request.GET.get('tipo')
         usuario_id = self.request.GET.get('usuario')
-        
+
         registros_queryset = RegistroHoras.objects.filter(usuario__in=user.subordinados.all())
         solicitudes_queryset = Solicitud.objects.filter(usuario__in=user.subordinados.all())
         licencias_queryset = Licencia.objects.filter(usuario__in=user.subordinados.all())
@@ -1535,8 +1536,8 @@ class HistorialCombinadoView(LoginRequiredMixin, ListView):
             licencias_queryset = licencias_queryset.filter(usuario_id=usuario_id)
 
         registros_y_solicitudes = list(registros_queryset) + list(solicitudes_queryset) + list(licencias_queryset)
+
         estado_prioridad = {'P': 1, 'R': 2, 'A': 3}
-        
         for item in registros_y_solicitudes:
             if isinstance(item, Solicitud):
                 item.tipo_objeto = 'solicitud'
@@ -1546,11 +1547,25 @@ class HistorialCombinadoView(LoginRequiredMixin, ListView):
                 item.tipo_objeto = 'licencia'
             item.estado_orden = estado_prioridad.get(item.estado, 4)
 
-        return sorted(
-    registros_y_solicitudes,
-    key=lambda x: (x.estado_orden, -x.fecha_inicio.timestamp())
-)
+        # --- conversor seguro para fecha (date o datetime) ---
+        def _to_epoch(dt):
+            if dt is None:
+                return 0.0
+            # datetime tiene .timestamp()
+            if hasattr(dt, "timestamp"):
+                return dt.timestamp()
+            # si es date, lo convertimos a datetime a medianoche
+            return datetime.combine(dt, time.min).timestamp()
 
+        # Pendientes primero; dentro de cada grupo, más recientes; desempate neutro
+        return sorted(
+            registros_y_solicitudes,
+            key=lambda x: (
+                0 if getattr(x, "estado", None) == "P" else 1,   # pendientes primero
+                -_to_epoch(getattr(x, "fecha_inicio", None)),     # fecha desc
+                -getattr(x, "pk", 0)                              # desempate neutral
+            )
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
