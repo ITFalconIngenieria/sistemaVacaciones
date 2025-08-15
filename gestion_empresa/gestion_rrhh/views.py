@@ -1546,7 +1546,11 @@ class HistorialCombinadoView(LoginRequiredMixin, ListView):
                 item.tipo_objeto = 'licencia'
             item.estado_orden = estado_prioridad.get(item.estado, 4)
 
-        return sorted(registros_y_solicitudes, key=attrgetter('estado_orden', 'fecha_inicio'))
+        return sorted(
+    registros_y_solicitudes,
+    key=lambda x: (x.estado_orden, -x.fecha_inicio.timestamp())
+)
+
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
