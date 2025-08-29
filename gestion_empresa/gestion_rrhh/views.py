@@ -33,7 +33,9 @@ from django.shortcuts import redirect
 from xhtml2pdf import pisa
 
 from operator import attrgetter
+import logging
 
+logger = logging.getLogger(__name__)
 from .forms import (
     AjusteVacacionesForm,
     FeriadoNacionalForm,
@@ -530,8 +532,8 @@ class CrearSolicitudView(LoginRequiredMixin, CreateView):
                     to_recipients=[jefe.email],
                 )
             except Exception as e:
-                print(f"Error al enviar correo al jefe {jefe.email}: {e}")
-                messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
+                logger.exception("Fallo al enviar correo al jefe %s", jefe.email)
+                messages.warning(self.request, f"No se pudo enviar el correo al jefe ({jefe.email}).")
         
         return super().form_valid(form)
 
@@ -657,8 +659,9 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
                 to_recipients=[usuario.email],
             )
         except Exception as e:
-            print(f"Error al enviar correo al usuario {usuario.email}: {e}")
-            messages.error(self.request, f"Error al enviar correo: {e}")
+            logger.exception("Fallo al enviar correo al usuario %s", usuario.email)
+            messages.warning(self.request, f"Error al enviar correo al usuario ({usuario.email}).")
+            
 
 
 class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
@@ -818,8 +821,8 @@ class EditarMiSolicitudView(LoginRequiredMixin, UpdateView):
                     to_recipients=[jefe.email],
                 )
             except Exception as e:
-                print(f"Error al enviar correo al jefe {jefe.email}: {e}")
-                messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
+                logger.exception("Fallo al enviar correo al jefe %s", jefe.email)
+                messages.warning(self.request, f"No se pudo enviar el correo al jefe ({jefe.email}).")
 
 
         return super().form_valid(form)
@@ -958,8 +961,9 @@ class RegistrarHorasView(LoginRequiredMixin, CreateView):
                     to_recipients=[jefe.email],
                 )
             except Exception as e:
-                print(f"Error al enviar correo al jefe {jefe.email}: {e}")
-                messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
+                logger.exception("Fallo al enviar correo al jefe %s", jefe.email)
+                messages.warning(self.request, f"No se pudo enviar el correo al jefe ({jefe.email}).")
+
 
 
         registro = form.save(commit=False)
@@ -1180,8 +1184,8 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
                 to_recipients=[usuario.email],
             )
         except Exception as e:
-            print(f"Error al enviar correo al usuario {usuario.email}: {e}")
-            messages.error(self.request, f"Error al enviar correo al usuario {usuario.email}: {e}")
+            logger.exception(f"Fallo al enviar correo al usuario {usuario.email}")
+            messages.warning(self.request, f"No se pudo enviar el correo al usuario ({usuario.email}).")
 
 
 
@@ -1288,8 +1292,8 @@ class EditarMiRegistroHorasView(LoginRequiredMixin, UpdateView):
                     to_recipients=[jefe.email],
                 )
             except Exception as e:
-                print(f"Error al enviar correo al jefe {jefe.email}: {e}")
-                messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
+                logger.exception("Fallo al enviar correo al jefe %s", jefe.email)
+                messages.warning(self.request, f"No se pudo enviar el correo al jefe ({jefe.email}).")
 
         messages.success(self.request, f"El registro de horas {form.instance.numero_registro} ha sido actualizado.")
         
@@ -1758,7 +1762,8 @@ def ajuste_vacaciones(request):
                     to_recipients=[usuario.email],
                 )
             except Exception as e:
-                messages.error(f"Error al enviar correo al usuario {usuario.email}: {e}")
+                logger.exception("Fallo al enviar correo al al usuario %s", usuario.email)
+                messages.warning(request, f"No se pudo enviar el correo al usuario ({usuario.email}).")
 
             messages.success(request, f"Vacaciones ajustadas para {usuario.get_full_name()}")
             return redirect('ajuste_vacaciones')
@@ -1984,8 +1989,8 @@ class CrearIncapacidadView(LoginRequiredMixin, CreateView):
                     to_recipients=[jefe.email],
                 )
             except Exception as e:
-                print(f"Error al enviar correo al jefe {jefe.email}: {e}")
-                messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
+                logger.exception("Fallo al enviar correo al jefe %s", jefe.email)
+                messages.warning(self.request, f"No se pudo enviar el correo al jefe ({jefe.email}).")
         return super().form_valid(form)
 
 
@@ -2188,8 +2193,8 @@ class EditarIncapacidadView(LoginRequiredMixin, UpdateView):
                     to_recipients=[jefe.email],
                 )
             except Exception as e:
-                print(f"Error al enviar correo al jefe {jefe.email}: {e}")
-                messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
+                logger.exception("Fallo al enviar correo al jefe %s", jefe.email)
+                messages.warning(self.request, f"No se pudo enviar el correo al jefe ({jefe.email}).")
 
         return super().form_valid(form)
 
@@ -2390,8 +2395,8 @@ class CrearLicenciaView(CreateView):
                     to_recipients=[jefe.email],
                 )
             except Exception as e:
-                print(f"Error al enviar correo al jefe {jefe.email}: {e}")
-                messages.error((f"Error al enviar correo al jefe {jefe.email}: {e}"))
+                logger.exception("Fallo al enviar correo al jefe %s", jefe.email)
+                messages.warning(self.request, f"No se pudo enviar el correo al jefe ({jefe.email}).")
         return super().form_valid(form)
 
 
@@ -2471,8 +2476,8 @@ class AprobarRechazarLicenciaView(UserPassesTestMixin, UpdateView):
                 to_recipients=[usuario.email],
             )
         except Exception as e:
-            print(f"Error al enviar correo al usuario {usuario.email}: {e}")
-            messages.error(self.request, f"Error al enviar correo al usuario {usuario.email}: {e}")
+            logger.exception("Fallo al enviar correo al al usuario %s", usuario.email)
+            messages.warning(self.request, f"No se pudo enviar el correo al usuario ({usuario.email}).")
 
 
 
@@ -2601,8 +2606,8 @@ class EditarLicenciaView(UpdateView):
                     to_recipients=[jefe.email],
                 )
             except Exception as e:
-                print(f"Error al enviar correo al jefe {jefe.email}: {e}")
-                messages.error(f"Error al enviar correo al jefe {jefe.email}: {e}")
+                logger.exception("Fallo al enviar correo al jefe %s", jefe.email)
+                messages.warning(self.request, f"No se pudo enviar el correo al jefe ({jefe.email}).")
 
         return super().form_valid(form)
 
@@ -2805,9 +2810,12 @@ def solicitar_restablecimiento(request):
                     'tiempo_restante': 180  # 3 minutos en segundos
                 })
             except Exception as e:
-                messages.error(request, "Error al enviar el correo. Intenta nuevamente.")
+
+                logger.exception("Fallo al enviar correo. Intenta nuevamente."  )
+                messages.warning(request, f"No se pudo enviar el correo")
         else:
-            messages.error(request, "No se encontró un usuario con ese correo.")
+            logger.exception("No se encontró un usuario con ese correo")
+            messages.warning(request, f"No se encontró un usuario con ese correo.")
     
     return render(request, 'solicitar_restablecimiento.html')
 
