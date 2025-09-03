@@ -650,7 +650,7 @@ class AprobarRechazarSolicitudView(LoginRequiredMixin, UserPassesTestMixin, Upda
 
         html_content = render_to_string("mail_estado_solicitud.html", context)
         email_sender = MicrosoftGraphEmail()
-        subject = f"Tu solicitud ha sido {context['estado']}"
+        subject = f"Tu solicitud ha sido marcada como {context['estado']}"
 
         try:
             email_sender.send_email(
@@ -1175,7 +1175,7 @@ class AprobarRechazarHorasView(UserPassesTestMixin, UpdateView):
 
         html_content = render_to_string("mail_estado_solicitud.html", context)
         email_sender = MicrosoftGraphEmail()
-        subject = f"Tu solicitud ha sido {context['estado']}"
+        subject = f"Tu solicitud ha sido marcada como {context['estado']}"
 
         try:
             email_sender.send_email(
