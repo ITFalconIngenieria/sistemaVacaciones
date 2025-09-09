@@ -31,7 +31,7 @@ DEBUG=False
 
 
 ALLOWED_HOSTS = ['192.168.1.40', '192.168.128.94', '172.31.67.163', 
-                 'ec2-54-84-74-28.compute-1.amazonaws.com', '54.84.74.28', '192.168.128.59']
+                 'ec2-54-84-74-28.compute-1.amazonaws.com', '54.84.74.28', '192.168.128.59','falcon360.io']
 
 ENV = config('ENV', default='local')
 # Application definition
