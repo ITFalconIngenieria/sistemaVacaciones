@@ -30,8 +30,7 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG=False
 
 
-ALLOWED_HOSTS = ['192.168.1.40', '192.168.128.94', '172.31.67.163', 
-                 'ec2-54-84-74-28.compute-1.amazonaws.com', '54.84.74.28', '192.168.128.59','falcon360.io']
+ALLOWED_HOSTS = ['192.168.1.40', '192.168.128.94','falcon360.io','app.falcon360.io']
 
 ENV = config('ENV', default='local')
 # Application definition
@@ -65,8 +64,10 @@ MIDDLEWARE = [
 SECURITY_MAX_REQUESTS = 50
 SECURITY_WINDOW_SECONDS = 60
 ROOT_URLCONF = 'gestion_empresa.urls'
-# MEDIA_URL = '/media/'  
-# MEDIA_ROOT = BASE_DIR / 'media' 
+ 
+
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -148,13 +149,7 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'gestion_rrhh', 'static'),
-]
 
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
